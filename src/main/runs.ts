@@ -64,6 +64,10 @@ export function classifyFailure(err: unknown): ProblemKind {
   return 'unexpected';
 }
 
+function kindOrUnexpected(kind: ProblemKind): Exclude<ProblemKind, 'wrong_account'> {
+  return kind === 'wrong_account' ? 'unexpected' : kind;
+}
+
 export const PROBLEM_MESSAGES: Record<Exclude<ProblemKind, 'wrong_account'>, Omit<ProblemDTO, 'kind'>> = {
   signed_out: { message: 'Slack signed you out. Reconnect to keep archiving.', action: 'reconnect' },
   offline: { message: 'Can’t reach Slack right now. We’ll try again automatically.', action: 'retry' },
@@ -139,6 +143,8 @@ export type RunListener = (event: RunEvent) => void;
 export const SYNC_LOCK = 'sync';
 export const STATUS_LOG_LINES = 50;
 export const NOT_CONNECTED_REASON = 'Connect Slack to start archiving.';
+/** Automatic syncs wait until onboarding asked what to archive (a sync started by hand still runs). */
+export const ONBOARDING_REASON = 'Finish setting up sla-mem to start archiving.';
 const STALE_AFTER_MS = 30 * 86_400_000;
 const SYNC_KINDS: readonly RunKind[] = ['sync'];
 const FAILURE_KINDS: readonly RunKind[] = ['sync', 'files'];
@@ -181,6 +187,7 @@ export class RunManager {
   private readonly now: () => number;
   private readonly log: (line: string) => void;
   private active: ActiveRun | null = null;
+  private listsRefresh: Promise<void> | null = null;
   private lastLog: string[] | null = null;
   private nextRunAt: number | null = null;
   private closed = false;
@@ -203,6 +210,7 @@ export class RunManager {
   blockedReason(): string | null {
     if (!this.opts.connection.hasCredentials()) return NOT_CONNECTED_REASON;
     if (this.opts.connection.status().expired) return PROBLEM_MESSAGES.signed_out.message;
+    if (!this.opts.prefs.get().onboardingComplete) return ONBOARDING_REASON;
     return null;
   }
 
@@ -315,7 +323,39 @@ export class RunManager {
     if (reason && reason === NOT_CONNECTED_REASON) throw blocked(reason);
   }
 
-  private async runSlackJob(ctx: JobContext, kind: 'sync' | 'files'): Promise<JobStats> {
+  /**
+   * Refreshes the people and conversation lists without fetching any history, so onboarding can
+   * ask what to archive before the first sync. Not a run of its own: while a sync runs it
+   * refreshes the lists itself, and this returns at once.
+   */
+  refreshLists(): Promise<void> {
+    if (this.active) return Promise.resolve();
+    this.listsRefresh ??= this.doRefreshLists().finally(() => {
+      this.listsRefresh = null;
+    });
+    return this.listsRefresh;
+  }
+
+  private async doRefreshLists(): Promise<void> {
+    this.assertCanReachSlack();
+    try {
+      const ctx: JobContext = {
+        signal: new AbortController().signal,
+        onProgress: () => undefined,
+        log: (line) => this.log(line),
+      };
+      await this.runSlackJob(ctx, 'lists');
+    } catch (err) {
+      const kind = classifyFailure(err);
+      const message =
+        kind === 'wrong_account' && err instanceof Error
+          ? err.message
+          : PROBLEM_MESSAGES[kindOrUnexpected(kind)].message;
+      throw blocked(message);
+    }
+  }
+
+  private async runSlackJob(ctx: JobContext, kind: 'sync' | 'files' | 'lists'): Promise<JobStats> {
     const credentials = this.opts.connection.getCredentials();
     if (!credentials) throw Object.assign(new Error(NOT_CONNECTED_REASON), { code: 'not_authed' });
     const prefs = this.opts.prefs.get();
@@ -328,9 +368,12 @@ export class RunManager {
       filesDir: this.opts.filesDir,
       attachmentPolicy: prefs.attachmentPolicy,
       overlapSeconds: prefs.overlapDays * 86_400,
+      // Read live: excluding a conversation during a sync takes effect before its turn comes.
+      excludedConversationIds: () => this.opts.prefs.get().excludedConversationIds,
     };
     try {
-      return kind === 'sync' ? await this.jobs.runApiSync(options) : await this.jobs.runFileDownloads(options);
+      if (kind === 'files') return await this.jobs.runFileDownloads(options);
+      return await this.jobs.runApiSync(kind === 'lists' ? { ...options, listsOnly: true } : options);
     } catch (err) {
       const code = err && typeof err === 'object' ? (err as { code?: unknown }).code : undefined;
       if (typeof code === 'string' && AUTH_CODES.has(code)) this.opts.connection.markSignedOut(code);

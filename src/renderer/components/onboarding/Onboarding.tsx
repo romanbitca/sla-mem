@@ -12,12 +12,15 @@ import {
   useCompleteOnboarding,
   useLoginFollower,
   useLoginStatus,
+  useSlackConversationList,
   useStartLogin,
   useStartSync,
   useStats,
   useSyncStatus,
+  useUpdatePreferences,
 } from '../../lib/queries';
 import { workspaceHost } from '../../lib/workspaceName';
+import { ConversationPicker } from '../choose/ConversationPicker';
 import { CookieConnectForm } from '../connect/CookieConnectForm';
 import { EmailCodeTip, SignInFailed, SignInSteps } from '../connect/SignInSteps';
 import { ProblemCallout } from '../home/ProblemCallout';
@@ -323,6 +326,9 @@ function HistoryStep({
   const team = connection.teamName || workspaceHost(connection.teamDomain);
   const firstSyncDone = status != null && !status.running && status.lastSuccessAt != null;
   const messages = stats.data?.messageCount ?? 0;
+  // Before the first sync, the reader chooses what to archive (Settings has the same choice).
+  const started = status != null && (status.running || status.recentRuns.some((r) => r.kind === 'sync'));
+  if (status != null && !started) return <ChooseWhatToArchive headingRef={headingRef} team={team} />;
 
   return (
     <div className="flex flex-col gap-5">
@@ -401,6 +407,82 @@ function HistoryStep({
             You can finish now: the first sync carries on in the background.
           </span>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Step 3, before anything is fetched: every conversation the reader is in, ticked; unticking one
+ * means sla-mem never fetches it. "Start archiving" saves the choice and starts the first sync.
+ */
+function ChooseWhatToArchive({
+  headingRef,
+  team,
+}: {
+  headingRef: RefObject<HTMLHeadingElement | null>;
+  team: string | null;
+}) {
+  const list = useSlackConversationList(true);
+  const update = useUpdatePreferences();
+  const startSync = useStartSync();
+  const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
+  const busy = update.isPending || startSync.isPending;
+  const error = update.error ?? startSync.error;
+
+  const start = async () => {
+    try {
+      if (excluded.size) await update.mutateAsync({ excludedConversationIds: [...excluded].sort() });
+      await startSync.mutateAsync();
+    } catch {
+      // Shown below.
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <StepHeading headingRef={headingRef}>What to archive</StepHeading>
+      {team && (
+        <p className="flex items-center gap-2 text-[13.5px] text-success">
+          <CheckIcon size={15} strokeWidth={2.25} /> Connected to {team}
+        </p>
+      )}
+      <p className="text-[14px] leading-relaxed text-ink">
+        Every conversation you’re in is ticked. Untick any you’d rather not keep, such as a channel or your direct
+        messages with someone. You can change this later in Settings.
+      </p>
+      {list.isPending ? (
+        <p role="status" className="flex items-center gap-2.5 text-[14px] text-ink-muted">
+          <Spinner size={15} className="text-accent-text" />
+          Getting your conversations from Slack…
+        </p>
+      ) : list.isError ? (
+        <Callout tone="danger" role="alert">
+          <span className="flex flex-wrap items-center gap-3">
+            <span>Couldn’t get your conversations: {describeError(list.error)}</span>
+            <Button size="sm" onClick={() => void list.refetch()}>
+              Try again
+            </Button>
+          </span>
+        </Callout>
+      ) : (
+        <ConversationPicker conversations={list.data} excluded={excluded} onChange={setExcluded} />
+      )}
+      {error && !isConflict(error) && (
+        <Callout tone="danger" role="alert">
+          {describeError(error)}
+        </Callout>
+      )}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          variant="primary"
+          loading={busy}
+          disabled={!list.data}
+          onClick={() => void start()}
+          className="h-10 px-5 text-[15px]"
+        >
+          Start archiving
+        </Button>
       </div>
     </div>
   );

@@ -5,9 +5,11 @@
 import type { SettingsDTO } from '../../shared/types';
 import { backupArchive } from '../backup';
 import type { AppServices, PlatformHooks } from '../context';
-import { getConversation, requeueFile } from '../db';
+import fs from 'node:fs';
+import path from 'node:path';
+import { deleteConversationData, getConversation, listConversations, requeueFile } from '../db';
 import { exportConversationMarkdown, exportFileName } from '../export';
-import { blocked, invalid, notFound } from '../errors';
+import { blocked, conflict, invalid, notFound } from '../errors';
 import { isRunnableFile, localAttachmentPath } from '../file-actions';
 import { isSafeExternalUrl } from '../security-urls';
 import { deleteAttachmentsOlderThan, storageInfo } from '../storage';
@@ -111,6 +113,28 @@ export function actionHandlers(s: AppServices, hooks: PlatformHooks): ActionHand
       s.log.info(`Exported a conversation (${result.messages} messages)`);
       hooks.showItemInFolder(result.path);
       return result;
+    },
+    refreshConversationList: async () => {
+      await s.runs.refreshLists();
+      return listConversations(s.db);
+    },
+    deleteConversationArchive: async (req) => {
+      const id = slackId(record(req).conversationId, 'conversation');
+      if (!s.prefs.get().excludedConversationIds.includes(id)) {
+        throw invalid('Choose not to archive this conversation first.');
+      }
+      if (s.runs.isRunning()) throw conflict('sla-mem is busy syncing. Try again when it has finished.');
+      const removed = deleteConversationData(s.db, id);
+      for (const fileId of removed.fileIds) {
+        // Stored ids are Slack's (F…); anything else is never turned into a path.
+        if (/^[A-Za-z0-9_-]+$/.test(fileId)) {
+          await fs.promises.rm(path.join(s.paths.filesDir, fileId), { recursive: true, force: true });
+        }
+      }
+      s.log.info(
+        `Deleted the archive of a conversation not to archive: ${removed.messages} messages, ${removed.fileIds.length} attachments`,
+      );
+      return { messages: removed.messages, files: removed.fileIds.length };
     },
     showDataFolder: async () => {
       await hooks.openPath(s.paths.dataDir);

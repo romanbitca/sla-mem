@@ -8,6 +8,7 @@ import { AttachmentsCard } from '../components/settings/AttachmentsCard';
 import { ConnectionCard } from '../components/settings/ConnectionCard';
 import { StorageCard } from '../components/settings/StorageCard';
 import { SyncSettingsCard } from '../components/settings/SyncSettingsCard';
+import { WhatToArchiveCard } from '../components/settings/WhatToArchiveCard';
 import { ErrorState } from '../components/ui/EmptyState';
 import { LoadingState } from '../components/ui/Spinner';
 
@@ -38,6 +39,7 @@ export default function SettingsPage() {
       <>
         <ConnectionCard connection={data.connection} />
         <SyncSettingsCard preferences={data.preferences} status={sync.data} statusError={sync.error} />
+        <WhatToArchiveCard excludedIds={data.preferences.excludedConversationIds} />
         <AttachmentsCard policy={data.preferences.attachmentPolicy} />
       </>
     );

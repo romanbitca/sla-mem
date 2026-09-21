@@ -40,6 +40,14 @@ export interface ApiSyncOptions {
   attachmentPolicy: AttachmentPolicy;
   /** Only sync these conversations' history (the user/conversation lists are always refreshed). */
   conversationIds?: string[];
+  /**
+   * Conversations the user chose not to archive (Settings → What to archive): no history, threads
+   * or attachments are fetched for them. Read again before each conversation and before the
+   * downloads, so a change made while a sync runs applies at once.
+   */
+  excludedConversationIds?: () => readonly string[];
+  /** Only refresh the people and conversation lists (onboarding asks what to archive first). */
+  listsOnly?: boolean;
   /** Epoch ms clock (thread recheck window, last_synced_at, durations). */
   now?: () => number;
   /**
@@ -111,6 +119,11 @@ export async function runApiSync(opts: ApiSyncOptions): Promise<ApiSyncStats> {
     await syncUsers(ctx);
     const conversations = await syncConversationList(ctx, selfUserId);
     refreshSearchTextIfRenamed(ctx, namesBefore);
+    if (opts.listsOnly) {
+      ctx.stats.apiCalls = client.apiCalls;
+      log(`Conversation list refreshed: ${conversations.length} conversations`);
+      return ctx.stats;
+    }
     await syncHistories(ctx, conversations);
     await syncEmoji(ctx);
     await syncFiles(ctx);
@@ -147,6 +160,7 @@ export async function runFileDownloads(opts: Omit<ApiSyncOptions, 'conversationI
     onProgress: opts.onProgress,
     log,
     now: opts.now,
+    excludedConversationIds: opts.excludedConversationIds?.(),
   });
   return { ...stats, apiCalls: client.apiCalls };
 }
@@ -330,6 +344,7 @@ async function syncHistories(ctx: SyncContext, listed: SlackConversation[]): Pro
   let unreachableInARow = 0;
   for (const [i, conv] of targets.entries()) {
     throwIfAborted(ctx.opts.signal);
+    if (isExcluded(ctx, conv.id)) continue; // excluded while this sync was running
     const label = labels.get(conv.id) ?? conv.id;
     const position = { current: i + 1, total: targets.length };
     ctx.progress('history', `Fetching ${label}`, position.current, position.total);
@@ -374,7 +389,18 @@ async function syncHistories(ctx: SyncContext, listed: SlackConversation[]): Pro
   }
 }
 
+function isExcluded(ctx: SyncContext, conversationId: string): boolean {
+  return ctx.opts.excludedConversationIds?.().includes(conversationId) ?? false;
+}
+
 function selectTargets(ctx: SyncContext, listed: SlackConversation[]): SlackConversation[] {
+  const included = listed.filter((c) => !isExcluded(ctx, c.id));
+  const skipped = listed.length - included.length;
+  if (skipped) ctx.log(`Not archiving ${skipped} conversation${skipped === 1 ? '' : 's'} excluded in Settings`);
+  return pickRequested(ctx, included);
+}
+
+function pickRequested(ctx: SyncContext, listed: SlackConversation[]): SlackConversation[] {
   if (!ctx.opts.conversationIds) return listed;
   const wanted = [...new Set(ctx.opts.conversationIds)];
   const byId = new Map(listed.map((c) => [c.id, c]));
@@ -434,6 +460,7 @@ async function syncFiles(ctx: SyncContext): Promise<void> {
     onProgress: ctx.opts.onProgress,
     log: ctx.log,
     now: ctx.now,
+    excludedConversationIds: ctx.opts.excludedConversationIds?.(),
   });
   Object.assign(ctx.stats, result);
 }

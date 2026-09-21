@@ -127,7 +127,8 @@ const POLICY_RANK: Record<AttachmentPolicy, number> = { none: 0, standard: 1, ev
 
 /**
  * Cross-service behaviour. Returns a function that removes the listeners.
- *  - Connecting Slack starts the first sync right away (PLAN §8.1 screen 3).
+ *  - Connecting Slack starts a sync right away, except during onboarding, which first asks what
+ *    to archive (PLAN §8.1 screen 3) and then starts the first sync itself.
  *  - Disconnecting stops a running Slack sync (its session is gone).
  *  - Preferences apply their side effects: theme, login item, and a looser attachment setting
  *    downloads the newly allowed files now rather than at the next scheduled sync.
@@ -139,6 +140,11 @@ export function wireServices(
   let prefs: PreferencesDTO = s.prefs.get();
   const onConnected = () => {
     if (s.runs.isRunning()) return;
+    // Onboarding first asks what to archive, then starts the first sync itself.
+    if (!s.prefs.get().onboardingComplete) {
+      s.log.info('Connected to Slack: waiting for the choice of what to archive');
+      return;
+    }
     try {
       s.runs.startSync();
       s.log.info('Connected to Slack: started the first sync');

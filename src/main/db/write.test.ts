@@ -23,6 +23,7 @@ import {
   listDownloadedFilesBefore,
   reindexAll,
   refreshSearchTextIfOutdated,
+  deleteConversationData,
   setSyncState,
   upsertConversations,
   upsertCustomEmoji,
@@ -414,6 +415,40 @@ describe('upsertMessages: files', () => {
     expect(requeueFile(db, 'FGONE')).toBe(true);
     expect(requeueFile(db, 'FREM')).toBe(true);
     expect(listDownloadCandidates(db).map((f) => f.id)).toEqual(['FPOL', 'FBIG', 'FREM', 'FGONE']);
+  });
+
+  it('skips files shared only in conversations the user excluded', () => {
+    const db = seededDb();
+    const file = (id: string) => ({ id, name: `${id}.png`, mimetype: 'image/png', url_private: `https://files/${id}` });
+    upsert(db, [msg(tsAt(1), 'a', { files: [file('F1'), file('F2')] })], 'api', 'C1');
+    upsert(db, [msg(tsAt(2), 'b', { files: [file('F2')] })], 'api', 'D1');
+    upsert(db, [msg(tsAt(3), 'c', { files: [file('F3')] })], 'api', 'D1');
+    const ids = (excluded: string[]) =>
+      listDownloadCandidates(db, { excludedConversationIds: excluded })
+        .map((f) => f.id)
+        .sort();
+    expect(ids([])).toEqual(['F1', 'F2', 'F3']);
+    expect(ids(['D1'])).toEqual(['F1', 'F2']); // F2 is also shared in C1
+    expect(ids(['C1', 'D1'])).toEqual([]);
+  });
+
+  it('deletes an excluded conversation’s archive, keeping attachments other conversations share', () => {
+    const db = seededDb();
+    const file = (id: string) => ({ id, name: `${id}.png`, mimetype: 'image/png', url_private: `https://files/${id}` });
+    upsert(db, [msg(tsAt(1), 'kept', { files: [file('F1')] })], 'api', 'C1');
+    upsert(db, [msg(tsAt(2), 'secret', { files: [file('F1'), file('F2')] })], 'api', 'D1');
+    upsert(db, [msg(tsAt(2), 'secret, edited', { edited: { user: 'U1', ts: tsAt(3) } })], 'api', 'D1');
+    setSyncState(db, 'D1', { latest_ts: tsAt(2) });
+
+    expect(deleteConversationData(db, 'D1')).toEqual({ messages: 1, fileIds: ['F2'] });
+    expect(row(db, tsAt(2), 'D1')).toBeUndefined();
+    expect(getMessageRevisions(db, 'D1', tsAt(2))).toEqual([]);
+    expect(getSyncState(db, 'D1')).toBeNull();
+    expect(getFileRow(db, 'F1')).not.toBeNull(); // still shared in C1
+    expect(getFileRow(db, 'F2')).toBeNull();
+    expect(ftsRowids(db, '"secret"')).toEqual([]);
+    expect(listConversations(db).find((c) => c.id === 'D1')).toMatchObject({ messageCount: 0 });
+    expect(row(db, tsAt(1), 'C1').text).toBe('kept');
   });
 
   it('lists downloaded files created before a cutoff (cleanup)', () => {

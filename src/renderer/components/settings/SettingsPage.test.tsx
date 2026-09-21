@@ -9,6 +9,7 @@ import {
   installFakeBridge,
   makeAppInfo,
   makeConnection,
+  makeConversation,
   makeLoginStatus,
   makeSettings,
   makeStorage,
@@ -222,6 +223,63 @@ describe('Settings — sync and attachments', () => {
     );
     fireEvent.click(within(attachments).getByRole('radio', { name: /Everything up to 200 MB/ }));
     await waitFor(() => expect(update).toHaveBeenCalledWith({ attachmentPolicy: 'everything' }));
+  });
+});
+
+describe('Settings — what to archive', () => {
+  const conversations = [
+    makeConversation('C1', 'general', { messageCount: 30 }),
+    makeConversation('C2', 'random', { messageCount: 0 }),
+    makeConversation('D1', 'Priya', { type: 'im', messageCount: 5 }),
+  ];
+
+  function open(settings = makeSettings()) {
+    vi.spyOn(api, 'getConversations').mockResolvedValue(conversations);
+    const update = acceptPatches(settings);
+    setup(settings);
+    return update;
+  }
+
+  it('says everything is archived, and leaves out what is unticked in the list', async () => {
+    const update = open();
+    const region = await card('What to archive');
+    expect(within(region).getByText('Every conversation you’re in is archived.')).toBeTruthy();
+    fireEvent.click(await within(region).findByRole('button', { name: 'Choose conversations…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'What to archive' });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /random/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith({ excludedConversationIds: ['C2'] }));
+    // Nothing was archived from #random: nothing to offer to delete.
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('asks before deleting what is already archived, and deletes only on a yes', async () => {
+    const update = open();
+    const remove = vi.spyOn(api, 'deleteConversationArchive').mockResolvedValue({ messages: 5, files: 1 });
+    const region = await card('What to archive');
+    fireEvent.click(await within(region).findByRole('button', { name: 'Choose conversations…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'What to archive' });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /Priya/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith({ excludedConversationIds: ['D1'] }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Delete what’s already archived?' });
+    expect(ask.textContent).toContain('Priya already has 5 messages in the archive');
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep it' }));
+    expect(remove).not.toHaveBeenCalled();
+
+    // What stayed is one click away from being deleted after all.
+    fireEvent.click(await within(region).findByRole('button', { name: 'Delete them…' }));
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(remove).toHaveBeenCalledWith({ conversationId: 'D1' }));
+  });
+
+  it('names what isn’t archived', async () => {
+    open(makeSettings({ preferences: { excludedConversationIds: ['C2', 'D1'] } }));
+    const region = await card('What to archive');
+    expect(await within(region).findByText(/2 conversations aren’t archived/)).toBeTruthy();
+    expect(within(region).getByText('#random and Priya')).toBeTruthy();
+    expect(within(region).getByText('5 messages from before are still in the archive.')).toBeTruthy();
   });
 });
 

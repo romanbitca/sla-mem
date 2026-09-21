@@ -7,6 +7,8 @@ import { createRun, getRun, openDb, readLock, type DB } from './db';
 import { DEFAULT_PREFERENCES } from './preferences';
 import {
   NOT_CONNECTED_REASON,
+  ONBOARDING_REASON,
+  PROBLEM_MESSAGES,
   RunManager,
   classifyFailure,
   type RunConnection,
@@ -114,6 +116,45 @@ describe('RunManager', () => {
     expect(m.status()).toMatchObject({ running: false, lastSuccessAt: now, problem: null, stale: false });
     expect(events.map((e) => e.type)).toContain('finished');
     expect(readLock(db, 'sync')).toBeNull();
+  });
+
+  it('holds automatic syncs until onboarding is done, but runs a sync started by hand', async () => {
+    const sync = controllableJob();
+    const m = manager({ runApiSync: sync.job as never }, connection(), { onboardingComplete: false });
+    expect(m.blockedReason()).toBe(ONBOARDING_REASON);
+    const id = m.startSync();
+    await Promise.resolve();
+    sync.release({ messagesInserted: 1 });
+    expect(await m.wait(id)).toMatchObject({ status: 'ok' });
+    expect(manager({}, connection(), { onboardingComplete: true }).blockedReason()).toBeNull();
+  });
+
+  it('refreshes the people and conversation lists for onboarding without recording a run', async () => {
+    const asked: unknown[] = [];
+    const m = manager({
+      runApiSync: async (opts) => {
+        asked.push(opts.listsOnly);
+        return {};
+      },
+    });
+    await m.refreshLists();
+    expect(asked).toEqual([true]);
+    expect(m.status().recentRuns).toEqual([]);
+  });
+
+  it('explains a list refresh that failed in plain words', async () => {
+    const m = manager({
+      runApiSync: async () => {
+        throw new SlackHttpError('users.conversations', null, 'fetch failed');
+      },
+    });
+    await expect(m.refreshLists()).rejects.toMatchObject({
+      code: 'blocked',
+      message: PROBLEM_MESSAGES.offline.message,
+    });
+    await expect(manager({}, connection({ connected: false })).refreshLists()).rejects.toMatchObject({
+      message: NOT_CONNECTED_REASON,
+    });
   });
 
   it('never lets the token or cookie into logs, status or the runs table', async () => {

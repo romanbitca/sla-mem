@@ -10,6 +10,7 @@ import type {
   AppInfoDTO,
   BackupResultDTO,
   ExportResultDTO,
+  DeletedArchiveDTO,
   CleanupResultDTO,
   ConversationDTO,
   CookieLoginRequest,
@@ -78,6 +79,13 @@ export interface ArchiveApi {
   backupNow(): BackupResultDTO | null;
   /** Opens a save dialog, then writes the conversation as Markdown there. Null when cancelled. */
   exportConversation(req: { conversationId: string }): ExportResultDTO | null;
+  /** Fetches the people and conversation lists from Slack (no history) and returns the list. */
+  refreshConversationList(): ConversationDTO[];
+  /**
+   * Deletes what is archived for a conversation that is excluded from archiving (its messages,
+   * edit history and the attachments no other conversation shares).
+   */
+  deleteConversationArchive(req: { conversationId: string }): DeletedArchiveDTO;
   showDataFolder(): OkDTO;
   showLogs(): OkDTO;
 
@@ -128,6 +136,8 @@ export const API_METHODS = [
   'deleteAttachmentsOlderThan',
   'backupNow',
   'exportConversation',
+  'refreshConversationList',
+  'deleteConversationArchive',
   'showDataFolder',
   'showLogs',
   'openFile',

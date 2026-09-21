@@ -32,6 +32,8 @@ export interface DownloadFilesOptions {
   concurrency?: number;
   /** Epoch ms clock (retry backoff, "older than Slack's window"). */
   now?: () => number;
+  /** Conversations not to archive: files only they share aren't downloaded. */
+  excludedConversationIds?: readonly string[];
 }
 
 export interface DownloadFilesStats {
@@ -78,7 +80,10 @@ export async function downloadPendingFiles(opts: DownloadFilesOptions): Promise<
     now: opts.now ?? Date.now,
   };
   const stats: DownloadFilesStats = { filesDownloaded: 0, filesFailed: 0, filesSkipped: 0, filesUnavailable: 0 };
-  const rows = listDownloadCandidates(ctx.db, { now: ctx.now() });
+  const rows = listDownloadCandidates(ctx.db, {
+    now: ctx.now(),
+    excludedConversationIds: opts.excludedConversationIds,
+  });
   if (!rows.length) return stats;
 
   let finished = 0;

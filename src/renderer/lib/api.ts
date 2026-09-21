@@ -212,6 +212,8 @@ export const api = {
   /** Main shows a folder picker; null when it was cancelled. */
   backupNow: () => call('backupNow'),
   exportConversation: (req: { conversationId: string }) => call('exportConversation', req),
+  refreshConversationList: () => call('refreshConversationList'),
+  deleteConversationArchive: (req: { conversationId: string }) => call('deleteConversationArchive', req),
   showDataFolder: () => call('showDataFolder'),
   showLogs: () => call('showLogs'),
 

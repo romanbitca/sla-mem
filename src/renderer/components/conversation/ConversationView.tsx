@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ConversationDTO, MessageDTO } from '../../../shared/types';
 import { describeError, isApiError } from '../../lib/api';
@@ -7,9 +7,9 @@ import { Mrkdwn } from '../../lib/mrkdwn';
 import { formatCount, formatTsRange, pluralize } from '../../lib/format';
 import { guessThreadParent } from '../../lib/grouping';
 import { useStableCallback } from '../../lib/hooks';
-import { qk, useConversation, useExportConversation, useMessages } from '../../lib/queries';
+import { qk, useConversation, useExportConversation, useMessages, useSettings } from '../../lib/queries';
 import { compareTs, parseTsParam } from '../../lib/ts';
-import { AlertIcon, ArchiveIcon, CheckIcon, CloseIcon, DownloadIcon, HashIcon } from '../icons';
+import { AlertIcon, ArchiveIcon, CheckIcon, CloseIcon, DownloadIcon, HashIcon, InfoIcon } from '../icons';
 import { SidebarToggle } from '../layout/shell';
 import { EmptyState, ErrorState } from '../ui/EmptyState';
 import { IconButton } from '../ui/IconButton';
@@ -59,6 +59,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
   }));
   const [missingTs, setMissingTs] = useState<string | null>(null);
   const exporter = useExportConversation();
+  const excluded = useSettings().data?.preferences.excludedConversationIds.includes(conversationId) ?? false;
 
   const query = useMessages(conversationId, anchor);
   const { messages } = query;
@@ -224,6 +225,20 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
         exporter={exporter}
       />
       <ExportNotice conversationId={conversationId} exporter={exporter} />
+      {excluded && (
+        <div
+          role="note"
+          className="flex items-center gap-2 border-b border-line bg-inset px-5 py-2 text-[13px] text-ink-muted"
+        >
+          <InfoIcon size={15} className="shrink-0" />
+          <span className="flex-1">
+            sla-mem doesn’t archive this conversation any more: these are messages from before.{' '}
+            <Link to="/settings#what-to-archive" className="font-medium text-accent-text hover:underline">
+              What to archive
+            </Link>
+          </span>
+        </div>
+      )}
       {missingTs && (
         <div
           role="status"

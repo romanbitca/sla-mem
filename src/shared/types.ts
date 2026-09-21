@@ -450,6 +450,13 @@ export interface BackupResultDTO {
   bytes: number;
 }
 
+export interface DeletedArchiveDTO {
+  /** Messages removed from the archive. */
+  messages: number;
+  /** Attachments removed (those no other conversation shares). */
+  files: number;
+}
+
 export interface ExportResultDTO {
   /** Where the Markdown file was saved (the user chose it). */
   path: string;

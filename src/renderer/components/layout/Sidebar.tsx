@@ -5,7 +5,7 @@ import type { ConversationDTO, SyncStatusDTO } from '../../../shared/types';
 import { useDirectory } from '../../lib/directory';
 import { formatCount } from '../../lib/format';
 import { conversationPath, searchPath } from '../../lib/links';
-import { useConversations, useWorkspace } from '../../lib/queries';
+import { useConversations, useSettings, useWorkspace } from '../../lib/queries';
 import { readJsonPref, writeJsonPref } from '../../lib/storage';
 import { workspaceHost } from '../../lib/workspaceName';
 import {
@@ -72,7 +72,14 @@ export function Sidebar({ searchRef, syncStatus, syncError, onClose, className, 
   const listRef = useRef<HTMLElement>(null);
 
   const filtering = filter.trim() !== '';
-  const sections = useMemo(() => buildSections(conversations.data ?? [], filter), [conversations.data, filter]);
+  // Conversations left out of the archive show only while they still hold older messages.
+  const excludedIds = useSettings().data?.preferences.excludedConversationIds;
+  const excluded = useMemo(() => new Set(excludedIds ?? []), [excludedIds]);
+  const shown = useMemo(
+    () => (conversations.data ?? []).filter((c) => !excluded.has(c.id) || c.messageCount > 0),
+    [conversations.data, excluded],
+  );
+  const sections = useMemo(() => buildSections(shown, filter), [shown, filter]);
   // Keyboard navigation walks what's visible: collapsed sections are skipped unless filtering.
   const flat = useMemo(
     () => sections.flatMap((s) => (filtering || !collapsed[s.id] ? s.items : [])),
@@ -214,7 +221,13 @@ export function Sidebar({ searchRef, syncStatus, syncError, onClose, className, 
                 section.items.map((c) => {
                   const index = navIndex++;
                   return (
-                    <SidebarItem key={c.id} conversation={c} index={index} keyboardActive={index === activeIndex} />
+                    <SidebarItem
+                      key={c.id}
+                      conversation={c}
+                      index={index}
+                      keyboardActive={index === activeIndex}
+                      excluded={excluded.has(c.id)}
+                    />
                   );
                 })}
             </SidebarSection>
@@ -319,21 +332,26 @@ const SidebarItem = memo(function SidebarItem({
   conversation: c,
   index,
   keyboardActive,
+  excluded,
 }: {
   conversation: ConversationDTO;
   index: number;
   keyboardActive: boolean;
+  /** Left out of the archive in Settings (only older messages remain). */
+  excluded: boolean;
 }) {
   const dir = useDirectory();
   const dmUser = c.type === 'im' && c.dmUserId ? dir.users.get(c.dmUserId) : undefined;
-  const dimmed = c.isArchived || dmUser?.deleted;
+  const dimmed = c.isArchived || dmUser?.deleted || excluded;
   return (
     <li>
       <NavLink
         to={conversationPath(c.id)}
         id={`sidebar-item-${index}`}
         data-nav-index={index}
-        title={c.isArchived ? `${c.label} (archived channel)` : c.label}
+        title={
+          excluded ? `${c.label} (not archived any more)` : c.isArchived ? `${c.label} (archived channel)` : c.label
+        }
         className={({ isActive }) =>
           clsx(
             'focus-ring group/item flex h-8 items-center gap-2 rounded-md px-2 text-[13.5px] transition-colors',

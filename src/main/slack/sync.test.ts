@@ -429,6 +429,59 @@ describe('cancellation', () => {
   });
 });
 
+describe('excluded conversations (Settings → What to archive)', () => {
+  const pdf = (id: string) => {
+    const url = `https://files.slack.com/files-pri/T0001-${id}/download/${id}.pdf`;
+    fake.files.set(url, { body: '%PDF', contentType: 'application/pdf' });
+    return {
+      id,
+      name: `${id}.pdf`,
+      mimetype: 'application/pdf',
+      filetype: 'pdf',
+      mode: 'hosted',
+      url_private: url,
+      url_private_download: url,
+    };
+  };
+
+  it('fetches nothing for them: no history, threads or attachments', async () => {
+    fake.addMessage('C1', msg(ts(30), 'public'));
+    fake.addMessage('D1', msg(ts(20), 'private', { files: [pdf('F9')] }));
+    const stats = await sync({ attachmentPolicy: 'everything', excludedConversationIds: () => ['D1'] });
+    expect(storedTs('C1')).toHaveLength(1);
+    expect(storedTs('D1')).toHaveLength(0);
+    expect(fake.callsOf('conversations.history').map((c) => c.params.channel)).not.toContain('D1');
+    expect(stats.filesDownloaded).toBe(0);
+    // Still listed, so Settings can show it by name.
+    expect(getConversation(db, 'D1')).not.toBeNull();
+    expect(logs.join('\n')).toContain('Not archiving 1 conversation excluded in Settings');
+  });
+
+  it('applies an exclusion made while the sync runs, before that conversation’s turn', async () => {
+    fake.addMessage('C1', msg(ts(30), 'one'));
+    fake.addMessage('C2', msg(ts(30), 'two'));
+    let excluded: string[] = [];
+    await sync({
+      excludedConversationIds: () => excluded,
+      onProgress: (p) => {
+        progress.push(p);
+        if (p.message.includes('#general')) excluded = ['C2'];
+      },
+    });
+    expect(storedTs('C1')).toHaveLength(1);
+    expect(storedTs('C2')).toHaveLength(0);
+  });
+
+  it('can refresh only the people and conversation lists (onboarding asks first)', async () => {
+    fake.addMessage('C1', msg(ts(30), 'not yet'));
+    await sync({ listsOnly: true });
+    expect(listUsers(db).map((u) => u.id)).toContain('U1');
+    expect(getConversation(db, 'G1')).not.toBeNull();
+    expect(storedTs('C1')).toHaveLength(0);
+    expect(fake.callsOf('conversations.history')).toHaveLength(0);
+  });
+});
+
 describe('options and extras', () => {
   it('limits history to conversationIds and reports unknown ids', async () => {
     fake.addMessage('C1', msg(ts(10), 'not synced'));

@@ -426,18 +426,26 @@ export function getFileRow(db: DB, id: string): FileRow | null {
  * so raising the limit brings them back (PLAN §5.6; pitfall 7). Files the user removed to free
  * space, and rows without any URL, are left alone.
  */
-export function listDownloadCandidates(db: DB, opts: { now?: number; limit?: number } = {}): FileRow[] {
+export function listDownloadCandidates(
+  db: DB,
+  opts: { now?: number; limit?: number; excludedConversationIds?: readonly string[] } = {},
+): FileRow[] {
   const now = opts.now ?? Date.now();
   const limit = opts.limit != null && opts.limit > 0 ? Math.floor(opts.limit) : -1;
+  // A file shared only in conversations the user chose not to archive isn't downloaded; one also
+  // shared somewhere archived (or linked to no message at all) still is.
   return stmt<FileRow>(
     db,
-    `SELECT * FROM files
+    `SELECT * FROM files f
      WHERE (download_status = 'pending'
          OR (download_status = 'failed' AND COALESCE(next_attempt_at, 0) <= ?)
          OR (download_status = 'skipped' AND COALESCE(skip_reason, 'policy') <> 'removed'))
        AND (url_private_download IS NOT NULL OR url_private IS NOT NULL)
+       AND (NOT EXISTS (SELECT 1 FROM message_files mf WHERE mf.file_id = f.id)
+         OR EXISTS (SELECT 1 FROM message_files mf WHERE mf.file_id = f.id
+                      AND mf.conversation_id NOT IN (SELECT value FROM json_each(?))))
      ORDER BY created IS NULL, created, id LIMIT ?`,
-  ).all(now, limit);
+  ).all(now, JSON.stringify(opts.excludedConversationIds ?? []), limit);
 }
 
 /** `thumbLocalPath`: undefined keeps the stored thumb, null clears it. Paths are relative to filesDir. */
@@ -697,4 +705,26 @@ function parseMessage(raw: string): SlackMessage | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Removes what the archive holds for a conversation the user chose not to archive: its messages
+ * (with their search entries and edit history), its sync position, and the attachments no other
+ * conversation shares. The conversation itself stays listed, by name, so Settings can show it.
+ * Returns the removed file ids; the caller deletes their local copies.
+ */
+export function deleteConversationData(db: DB, conversationId: string): { messages: number; fileIds: string[] } {
+  return db.transaction(() => {
+    const linked = stmt<{ file_id: string }>(db, 'SELECT DISTINCT file_id FROM message_files WHERE conversation_id = ?')
+      .all(conversationId)
+      .map((r) => r.file_id);
+    stmt(db, 'DELETE FROM message_files WHERE conversation_id = ?').run(conversationId);
+    const messages = stmt(db, 'DELETE FROM messages WHERE conversation_id = ?').run(conversationId).changes;
+    stmt(db, 'DELETE FROM message_revisions WHERE conversation_id = ?').run(conversationId);
+    stmt(db, 'DELETE FROM sync_state WHERE conversation_id = ?').run(conversationId);
+    const stillShared = stmt(db, 'SELECT 1 FROM message_files WHERE file_id = ? LIMIT 1');
+    const fileIds = linked.filter((id) => stillShared.get(id) === undefined);
+    for (const id of fileIds) stmt(db, 'DELETE FROM files WHERE id = ?').run(id);
+    return { messages, fileIds };
+  })();
 }

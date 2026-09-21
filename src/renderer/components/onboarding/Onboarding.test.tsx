@@ -8,6 +8,7 @@ import {
   appFixtures,
   installFixtureBridge,
   makeConnection,
+  makeConversation,
   makeLoginStatus,
   makeRun,
   makeSettings,
@@ -24,6 +25,16 @@ const fresh: SettingsDTO = makeSettings({
 
 const STARTED = 1_758_000_000_000;
 
+const SLACK_CONVERSATIONS = [
+  makeConversation('C1', 'general', { messageCount: 0 }),
+  makeConversation('C2', 'random', { messageCount: 0 }),
+  makeConversation('D1', 'Priya', { type: 'im', messageCount: 0 }),
+];
+
+/** A first sync that already ran: step 3 shows its progress and Finish. */
+const syncedOnce = () =>
+  makeSyncStatus({ recentRuns: [makeRun({ id: 1, kind: 'sync', status: 'ok' })], lastSuccessAt: STARTED });
+
 let bridge: FakeBridge;
 let settings: SettingsDTO;
 let login: LoginStatusDTO;
@@ -36,6 +47,7 @@ function start(overrides: Record<string, unknown> = {}) {
       getSettings: () => settings,
       getLoginStatus: () => login,
       getSyncStatus: makeSyncStatus({ recentRuns: [], lastSuccessAt: null, nextRunAt: null }),
+      refreshConversationList: SLACK_CONVERSATIONS,
       getStats: makeStats({ messageCount: 0 }),
       startLogin: () => (login = makeLoginStatus({ state: 'opening', startedAt: STARTED })),
       cancelLogin: () =>
@@ -120,8 +132,8 @@ describe('Onboarding', () => {
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy();
 
     connect();
-    expect(await screen.findByRole('heading', { name: 'Getting your history' })).toBeTruthy();
-    expect(screen.getByText(/Connected to 9H as roman/)).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'What to archive' })).toBeTruthy();
+    expect(screen.getByText(/Connected to 9H/)).toBeTruthy();
   });
 
   it('moves on from the sign-in’s own result even before the saved settings arrive', async () => {
@@ -132,8 +144,8 @@ describe('Onboarding', () => {
     const connection = makeConnection({ teamName: '9H', userName: 'roman' });
     login = makeLoginStatus({ state: 'connected', startedAt: STARTED, connection });
     bridge.emit('login-status', login);
-    expect(await screen.findByRole('heading', { name: 'Getting your history' })).toBeTruthy();
-    expect(screen.getByText(/Connected to 9H as roman/)).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'What to archive' })).toBeTruthy();
+    expect(screen.getByText(/Connected to 9H/)).toBeTruthy();
   });
 
   it('lets people pick the workspace when they’re signed in to several', async () => {
@@ -185,7 +197,7 @@ describe('Onboarding', () => {
     const before = settingsCalls();
     fireEvent.click(within(group).getByRole('radio', { name: /9H/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(await screen.findByRole('heading', { name: 'Getting your history' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'What to archive' })).toBeTruthy();
     await waitFor(() => expect(settingsCalls()).toBeGreaterThan(before));
   });
 
@@ -286,9 +298,54 @@ describe('Onboarding', () => {
     expect(await screen.findByRole('heading', { name: '9H archive' })).toBeTruthy();
   });
 
+  it('asks what to archive before the first sync, and starts it with that choice', async () => {
+    start({
+      getSettings: () => ({ ...settings, connection: makeConnection() }),
+      updatePreferences: () => settings,
+      startSync: { runId: 1 },
+    });
+    expect(await screen.findByRole('heading', { name: 'What to archive' })).toBeTruthy();
+    await waitFor(() => expect(bridge.call).toHaveBeenCalledWith('refreshConversationList'));
+    const priya = await screen.findByRole('checkbox', { name: /Priya/ });
+    expect((priya as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByText('3 of 3 archived')).toBeTruthy();
+    fireEvent.click(priya);
+    expect(screen.getByText('2 of 3 archived')).toBeTruthy();
+    // Nothing is fetched until the reader says so.
+    expect(bridge.call).not.toHaveBeenCalledWith('startSync');
+    fireEvent.click(screen.getByRole('button', { name: 'Start archiving' }));
+    await waitFor(() =>
+      expect(bridge.call).toHaveBeenCalledWith('updatePreferences', { excludedConversationIds: ['D1'] }),
+    );
+    await waitFor(() => expect(bridge.call).toHaveBeenCalledWith('startSync'));
+  });
+
+  it('starts archiving everything straight away when nothing is unticked', async () => {
+    start({ getSettings: () => ({ ...settings, connection: makeConnection() }), startSync: { runId: 1 } });
+    await screen.findByRole('checkbox', { name: /general/ });
+    fireEvent.click(screen.getByRole('button', { name: 'Start archiving' }));
+    await waitFor(() => expect(bridge.call).toHaveBeenCalledWith('startSync'));
+    expect(bridge.call).not.toHaveBeenCalledWith('updatePreferences', expect.anything());
+  });
+
+  it('says so when Slack’s conversation list can’t be fetched, with a way to try again', async () => {
+    let fail = true;
+    start({
+      getSettings: () => ({ ...settings, connection: makeConnection() }),
+      refreshConversationList: () =>
+        fail
+          ? { code: 'blocked', message: 'Can’t reach Slack right now. We’ll try again automatically.' }
+          : SLACK_CONVERSATIONS,
+    });
+    expect(await screen.findByText(/Couldn’t get your conversations: Can’t reach Slack right now/)).toBeTruthy();
+    fail = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('checkbox', { name: /general/ })).toBeTruthy();
+  });
+
   it('respects unticking “start at login”', async () => {
     settings = fresh;
-    start({ getSettings: () => ({ ...settings, connection: makeConnection() }) });
+    start({ getSettings: () => ({ ...settings, connection: makeConnection() }), getSyncStatus: syncedOnce() });
     await screen.findByRole('heading', { name: 'Getting your history' });
     fireEvent.click(screen.getByRole('checkbox', { name: /Start sla-mem when I log in/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Finish' }));
@@ -300,6 +357,11 @@ describe('Onboarding', () => {
     try {
       start({
         getSettings: () => ({ ...fresh, connection: makeConnection() }),
+        // The first sync was started, then stopped before it finished.
+        getSyncStatus: makeSyncStatus({
+          recentRuns: [makeRun({ id: 1, kind: 'sync', status: 'cancelled' })],
+          lastSuccessAt: null,
+        }),
         startSync: { code: 'conflict', message: 'A sync is already running.' },
       });
       expect(await screen.findByText('Starting the first sync…')).toBeTruthy();

@@ -30,6 +30,7 @@ export {
   getFileRow,
   isUsableFile,
   reindexAll,
+  deleteConversationData,
   reindexBatch,
   refreshSearchTextIfOutdated,
   SEARCH_TEXT_VERSION,

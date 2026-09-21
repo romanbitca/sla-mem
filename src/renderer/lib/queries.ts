@@ -40,6 +40,8 @@ export const qk = {
   stats: ['stats'] as const,
   users: ['users'] as const,
   conversations: ['conversations'] as const,
+  /** The conversation list fetched from Slack itself (onboarding asks what to archive). */
+  slackConversationList: ['slack', 'conversations'] as const,
   conversation: (id: string) => ['conversations', id] as const,
   emoji: ['emoji'] as const,
   messagesAll: ['messages'] as const,
@@ -555,6 +557,42 @@ export function useDeleteOldAttachments() {
 /** Main opens a folder picker; the result is null when the reader cancelled it. */
 export function useBackupNow() {
   return useMutation({ mutationFn: () => api.backupNow() });
+}
+
+/**
+ * Onboarding: every conversation the user is in, fetched from Slack (no history) so they can
+ * choose what to archive before the first sync. Also refreshes the cached archive list.
+ */
+export function useSlackConversationList(enabled: boolean) {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: qk.slackConversationList,
+    queryFn: async () => {
+      const list = await api.refreshConversationList();
+      qc.setQueryData(qk.conversations, list);
+      return list;
+    },
+    enabled,
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
+/** Deletes what is archived for excluded conversations, one after another, then refreshes. */
+export function useDeleteExcludedArchives() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (conversationIds: readonly string[]) => {
+      const total = { messages: 0, files: 0 };
+      for (const conversationId of conversationIds) {
+        const removed = await api.deleteConversationArchive({ conversationId });
+        total.messages += removed.messages;
+        total.files += removed.files;
+      }
+      return total;
+    },
+    onSettled: () => void invalidateArchiveData(qc),
+  });
 }
 
 /**
