@@ -1,0 +1,61 @@
+name: Release
+
+# Builds the installers (PLAN §9.3):
+#  - push a tag like v1.2.0  → macOS (Apple Silicon + Intel dmg/zip) and Windows (NSIS) are built and
+#    attached to a *draft* GitHub Release; write the notes for non-technical readers, then publish.
+#  - run manually (Actions → Release → Run workflow) → the same builds, uploaded as workflow
+#    artifacts only (nothing published), to try an installer before tagging.
+#
+# Releases must be downloadable without a GitHub account and readable by the update check, so they
+# must live in a public repository. If this repository is private, point `publish` in
+# electron-builder.yml and UPDATE_REPO in src/main/context.ts at a public releases repository and add
+# a RELEASES_TOKEN secret (a token with contents: write on it).
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            args: --mac --arm64 --x64
+          - os: windows-latest
+            args: --win --x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Package (and publish a draft release on tags)
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then PUBLISH=always; else PUBLISH=never; fi
+          npx electron-builder ${{ matrix.args }} --publish "$PUBLISH"
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN || secrets.GITHUB_TOKEN }}
+          # No paid certificates (PLAN §1.4): never look for a signing identity.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: installers-${{ matrix.os }}
+          path: |
+            release/*/*.dmg
+            release/*/*.zip
+            release/*/*.exe
+          if-no-files-found: error
+          retention-days: 14
