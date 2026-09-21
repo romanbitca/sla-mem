@@ -119,6 +119,19 @@ Each item is also corrected where it belongs in this document.
   the archive numbers appear after the first sync. Block Kit is drawn read-only: buttons and
   inputs are inert, `markdown` blocks show as text, and images on Slack's private file URLs are
   not shown. A thread panel draws 200 replies at a time.
+- **What to archive (added):** conversations can be left out, such as a channel or the DMs with
+  someone. Onboarding's third step first lists every conversation (fetched from Slack without
+  any history) with all ticked, and only "Start archiving" begins the first sync; automatic syncs
+  wait until onboarding is finished. The same list is in Settings. An excluded conversation gets
+  no history, threads or attachments (a file also shared somewhere archived still downloads), and
+  what was archived before stays unless the reader chooses to delete it.
+- **Moving to another computer (added):** "Back up now" writes the whole archive into one zip;
+  "Import a backup" (first screen, or Settings → Storage) merges it into the archive on another
+  computer, row by row, losing and duplicating nothing, and carries each conversation's sync
+  position over so syncing continues where it stopped. A backup of another Slack account is
+  refused.
+- **Menu bar icon (added):** can be turned off in Settings → Sync; the app then keeps syncing in
+  the background and is reopened like any app. While syncing, its menu shows one progress line.
 - **Export conversation (Stage 8 nicety):** built as Markdown only (day headings, threads as
   quotes, edits, deletions, attachments and reactions noted). Markdown opens in any editor and
   renders in most viewers, so the HTML variant was left out.

@@ -12,7 +12,8 @@
  *   5. restart the app: still connected (persistent session + stored credentials), a second
  *      sync adds nothing; with the window closed the app keeps running and syncing;
  *   6. disconnect clears the credentials and the Slack session; connecting again works;
- *   7. a conversation exports to Markdown with every message;
+ *   7. a conversation exports to Markdown with every message; a backup imported on a fresh
+ *      archive (a new computer) brings every message and attachment;
  *   8. killed mid-sync (SIGKILL): committed messages survive and the next sync completes;
  *   9. quitting right after a sync exits promptly.
  *
@@ -44,13 +45,13 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(`Assertion failed: ${message}`);
 }
 
-async function launch(mock: MockSlack): Promise<{ app: ElectronApplication; page: Page }> {
+async function launch(mock: MockSlack, folder = dataDir): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({
     args: ['.'],
     cwd: ROOT,
     env: {
       ...process.env,
-      SLA_MEM_DATA_DIR: dataDir,
+      SLA_MEM_DATA_DIR: folder,
       SLA_MEM_SLACK_API: mock.apiBaseUrl,
       SLA_MEM_SLACK_WEB: mock.url,
     },
@@ -130,10 +131,18 @@ async function onboardThroughUi(app: ElectronApplication, page: Page): Promise<v
   const slackWindow = await windowPromise;
   await slackWindow.waitForLoadState('domcontentloaded');
   await slackWindow.click('#signin');
-  // The app captures the session, closes the Slack window and moves on by itself.
-  await page.getByRole('heading', { name: 'Getting your history' }).waitFor({ timeout: 60_000 });
+  // The app captures the session, closes the Slack window and asks what to archive; nothing is
+  // fetched before "Start archiving".
+  await page.getByRole('heading', { name: 'What to archive' }).waitFor({ timeout: 60_000 });
   await page.getByText('Connected to Brightwave').waitFor();
-  log('Onboarding: connected through the app’s own screens');
+  await page
+    .getByRole('checkbox', { name: /general/ })
+    .first()
+    .waitFor();
+  await page.screenshot({ path: path.join(shots, 'onboarding-what-to-archive.png') });
+  await page.getByRole('button', { name: 'Start archiving' }).click();
+  await page.getByRole('heading', { name: 'Getting your history' }).waitFor();
+  log('Onboarding: connected through the app’s own screens, then chose what to archive');
 }
 
 async function waitForSync(page: Page): Promise<Record<string, unknown>> {
@@ -268,6 +277,52 @@ async function main(): Promise<void> {
       `export writes every message (${exported.messages} of ${general.messageCount})`,
     );
     log(`Exported #general: ${exported.messages} messages, ${Math.round(markdown.length / 1024)} KB of Markdown`);
+
+    // Moving to another computer: back up here, import on a fresh archive, everything arrives.
+    const usb = path.join(dataDir, 'usb-stick');
+    fs.mkdirSync(usb, { recursive: true });
+    await app.evaluate(({ dialog, shell }, folder) => {
+      dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [folder] })) as typeof dialog.showOpenDialog;
+      shell.showItemInFolder = () => undefined;
+    }, usb);
+    const backup = await call<{ path: string }>(page, 'backupNow');
+    const here = await call<{ messageCount: number; filesDownloaded: number }>(page, 'getStats');
+    const newComputer = fs.mkdtempSync(path.join(os.tmpdir(), 'sla-mem-e2e-new-'));
+    try {
+      const other = await launch(mock, newComputer);
+      try {
+        await other.app.evaluate(({ dialog }, file) => {
+          dialog.showOpenDialog = (async () => ({
+            canceled: false,
+            filePaths: [file],
+          })) as typeof dialog.showOpenDialog;
+        }, backup.path);
+        const started = await call<{ runId: number }>(other.page, 'importBackup');
+        await waitFor('the backup import to finish', async () => {
+          const s = await call<{ recentRuns: { id: number; status: string; error: string | null }[] }>(
+            other.page,
+            'getSyncStatus',
+          );
+          const run = s.recentRuns.find((r) => r.id === started.runId);
+          if (run && run.status !== 'running' && run.status !== 'ok')
+            throw new Error(`import ${run.status}: ${run.error}`);
+          return run?.status === 'ok';
+        });
+        const there = await call<{ messageCount: number; filesDownloaded: number }>(other.page, 'getStats');
+        assert(
+          there.messageCount === here.messageCount && there.filesDownloaded === here.filesDownloaded,
+          `the new computer has everything (${there.messageCount} of ${here.messageCount} messages, ` +
+            `${there.filesDownloaded} of ${here.filesDownloaded} attachments)`,
+        );
+        log(
+          `Moved to a new computer: ${there.messageCount} messages and ${there.filesDownloaded} attachments imported`,
+        );
+      } finally {
+        await quit(other.app);
+      }
+    } finally {
+      fs.rmSync(newComputer, { recursive: true, force: true });
+    }
 
     // Killed mid-sync: nothing committed is lost and the next run picks up the rest (Stage 3).
     const full = (await call<{ messageCount: number }>(page, 'getStats')).messageCount;

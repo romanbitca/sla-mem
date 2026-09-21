@@ -59,7 +59,13 @@ Click **Connect Slack**. A window opens where you sign in to Slack exactly as yo
 
 When the window closes by itself, you're connected.
 
-## 5. That's it
+## 5. Choose what to archive
+
+sla-mem lists every channel, direct message and group DM you're in, all ticked. Untick anything
+you'd rather not keep, such as a channel or your messages with someone, then click **Start
+archiving**. You can change this any time in **Settings → What to archive**.
+
+## 6. That's it
 
 The app downloads your last 90 days of history (Slack won't give us more than that), then keeps
 itself up to date in the background. Everything it has seen is kept forever, even after Slack hides
@@ -68,7 +74,20 @@ it.
 - Leave **“Start sla-mem when I log in”** switched on: the archive can only keep what it sees
   within Slack's 90-day window, so it needs to run regularly.
 - Closing the window doesn't stop it. It keeps running in the menu bar (Mac) or the system tray
-  (Windows, bottom-right). Use that icon to open it again or to quit.
+  (Windows, bottom-right). Use that icon to open it again or to quit. Don't want the icon? Turn
+  it off in **Settings → Sync**; sla-mem keeps syncing, and you open it from Applications (Mac)
+  or the Start menu (Windows).
+
+## Moving to a new computer
+
+1. On the old computer: **Settings → Storage → Back up now**, and save the file somewhere you can
+   reach from the new computer (a USB stick, a shared drive). It contains your Slack messages:
+   keep it private.
+2. On the new computer: install sla-mem as above. On its first screen click **Moving from another
+   computer? Import a backup** and choose that file. (Later, it's **Settings → Storage → Import a
+   backup**.)
+3. Connect Slack with the same account. Syncing carries on from where the old computer stopped,
+   and nothing is duplicated.
 
 ## Updating
 
