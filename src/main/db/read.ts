@@ -371,7 +371,11 @@ function databaseBytes(db: DB, dbPath?: string): number {
   return pageCount * pageSize;
 }
 
-/** Custom emoji name → image URL, with `alias:` chains resolved. Aliases of standard emoji are omitted. */
+/**
+ * Custom emoji name → image URL, with `alias:` chains resolved. An alias that ends at a name with
+ * no image (a standard emoji, e.g. `yay → alias:tada`) is returned as `alias:<name>` so the
+ * renderer shows the standard emoji instead of the literal `:yay:` (pitfall 17).
+ */
 export function listCustomEmoji(db: DB): Record<string, string> {
   const rows = stmt<{ name: string; url: string | null; alias_for: string | null }>(
     db,
@@ -380,22 +384,24 @@ export function listCustomEmoji(db: DB): Record<string, string> {
   const byName = new Map(rows.map((r) => [r.name, r]));
   const out: Record<string, string> = {};
   for (const row of rows) {
-    const url = resolveEmojiUrl(row.name, byName);
-    if (url) out[row.name] = url;
+    const target = resolveEmoji(row.name, byName);
+    if (target) out[row.name] = target;
   }
   return out;
 }
 
-function resolveEmojiUrl(
+function resolveEmoji(
   name: string,
   byName: Map<string, { url: string | null; alias_for: string | null }>,
 ): string | null {
   let current = byName.get(name);
+  let last = name;
   // Bounded walk: alias cycles in bad data must not hang the request.
   for (let hops = 0; current && hops < 10; hops++) {
     if (current.url) return current.url;
     if (!current.alias_for) return null;
+    last = current.alias_for;
     current = byName.get(current.alias_for);
   }
-  return null;
+  return current ? null : `alias:${last}`;
 }

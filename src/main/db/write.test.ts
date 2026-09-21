@@ -562,10 +562,12 @@ describe('custom emoji', () => {
         loop_b: 'alias:loop_a',
       }),
     ).toBe(6);
+    // An alias of a standard emoji comes back as `alias:<name>` (pitfall 17); cycles resolve to nothing.
     expect(listCustomEmoji(db)).toEqual({
       partyparrot: 'https://emoji/parrot.gif',
       parrot: 'https://emoji/parrot.gif',
       pp: 'https://emoji/parrot.gif',
+      thumbsup_alias: 'alias:thumbsup',
     });
   });
 });
