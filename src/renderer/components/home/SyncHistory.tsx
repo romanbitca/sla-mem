@@ -25,10 +25,8 @@ export function SyncHistory({ runs }: { runs: readonly SyncRunDTO[] }) {
   const latest = runs[0];
 
   const toggle = () => {
-    setOpen((o) => {
-      writeJsonPref(OPEN_PREF, !o);
-      return !o;
-    });
+    writeJsonPref(OPEN_PREF, !open);
+    setOpen(!open);
   };
 
   return (

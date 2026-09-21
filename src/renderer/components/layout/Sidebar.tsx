@@ -88,11 +88,10 @@ export function Sidebar({ searchRef, syncStatus, syncError, onClose, className, 
   }, [activeIndex]);
 
   const toggleSection = (id: SectionId) => {
-    setCollapsed((prev) => {
-      const next = { ...prev, [id]: !prev[id] };
-      writeJsonPref(COLLAPSE_KEY, next);
-      return next;
-    });
+    // Saved outside the state updater: updaters must stay pure (StrictMode runs them twice).
+    const next = { ...collapsed, [id]: !collapsed[id] };
+    writeJsonPref(COLLAPSE_KEY, next);
+    setCollapsed(next);
   };
 
   const onFilterKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {

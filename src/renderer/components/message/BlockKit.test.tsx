@@ -2,7 +2,7 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { cleanup, screen, within } from '@testing-library/react';
 import type { BlockDTO } from '../../../shared/types';
-import { listMarker, plainTextNodes, richInlineNodes, richList, textObject } from '../../lib/blockkit';
+import { listMarker, plainTextNodes, richBlockNodes, richInlineNodes, richList, textObject } from '../../lib/blockkit';
 import { loadEmojiMap } from '../../lib/emoji';
 import { makeAttachment, makeMessage, renderWithProviders } from '../../test/helpers';
 import { BlockKit } from './BlockKit';
@@ -334,6 +334,17 @@ describe('block kit helpers', () => {
       { type: 'br' },
       { type: 'code', children: [{ type: 'text', text: 'b' }] },
     ]);
+  });
+
+  it('drops the line break Slack puts at the end of a section before a list', () => {
+    expect(richBlockNodes([{ type: 'text', text: 'Plan:\n' }])).toEqual([{ type: 'text', text: 'Plan:' }]);
+    expect(richInlineNodes([{ type: 'text', text: 'Plan:\n' }])).toEqual([
+      { type: 'text', text: 'Plan:' },
+      { type: 'br' },
+    ]);
+    const { container } = renderBlocks(richBlocks);
+    const first = container.querySelector('.md-root') as HTMLElement;
+    expect(first.querySelector('br')).toBeNull();
   });
 
   it('ignores malformed elements instead of trusting them', () => {

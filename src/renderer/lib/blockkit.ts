@@ -174,6 +174,17 @@ export function richInlineNodes(elements: unknown): MrkdwnNode[] {
   return out;
 }
 
+/**
+ * The nodes of a block-level rich text element (section, quote, list item). Slack ends a section
+ * with "\n" when a list or quote follows; the block already starts a new line, so that break
+ * would show as an extra blank line.
+ */
+export function richBlockNodes(elements: unknown): MrkdwnNode[] {
+  const nodes = richInlineNodes(elements);
+  if (nodes[nodes.length - 1]?.type === 'br') nodes.pop();
+  return nodes;
+}
+
 /** Preformatted text: literal, but links and mentions inside still resolve (as in mrkdwn). */
 export function richPreformatted(elements: unknown): PreNode {
   const children: CodeChildNode[] = [];
@@ -194,7 +205,7 @@ export function richPreformatted(elements: unknown): PreNode {
 }
 
 export function richQuote(elements: unknown): QuoteNode {
-  return { type: 'quote', children: richInlineNodes(elements) };
+  return { type: 'quote', children: richBlockNodes(elements) };
 }
 
 /** One rich_text_list: its style, nesting level, first number and items' inline nodes. */
@@ -213,7 +224,7 @@ export function richList(el: Loose): RichList {
     ordered: el.style === 'ordered',
     indent,
     start: offset + 1,
-    items: objects(el.elements).map((item) => richInlineNodes(item.elements)),
+    items: objects(el.elements).map((item) => richBlockNodes(item.elements)),
   };
 }
 

@@ -8,7 +8,7 @@ import {
   listMarker,
   objects,
   plainTextNodes,
-  richInlineNodes,
+  richBlockNodes,
   richList,
   richPreformatted,
   richQuote,
@@ -280,7 +280,7 @@ function RichTextBlock({ block }: { block: Loose }) {
 function RichElement({ element }: { element: Loose }) {
   switch (element.type) {
     case 'rich_text_section': {
-      const nodes = richInlineNodes(element.elements);
+      const nodes = richBlockNodes(element.elements);
       return nodes.length ? <MrkdwnNodes nodes={nodes} /> : null;
     }
     case 'rich_text_quote':
