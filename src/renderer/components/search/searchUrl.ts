@@ -120,7 +120,13 @@ export function toApiParams(state: SearchUrlState): SearchParams | null {
 }
 
 function explicitFilters(state: SearchUrlState): QueryFilters {
-  return { conversation: state.conversation, user: state.user, has: state.has, after: state.after, before: state.before };
+  return {
+    conversation: state.conversation,
+    user: state.user,
+    has: state.has,
+    after: state.after,
+    before: state.before,
+  };
 }
 
 /**

@@ -2,15 +2,7 @@ import { useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, 
 import clsx from 'clsx';
 import type { ConversationDTO, UserDTO } from '../../../shared/types';
 import { ConversationIcon } from '../conversation/ConversationIcon';
-import {
-  CalendarIcon,
-  CloseIcon,
-  FileIcon,
-  HashIcon,
-  SearchIcon,
-  ThreadIcon,
-  UserIcon,
-} from '../icons';
+import { CalendarIcon, CloseIcon, FileIcon, HashIcon, SearchIcon, ThreadIcon, UserIcon } from '../icons';
 import { Avatar } from '../message/Avatar';
 import { Kbd } from '../ui/Kbd';
 import { applySuggestion, getAutocomplete, type AutocompleteSource, type Suggestion } from './autocomplete';
@@ -179,7 +171,10 @@ export function SearchInput({ value, onChange, onSubmit, source, inputRef, autoF
       >
         {visible && (
           <>
-            <p className="px-3.5 pt-2.5 pb-1 text-[11px] font-semibold tracking-wide text-ink-faint uppercase" aria-hidden="true">
+            <p
+              className="px-3.5 pt-2.5 pb-1 text-[11px] font-semibold tracking-wide text-ink-faint uppercase"
+              aria-hidden="true"
+            >
               {completion!.title}
             </p>
             <ul className="scroll-thin max-h-80 overflow-y-auto px-1.5 pb-1.5">
@@ -202,12 +197,17 @@ export function SearchInput({ value, onChange, onSubmit, source, inputRef, autoF
                   <span className="min-w-0 truncate font-medium">{s.label}</span>
                   {s.detail && <span className="min-w-0 flex-1 truncate text-xs text-ink-faint">{s.detail}</span>}
                   {(s.kind === 'user' || s.kind === 'conversation') && (
-                    <code className="ml-auto hidden shrink-0 font-mono text-[11px] text-ink-faint sm:inline">{s.insert}</code>
+                    <code className="ml-auto hidden shrink-0 font-mono text-[11px] text-ink-faint sm:inline">
+                      {s.insert}
+                    </code>
                   )}
                 </li>
               ))}
             </ul>
-            <p className="flex items-center gap-3 border-t border-line px-3.5 py-1.5 text-[11px] text-ink-faint" aria-hidden="true">
+            <p
+              className="flex items-center gap-3 border-t border-line px-3.5 py-1.5 text-[11px] text-ink-faint"
+              aria-hidden="true"
+            >
               <span className="flex items-center gap-1">
                 <Kbd>↑</Kbd>
                 <Kbd>↓</Kbd> to move
@@ -234,11 +234,21 @@ function SuggestionIcon({ suggestion, source }: { suggestion: Suggestion; source
   }
   if (suggestion.kind === 'conversation') {
     const conv: ConversationDTO | undefined = source?.conversations.find((c) => c.id === suggestion.conversationId);
-    return <span className={box}>{conv ? <ConversationIcon conversation={conv} size={14} /> : <HashIcon size={14} />}</span>;
+    return (
+      <span className={box}>{conv ? <ConversationIcon conversation={conv} size={14} /> : <HashIcon size={14} />}</span>
+    );
   }
   const key = suggestion.insert.split(':')[0];
   const Icon =
-    key === 'from' ? UserIcon : key === 'in' ? HashIcon : key === 'has' ? FileIcon : key === 'is' ? ThreadIcon : CalendarIcon;
+    key === 'from'
+      ? UserIcon
+      : key === 'in'
+        ? HashIcon
+        : key === 'has'
+          ? FileIcon
+          : key === 'is'
+            ? ThreadIcon
+            : CalendarIcon;
   return (
     <span className={box}>
       <Icon size={14} />

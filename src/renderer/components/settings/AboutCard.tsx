@@ -82,7 +82,11 @@ export function AboutCard() {
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button icon={<ExternalLinkIcon size={14} />} loading={openGuide.isPending} onClick={() => openGuide.mutate(GUIDE_URL)}>
+        <Button
+          icon={<ExternalLinkIcon size={14} />}
+          loading={openGuide.isPending}
+          onClick={() => openGuide.mutate(GUIDE_URL)}
+        >
           Install and user guide
         </Button>
         <Button loading={showLogs.isPending} onClick={() => showLogs.mutate()}>
@@ -109,7 +113,11 @@ function ThemeChoice() {
       <p id={labelId} className="text-[13.5px] font-medium text-ink">
         Appearance
       </p>
-      <div role="radiogroup" aria-labelledby={labelId} className="flex w-fit rounded-lg border border-line bg-canvas p-0.5">
+      <div
+        role="radiogroup"
+        aria-labelledby={labelId}
+        className="flex w-fit rounded-lg border border-line bg-canvas p-0.5"
+      >
         {THEMES.map((value) => {
           const Icon = THEME_ICONS[value];
           return (

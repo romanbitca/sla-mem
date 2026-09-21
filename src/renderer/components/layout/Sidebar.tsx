@@ -8,7 +8,16 @@ import { conversationPath, searchPath } from '../../lib/links';
 import { useConversations, useWorkspace } from '../../lib/queries';
 import { readJsonPref, writeJsonPref } from '../../lib/storage';
 import { workspaceHost } from '../../lib/workspaceName';
-import { ArchiveIcon, ChevronDownIcon, CloseIcon, HashIcon, LockIcon, SearchIcon, SettingsIcon, UsersIcon } from '../icons';
+import {
+  ArchiveIcon,
+  ChevronDownIcon,
+  CloseIcon,
+  HashIcon,
+  LockIcon,
+  SearchIcon,
+  SettingsIcon,
+  UsersIcon,
+} from '../icons';
 import { Avatar } from '../message/Avatar';
 import { IconButton } from '../ui/IconButton';
 import { Kbd, modKeyLabel } from '../ui/Kbd';
@@ -128,7 +137,15 @@ export function Sidebar({ searchRef, syncStatus, syncError, onClose, className, 
             {host ? `${host} · archive` : 'Local archive'}
           </p>
         </div>
-        {onClose && <IconButton size="sm" label="Hide sidebar" icon={<CloseIcon size={16} />} onClick={onClose} className="lg:hidden" />}
+        {onClose && (
+          <IconButton
+            size="sm"
+            label="Hide sidebar"
+            icon={<CloseIcon size={16} />}
+            onClick={onClose}
+            className="lg:hidden"
+          />
+        )}
       </div>
 
       <div className="px-3 pb-2">

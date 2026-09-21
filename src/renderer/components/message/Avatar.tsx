@@ -67,7 +67,10 @@ export const Avatar = memo(function Avatar({ seed, label, src, size = 36, classN
       role={decorative ? undefined : 'img'}
       aria-label={decorative ? undefined : label}
       aria-hidden={decorative || undefined}
-      className={clsx('inline-flex shrink-0 items-center justify-center font-semibold text-white select-none', className)}
+      className={clsx(
+        'inline-flex shrink-0 items-center justify-center font-semibold text-white select-none',
+        className,
+      )}
       style={{ ...style, backgroundColor: color, fontSize: Math.max(9, Math.round(size * 0.38)) }}
     >
       {initialsFor(label)}

@@ -10,16 +10,7 @@
  * is what escaping it before parsing achieves in main's search text (normalize.ts).
  */
 import type { BlockDTO } from '../../shared/types';
-import type {
-  BreakNode,
-  CodeChildNode,
-  EmojiNode,
-  LinkNode,
-  MrkdwnNode,
-  PreNode,
-  QuoteNode,
-  TextNode,
-} from './mrkdwn';
+import type { BreakNode, CodeChildNode, EmojiNode, LinkNode, MrkdwnNode, PreNode, QuoteNode, TextNode } from './mrkdwn';
 import { safeHref } from './mrkdwn';
 
 export type Loose = Record<string, unknown>;
@@ -146,7 +137,8 @@ function richInline(el: Loose): MrkdwnNode[] {
     case 'emoji': {
       const name = str(el.name);
       if (!name) return [];
-      const tone = typeof el.skin_tone === 'number' && el.skin_tone >= 2 && el.skin_tone <= 6 ? String(el.skin_tone) : null;
+      const tone =
+        typeof el.skin_tone === 'number' && el.skin_tone >= 2 && el.skin_tone <= 6 ? String(el.skin_tone) : null;
       return [{ type: 'emoji', name, skinTone: tone }];
     }
     case 'date': {
@@ -193,7 +185,8 @@ export function richPreformatted(elements: unknown): PreNode {
   for (const el of objects(elements)) {
     if (el.type === 'link') push(linkNode(el));
     else if (el.type === 'user' && str(el.user_id)) push({ type: 'user', id: str(el.user_id), label: null });
-    else if (el.type === 'channel' && str(el.channel_id)) push({ type: 'channel', id: str(el.channel_id), label: null });
+    else if (el.type === 'channel' && str(el.channel_id))
+      push({ type: 'channel', id: str(el.channel_id), label: null });
     else if (el.type === 'emoji' && str(el.name)) push({ type: 'text', text: `:${str(el.name)}:` });
     else if (str(el.text)) push({ type: 'text', text: str(el.text) });
   }

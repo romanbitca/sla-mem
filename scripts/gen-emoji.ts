@@ -10,12 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  applySkinTone,
-  multiToneIndex,
-  type EmojiMapData,
-  type SkinTone,
-} from '../src/renderer/lib/emoji/table';
+import { applySkinTone, multiToneIndex, type EmojiMapData, type SkinTone } from '../src/renderer/lib/emoji/table';
 
 interface SkinVariation {
   unified: string;

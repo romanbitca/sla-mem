@@ -98,7 +98,13 @@ function SectionBlock({ block }: { block: Loose }) {
 
 function Accessory({ element }: { element: Loose }) {
   if (element.type === 'image') {
-    return <RemoteImage src={str(element.image_url)} alt={str(element.alt_text)} className="size-18 shrink-0 rounded-md object-cover" />;
+    return (
+      <RemoteImage
+        src={str(element.image_url)}
+        alt={str(element.alt_text)}
+        className="size-18 shrink-0 rounded-md object-cover"
+      />
+    );
   }
   if (element.type === 'button') return <InertButton element={element} />;
   const label = elementLabel(element);
@@ -112,7 +118,12 @@ function ContextBlock({ block }: { block: Loose }) {
     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] leading-snug text-ink-muted">
       {elements.map((el, i) =>
         el.type === 'image' ? (
-          <RemoteImage key={i} src={str(el.image_url)} alt={str(el.alt_text)} className="size-4 rounded-sm object-cover" />
+          <RemoteImage
+            key={i}
+            src={str(el.image_url)}
+            alt={str(el.alt_text)}
+            className="size-4 rounded-sm object-cover"
+          />
         ) : (
           <TextObjectView key={i} value={el} inline />
         ),

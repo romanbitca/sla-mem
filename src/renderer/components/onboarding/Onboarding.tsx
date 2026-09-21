@@ -83,9 +83,7 @@ export default function Onboarding({ settings }: { settings: SettingsDTO }) {
                 onConnected={() => setStep('history')}
               />
             )}
-            {step === 'history' && (
-              <HistoryStep headingRef={headingRef} connection={settings.connection} />
-            )}
+            {step === 'history' && <HistoryStep headingRef={headingRef} connection={settings.connection} />}
           </div>
         </div>
       </main>
@@ -99,7 +97,9 @@ function StepIndicator({ current }: { current: Step }) {
     <ol className="flex items-center justify-center gap-2 text-xs" aria-label={`Step ${index + 1} of ${STEPS.length}`}>
       {STEPS.map((s, i) => (
         <li key={s.id} className="flex items-center gap-2" aria-current={i === index ? 'step' : undefined}>
-          {i > 0 && <span aria-hidden="true" className={clsx('h-px w-6', i <= index ? 'bg-accent' : 'bg-line-strong')} />}
+          {i > 0 && (
+            <span aria-hidden="true" className={clsx('h-px w-6', i <= index ? 'bg-accent' : 'bg-line-strong')} />
+          )}
           <span
             className={clsx(
               'flex size-5 items-center justify-center rounded-full text-[11px] font-semibold',
@@ -120,7 +120,13 @@ function StepIndicator({ current }: { current: Step }) {
   );
 }
 
-function StepHeading({ headingRef, children }: { headingRef: RefObject<HTMLHeadingElement | null>; children: ReactNode }) {
+function StepHeading({
+  headingRef,
+  children,
+}: {
+  headingRef: RefObject<HTMLHeadingElement | null>;
+  children: ReactNode;
+}) {
   return (
     <h1 ref={headingRef} tabIndex={-1} className="text-xl font-semibold tracking-tight text-ink outline-none">
       {children}
@@ -131,13 +137,7 @@ function StepHeading({ headingRef, children }: { headingRef: RefObject<HTMLHeadi
 // ---------------------------------------------------------------------------------------------
 // 1. Welcome
 
-function WelcomeStep({
-  headingRef,
-  onNext,
-}: {
-  headingRef: RefObject<HTMLHeadingElement | null>;
-  onNext: () => void;
-}) {
+function WelcomeStep({ headingRef, onNext }: { headingRef: RefObject<HTMLHeadingElement | null>; onNext: () => void }) {
   return (
     <div className="flex flex-col gap-5">
       <StepHeading headingRef={headingRef}>Welcome to Slack Archive</StepHeading>
@@ -218,7 +218,12 @@ function ConnectStep({
         <>
           {failed && status ? (
             <SignInFailed status={status} onRetry={signIn} retrying={start.isPending}>
-              <OtherWays open={otherOpen} onOpenChange={setOtherOpen} panelId={otherId} teamDomain={connection.teamDomain} />
+              <OtherWays
+                open={otherOpen}
+                onOpenChange={setOtherOpen}
+                panelId={otherId}
+                teamDomain={connection.teamDomain}
+              />
             </SignInFailed>
           ) : (
             <>
@@ -354,11 +359,15 @@ function HistoryStep({
       <p className="flex items-start gap-2.5 text-[14px] leading-relaxed text-ink">
         <InfoIcon size={16} className="mt-0.5 shrink-0 text-accent-text" />
         <span>
-          Slack only lets us see the last {FREE_PLAN_WINDOW_DAYS} days. From now on, everything we fetch is kept forever.
+          Slack only lets us see the last {FREE_PLAN_WINDOW_DAYS} days. From now on, everything we fetch is kept
+          forever.
         </span>
       </p>
 
-      <label htmlFor={checkboxId} className="flex cursor-pointer items-start gap-3 rounded-xl border border-line px-4 py-3">
+      <label
+        htmlFor={checkboxId}
+        className="flex cursor-pointer items-start gap-3 rounded-xl border border-line px-4 py-3"
+      >
         <input
           id={checkboxId}
           type="checkbox"
@@ -389,7 +398,9 @@ function HistoryStep({
           Finish
         </Button>
         {!firstSyncDone && (
-          <span className="text-[13px] text-ink-muted">You can finish now: the first sync carries on in the background.</span>
+          <span className="text-[13px] text-ink-muted">
+            You can finish now: the first sync carries on in the background.
+          </span>
         )}
       </div>
     </div>

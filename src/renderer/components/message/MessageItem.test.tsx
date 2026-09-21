@@ -4,6 +4,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { api } from '../../lib/api';
 import { buildDirectory } from '../../lib/directory';
 import {
+  installFakeBridge,
   makeAttachment,
   makeConversation,
   makeImage,
@@ -67,7 +68,12 @@ describe('MessageItem', () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
     renderItem({
-      message: makeMessage({ ts: '1712345699.000200', threadTs: '1712345678.123456', isReply: true, conversationId: 'C0123' }),
+      message: makeMessage({
+        ts: '1712345699.000200',
+        threadTs: '1712345678.123456',
+        isReply: true,
+        conversationId: 'C0123',
+      }),
     });
     fireEvent.click(screen.getByRole('button', { name: 'Copy link to this message in Slack' }));
     await waitFor(() =>
@@ -103,14 +109,15 @@ describe('MessageItem', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('opens a lightbox image with the system app or shows it in its folder', async () => {
+  it('opens a lightbox image with the system app or shows it in Explorer', async () => {
+    installFakeBridge(() => undefined, 'win32');
     const openFile = vi.spyOn(api, 'openFile').mockResolvedValue({ ok: true });
     const revealFile = vi.spyOn(api, 'revealFile').mockResolvedValue({ ok: true });
     renderItem({ message: makeMessage({ ts: TS, files: [makeImage({ id: 'F1', name: 'one.png' })] }) });
     fireEvent.click(screen.getByRole('button', { name: 'View image one.png' }));
     const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Open with the default app' }));
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Show in folder' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Show in Explorer' }));
     await waitFor(() => expect(openFile).toHaveBeenCalledWith({ fileId: 'F1' }));
     expect(revealFile).toHaveBeenCalledWith({ fileId: 'F1' });
   });

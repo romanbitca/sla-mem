@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { describeError, presentableMessage } from '../../lib/api';
+import { fileBrowserName } from '../../lib/bridge';
 import { formatBytes, pluralize } from '../../lib/format';
 import { useBackupNow, useDeleteOldAttachments, useShowDataFolder, useStorage } from '../../lib/queries';
 import { CLEANUP_MONTHS, monthsLabel } from '../connect/connection';
@@ -46,12 +47,8 @@ export function StorageCard() {
             <code className="min-w-0 flex-1 truncate rounded-lg border border-line bg-inset px-2.5 py-1.5 font-mono text-[12px] text-ink">
               {data.dataDir}
             </code>
-            <Button
-              icon={<FolderIcon size={14} />}
-              loading={showFolder.isPending}
-              onClick={() => showFolder.mutate()}
-            >
-              Show folder
+            <Button icon={<FolderIcon size={14} />} loading={showFolder.isPending} onClick={() => showFolder.mutate()}>
+              {fileBrowserName() ? `Show in ${fileBrowserName()}` : 'Show folder'}
             </Button>
           </div>
           {showFolder.isError && <FieldError>{describeError(showFolder.error)}</FieldError>}
@@ -60,7 +57,12 @@ export function StorageCard() {
     );
   } else if (storage.isError) {
     body = (
-      <ErrorState compact error={storage.error} title="Couldn’t measure the archive" onRetry={() => void storage.refetch()} />
+      <ErrorState
+        compact
+        error={storage.error}
+        title="Couldn’t measure the archive"
+        onRetry={() => void storage.refetch()}
+      />
     );
   } else {
     body = <LoadingState label="Measuring the archive…" className="py-6" />;
@@ -94,7 +96,12 @@ function CleanupRow() {
         Frees space on this computer. Messages are never deleted, and the archive still shows which files were shared.
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        <Select id={selectId} value={String(months)} onChange={(e) => setMonths(Number(e.target.value))} className="w-36">
+        <Select
+          id={selectId}
+          value={String(months)}
+          onChange={(e) => setMonths(Number(e.target.value))}
+          className="w-36"
+        >
           {CLEANUP_MONTHS.map((m) => (
             <option key={m} value={m}>
               {monthsLabel(m)}

@@ -74,8 +74,17 @@ const richBlocks: BlockDTO[] = [
         style: 'bullet',
         indent: 0,
         elements: [
-          { type: 'rich_text_section', elements: [{ type: 'text', text: 'Freeze ' }, { type: 'text', text: 'main', style: { italic: true } }] },
-          { type: 'rich_text_section', elements: [{ type: 'link', url: 'https://wiki.example.com/release', text: 'Checklist' }] },
+          {
+            type: 'rich_text_section',
+            elements: [
+              { type: 'text', text: 'Freeze ' },
+              { type: 'text', text: 'main', style: { italic: true } },
+            ],
+          },
+          {
+            type: 'rich_text_section',
+            elements: [{ type: 'link', url: 'https://wiki.example.com/release', text: 'Checklist' }],
+          },
         ],
       },
       {
@@ -91,7 +100,13 @@ const richBlocks: BlockDTO[] = [
         offset: 2,
         elements: [{ type: 'rich_text_section', elements: [{ type: 'text', text: 'third step' }] }],
       },
-      { type: 'rich_text_quote', elements: [{ type: 'text', text: 'Ship it on Friday? ' }, { type: 'broadcast', range: 'here' }] },
+      {
+        type: 'rich_text_quote',
+        elements: [
+          { type: 'text', text: 'Ship it on Friday? ' },
+          { type: 'broadcast', range: 'here' },
+        ],
+      },
       { type: 'rich_text_preformatted', elements: [{ type: 'text', text: 'git tag v2.0\ngit push --tags' }] },
       {
         type: 'rich_text_section',
@@ -133,7 +148,9 @@ describe('<BlockKit>', () => {
     expect(pipeline.getAttribute('href')).toBe('https://ci.example.com/pipelines/42');
     expect(pipeline.getAttribute('target')).toBe('_blank');
     expect(screen.queryByRole('button', { name: 'Roll back' })).toBeNull();
-    expect(screen.getByText('Roll back').closest('[title]')?.getAttribute('title')).toMatch(/don’t work in the archive/);
+    expect(screen.getByText('Roll back').closest('[title]')?.getAttribute('title')).toMatch(
+      /don’t work in the archive/,
+    );
     expect(screen.queryByRole('link', { name: 'Open run' })).toBeNull();
     expect(screen.getByText('Open run')).toBeTruthy();
     expect(screen.getByText('Pick an environment')).toBeTruthy();
@@ -152,7 +169,9 @@ describe('<BlockKit>', () => {
     const [bullets, nested, ordered] = [...lists] as HTMLElement[];
     expect(within(bullets).getAllByRole('listitem')).toHaveLength(2);
     expect(screen.getByText('main').tagName).toBe('EM');
-    expect(screen.getByRole('link', { name: 'Checklist' }).getAttribute('href')).toBe('https://wiki.example.com/release');
+    expect(screen.getByRole('link', { name: 'Checklist' }).getAttribute('href')).toBe(
+      'https://wiki.example.com/release',
+    );
     expect(bullets.style.listStyleType).toBe('disc');
     expect(nested.style.listStyleType).toBe('circle');
     expect(nested.style.marginLeft).toBe('1.5em');
@@ -258,7 +277,10 @@ describe('messages with blocks', () => {
               blocks: [
                 {
                   type: 'section',
-                  text: { type: 'mrkdwn', text: '*<https://github.com/acme/app/pull/12|#12 Fix the build>*\nMerged by <@U3>' },
+                  text: {
+                    type: 'mrkdwn',
+                    text: '*<https://github.com/acme/app/pull/12|#12 Fix the build>*\nMerged by <@U3>',
+                  },
                 },
                 { type: 'context', elements: [{ type: 'mrkdwn', text: 'acme/app · 2 commits' }] },
               ],
@@ -280,7 +302,11 @@ describe('messages with blocks', () => {
 describe('block kit helpers', () => {
   it('reads text objects', () => {
     expect(textObject({ type: 'mrkdwn', text: '*a*' })).toEqual({ kind: 'mrkdwn', text: '*a*' });
-    expect(textObject({ type: 'plain_text', text: 'a', emoji: false })).toEqual({ kind: 'plain', text: 'a', emoji: false });
+    expect(textObject({ type: 'plain_text', text: 'a', emoji: false })).toEqual({
+      kind: 'plain',
+      text: 'a',
+      emoji: false,
+    });
     expect(textObject({ type: 'plain_text', text: '   ' })).toBeNull();
     expect(textObject('text')).toBeNull();
     expect(textObject({ type: 'image', text: 'x' })).toBeNull();
@@ -298,7 +324,10 @@ describe('block kit helpers', () => {
 
   it('nests styles like Slack (code innermost) and splits code at line breaks', () => {
     expect(richInlineNodes([{ type: 'text', text: 'x', style: { bold: true, italic: true, code: true } }])).toEqual([
-      { type: 'bold', children: [{ type: 'italic', children: [{ type: 'code', children: [{ type: 'text', text: 'x' }] }] }] },
+      {
+        type: 'bold',
+        children: [{ type: 'italic', children: [{ type: 'code', children: [{ type: 'text', text: 'x' }] }] }],
+      },
     ]);
     expect(richInlineNodes([{ type: 'text', text: 'a\nb', style: { code: true } }])).toEqual([
       { type: 'code', children: [{ type: 'text', text: 'a' }] },
@@ -308,7 +337,9 @@ describe('block kit helpers', () => {
   });
 
   it('ignores malformed elements instead of trusting them', () => {
-    expect(richInlineNodes([null, 'x', { type: 'user' }, { type: 'emoji', name: '' }, { type: 'broadcast', range: 'all' }])).toEqual([]);
+    expect(
+      richInlineNodes([null, 'x', { type: 'user' }, { type: 'emoji', name: '' }, { type: 'broadcast', range: 'all' }]),
+    ).toEqual([]);
     expect(richList({ type: 'rich_text_list', style: 'ordered', indent: -3, offset: 'x', elements: 'nope' })).toEqual({
       ordered: true,
       indent: 0,

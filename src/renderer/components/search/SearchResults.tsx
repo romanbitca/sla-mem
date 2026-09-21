@@ -86,7 +86,9 @@ function GroupedResults({
                   {title}
                 </Link>
               </h2>
-              <span className="shrink-0 text-xs text-ink-faint tabular-nums">{pluralize(group.hits.length, 'match', 'matches')}</span>
+              <span className="shrink-0 text-xs text-ink-faint tabular-nums">
+                {pluralize(group.hits.length, 'match', 'matches')}
+              </span>
               {!(onlyOne && filteredConversations[0] === group.conversationId) && (
                 <Button
                   size="sm"
@@ -158,11 +160,17 @@ export const HitRow = memo(function HitRow({ hit, showConversation }: { hit: Sea
               <span className="truncate">{conv ? conv.label : where}</span>
             </span>
           )}
-          <time dateTime={date.toISOString()} title={formatFullDateTime(date)} className="text-xs text-ink-faint tabular-nums">
+          <time
+            dateTime={date.toISOString()}
+            title={formatFullDateTime(date)}
+            className="text-xs text-ink-faint tabular-nums"
+          >
             {formatShortDate(date)}
           </time>
           {message.isReply && (
-            <Tag icon={<CornerDownRightIcon size={11} />}>{message.subtype === 'thread_broadcast' ? 'Reply, also sent to channel' : 'Thread reply'}</Tag>
+            <Tag icon={<CornerDownRightIcon size={11} />}>
+              {message.subtype === 'thread_broadcast' ? 'Reply, also sent to channel' : 'Thread reply'}
+            </Tag>
           )}
           {beyond && (
             <Tag icon={<ArchiveIcon size={11} />} title="Older than 90 days: no longer visible in Slack Free">
@@ -209,7 +217,7 @@ function HitMeta({ message }: { message: MessageDTO }) {
         <span className="inline-flex min-w-0 items-center gap-1">
           <FileIcon size={12} />
           <span className="truncate">
-            {files === 1 ? (message.files[0].title || message.files[0].name || '1 file') : pluralize(files, 'file')}
+            {files === 1 ? message.files[0].title || message.files[0].name || '1 file' : pluralize(files, 'file')}
           </span>
         </span>
       )}

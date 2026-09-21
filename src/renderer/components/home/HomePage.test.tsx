@@ -44,7 +44,13 @@ const emptyStats = makeStats({
 const idle = makeSyncStatus({
   recentRuns: [
     makeRun({ id: 3, stats: { messagesInserted: 120, revisions: 2, apiCalls: 88 } }),
-    makeRun({ id: 2, status: 'error', error: 'ratelimited', startedAt: NOW - 26 * 3600_000, finishedAt: NOW - 26 * 3600_000 + 5000 }),
+    makeRun({
+      id: 2,
+      status: 'error',
+      error: 'ratelimited',
+      startedAt: NOW - 26 * 3600_000,
+      finishedAt: NOW - 26 * 3600_000 + 5000,
+    }),
   ],
   lastSuccessAt: NOW - 58 * 60_000,
   nextRunAt: NOW + 30 * 60_000,
@@ -56,7 +62,13 @@ const running = makeSyncStatus({
   progress: { phase: 'history', message: 'Fetching #general — 1,240 messages so far', current: 3, total: 12 },
 });
 
-const notConnected = makeWorkspace({ teamId: null, teamName: null, teamDomain: null, selfUserId: null, connected: false });
+const notConnected = makeWorkspace({
+  teamId: null,
+  teamName: null,
+  teamDomain: null,
+  selfUserId: null,
+  connected: false,
+});
 
 function setup(
   status: SyncStatusDTO | Error = idle,
@@ -116,7 +128,9 @@ describe('run helpers', () => {
     expect(summarizeRun(makeRun({ id: 1, stats: { messagesInserted: 1, apiCalls: 50, filesDownloaded: 2 } }))).toBe(
       '1 new message · 2 attachments saved',
     );
-    expect(summarizeRun(makeRun({ id: 1, stats: { apiCalls: 50, threadsFetched: 3 } }))).toBe('Up to date: nothing new');
+    expect(summarizeRun(makeRun({ id: 1, stats: { apiCalls: 50, threadsFetched: 3 } }))).toBe(
+      'Up to date: nothing new',
+    );
     expect(summarizeRun(makeRun({ id: 1, kind: 'import', stats: {} }))).toBe('Nothing new in the export');
     expect(summarizeRun(makeRun({ id: 1, status: 'error', stats: { messagesInserted: 5 } }))).toBe(
       'Didn’t finish · 5 new messages kept',
@@ -145,7 +159,9 @@ describe('HomePage', () => {
     setup();
     expect(await screen.findByText((48_213).toLocaleString())).toBeTruthy();
     const payoff = screen.getByRole('region', { name: 'Messages only in your archive' });
-    expect(payoff.textContent).toContain(`${(31_337).toLocaleString()} messages older than 90 days — no longer visible in Slack`);
+    expect(payoff.textContent).toContain(
+      `${(31_337).toLocaleString()} messages older than 90 days — no longer visible in Slack`,
+    );
     expect(screen.getByText('1.2 GB')).toBeTruthy(); // total from main's storage numbers
     expect(screen.getByText(/Messages 340 MB · attachments 880 MB/)).toBeTruthy();
     expect(screen.getByText(/Mar 3, 2024 – /)).toBeTruthy();
@@ -193,7 +209,13 @@ describe('HomePage', () => {
   it('shows a signed-out problem with Reconnect, which starts the sign-in and opens Settings', async () => {
     const startLogin = vi.spyOn(api, 'startLogin').mockResolvedValue(makeLoginStatus({ state: 'opening' }));
     const { location } = setup(
-      makeSyncStatus({ problem: { kind: 'signed_out', message: 'Slack signed you out. Reconnect to keep archiving.', action: 'reconnect' } }),
+      makeSyncStatus({
+        problem: {
+          kind: 'signed_out',
+          message: 'Slack signed you out. Reconnect to keep archiving.',
+          action: 'reconnect',
+        },
+      }),
       { settings: makeSettings({ connection: makeConnection({ expired: true }) }) },
     );
     const alert = await screen.findByText('Slack signed you out. Reconnect to keep archiving.');
@@ -213,7 +235,9 @@ describe('HomePage', () => {
         problem: { kind: 'unexpected', message: 'Something went wrong. Nothing was lost.', action: 'show_logs' },
       }),
     );
-    const callout = (await screen.findByText('Something went wrong. Nothing was lost.')).closest('[role="alert"]') as HTMLElement;
+    const callout = (await screen.findByText('Something went wrong. Nothing was lost.')).closest(
+      '[role="alert"]',
+    ) as HTMLElement;
     fireEvent.click(within(callout).getByRole('button', { name: 'Try again' }));
     fireEvent.click(within(callout).getByRole('button', { name: 'Show logs' }));
     await waitFor(() => expect(startSync).toHaveBeenCalledTimes(1));
@@ -224,7 +248,9 @@ describe('HomePage', () => {
     const startSync = vi.spyOn(api, 'startSync').mockResolvedValue({ runId: 7 });
     setup(makeSyncStatus({ stale: true, lastSuccessAt: NOW - 34 * DAY }));
     expect(await screen.findByText('Your last successful sync was 34 days ago.')).toBeTruthy();
-    const callout = screen.getByText(/Slack only keeps the last 90 days, so sync soon/).closest('[role="alert"]') as HTMLElement;
+    const callout = screen
+      .getByText(/Slack only keeps the last 90 days, so sync soon/)
+      .closest('[role="alert"]') as HTMLElement;
     fireEvent.click(within(callout).getByRole('button', { name: 'Sync now' }));
     await waitFor(() => expect(startSync).toHaveBeenCalledTimes(1));
   });
@@ -234,10 +260,16 @@ describe('HomePage', () => {
       makeSyncStatus({
         stale: true,
         lastSuccessAt: NOW - 40 * DAY,
-        problem: { kind: 'signed_out', message: 'Slack signed you out. Reconnect to keep archiving.', action: 'reconnect' },
+        problem: {
+          kind: 'signed_out',
+          message: 'Slack signed you out. Reconnect to keep archiving.',
+          action: 'reconnect',
+        },
       }),
     );
-    const stale = (await screen.findByText('Your last successful sync was 40 days ago.')).closest('[role="alert"]') as HTMLElement;
+    const stale = (await screen.findByText('Your last successful sync was 40 days ago.')).closest(
+      '[role="alert"]',
+    ) as HTMLElement;
     expect(within(stale).queryByRole('button', { name: 'Sync now' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Reconnect' })).toBeTruthy();
   });
@@ -253,7 +285,9 @@ describe('HomePage', () => {
     // Zero-filled numbers and an empty history are noise before anything is archived.
     expect(screen.queryByRole('list', { name: 'Archive statistics' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Sync history' })).toBeNull();
-    expect(within(cta).getByRole('link', { name: 'Import it in Settings' }).getAttribute('href')).toBe('/settings#advanced');
+    expect(within(cta).getByRole('link', { name: 'Import it in Settings' }).getAttribute('href')).toBe(
+      '/settings#advanced',
+    );
     expect(screen.getByText('Connect Slack to start syncing.')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Sync now' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(within(cta).getByRole('button', { name: 'Connect Slack' }));
@@ -269,7 +303,10 @@ describe('HomePage', () => {
 
   it('keeps the archive readable when status, numbers or settings can’t be loaded', async () => {
     const blocked = new ApiError('blocked', 'This isn’t available yet.');
-    setup(blocked, { stats: new ApiError('internal', 'Something went wrong. Nothing was lost — please try again.'), settings: blocked });
+    setup(blocked, {
+      stats: new ApiError('internal', 'Something went wrong. Nothing was lost — please try again.'),
+      settings: blocked,
+    });
     expect(await screen.findByText('Couldn’t check on syncing')).toBeTruthy();
     expect(await screen.findByText('Couldn’t load archive numbers')).toBeTruthy();
     expect(await screen.findByText('Some settings couldn’t be loaded.')).toBeTruthy();

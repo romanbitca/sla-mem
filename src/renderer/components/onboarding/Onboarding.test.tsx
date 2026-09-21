@@ -220,7 +220,9 @@ describe('Onboarding', () => {
 
     expect(await screen.findByText('Fetching #general — 1,240 messages so far')).toBeTruthy();
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('25');
-    expect(screen.getByText(/Slack only lets us see the last 90 days. From now on, everything we fetch is kept forever./)).toBeTruthy();
+    expect(
+      screen.getByText(/Slack only lets us see the last 90 days. From now on, everything we fetch is kept forever./),
+    ).toBeTruthy();
     expect(screen.getByText(/You can finish now/)).toBeTruthy();
 
     const checkbox = screen.getByRole('checkbox', { name: /Start Slack Archive when I log in/ }) as HTMLInputElement;
@@ -246,7 +248,11 @@ describe('Onboarding', () => {
       getSyncStatus: makeSyncStatus({
         recentRuns: [makeRun({ id: 1, status: 'error' })],
         lastSuccessAt: null,
-        problem: { kind: 'offline', message: 'Can’t reach Slack right now. We’ll try again automatically.', action: 'retry' },
+        problem: {
+          kind: 'offline',
+          message: 'Can’t reach Slack right now. We’ll try again automatically.',
+          action: 'retry',
+        },
       }),
     });
     expect(await screen.findByText('Can’t reach Slack right now. We’ll try again automatically.')).toBeTruthy();

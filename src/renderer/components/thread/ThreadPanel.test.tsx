@@ -85,7 +85,9 @@ describe('ThreadPanel', () => {
     const withImage = thread();
     withImage.replies[0] = {
       ...withImage.replies[0],
-      files: [makeFile({ id: 'F9', name: 'shot.png', isImage: true, mimetype: 'image/png', thumbUrl: 'archive://thumb/F9' })],
+      files: [
+        makeFile({ id: 'F9', name: 'shot.png', isImage: true, mimetype: 'image/png', thumbUrl: 'archive://thumb/F9' }),
+      ],
     };
     vi.spyOn(api, 'getThread').mockResolvedValue(withImage);
     const { onClose } = renderPanel();
@@ -113,7 +115,9 @@ describe('ThreadPanel', () => {
   });
 
   it('shows an error state when the thread cannot be loaded', async () => {
-    vi.spyOn(api, 'getThread').mockRejectedValue(new ApiError('internal', 'Something went wrong. Nothing was lost — please try again.'));
+    vi.spyOn(api, 'getThread').mockRejectedValue(
+      new ApiError('internal', 'Something went wrong. Nothing was lost — please try again.'),
+    );
     renderPanel();
     await screen.findByText('Couldn’t load this thread');
     expect(screen.getByText(/Nothing was lost/)).toBeTruthy();

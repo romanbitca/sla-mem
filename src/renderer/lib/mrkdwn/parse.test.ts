@@ -198,7 +198,9 @@ describe('pre blocks', () => {
   });
 
   it('keeps everything literal inside', () => {
-    expect(p('```*b* _i_ :smile: > not quote\n&gt; nor this```')).toEqual([pre('*b* _i_ :smile: > not quote\n> nor this')]);
+    expect(p('```*b* _i_ :smile: > not quote\n&gt; nor this```')).toEqual([
+      pre('*b* _i_ :smile: > not quote\n> nor this'),
+    ]);
   });
 
   it('resolves links inside', () => {
@@ -257,7 +259,11 @@ describe('blockquotes', () => {
   });
 
   it('quotes the rest of the message after >>>', () => {
-    expect(p('intro\n&gt;&gt;&gt; all\nof\n\nthis')).toEqual([t('intro'), br, q(t('all'), br, t('of'), br, br, t('this'))]);
+    expect(p('intro\n&gt;&gt;&gt; all\nof\n\nthis')).toEqual([
+      t('intro'),
+      br,
+      q(t('all'), br, t('of'), br, br, t('this')),
+    ]);
     expect(p('&gt;&gt;&gt;\nnext line')).toEqual([q(t('next line'))]);
     expect(p('>>> raw form')).toEqual([q(t('raw form'))]);
   });
@@ -340,7 +346,13 @@ describe('references', () => {
 
   it('parses dates with fallback, optional link and entity-escaped text', () => {
     expect(p('<!date^1392734382^{date_short} at {time}|Feb 18, 2014 6:39 AM>')).toEqual([
-      { type: 'date', timestamp: 1392734382, format: '{date_short} at {time}', url: null, fallback: 'Feb 18, 2014 6:39 AM' },
+      {
+        type: 'date',
+        timestamp: 1392734382,
+        format: '{date_short} at {time}',
+        url: null,
+        fallback: 'Feb 18, 2014 6:39 AM',
+      },
     ]);
     expect(p('<!date^1392734382^{date}^https://x.com/e|Feb 18 &amp; later>')).toEqual([
       { type: 'date', timestamp: 1392734382, format: '{date}', url: 'https://x.com/e', fallback: 'Feb 18 & later' },
@@ -378,7 +390,9 @@ describe('links', () => {
   });
 
   it('unescapes entities in URLs and labels once', () => {
-    expect(p('<https://x.com/?a=1&amp;b=2|A &amp; B &amp;lt;>')).toEqual([link('https://x.com/?a=1&b=2', 'A & B &lt;')]);
+    expect(p('<https://x.com/?a=1&amp;b=2|A &amp; B &amp;lt;>')).toEqual([
+      link('https://x.com/?a=1&b=2', 'A & B &lt;'),
+    ]);
   });
 
   it('keeps labels literal (no formatting or emoji)', () => {

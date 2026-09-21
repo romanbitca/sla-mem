@@ -40,8 +40,8 @@ export function AttachmentsCard({ policy }: { policy: AttachmentPolicy }) {
       <p id={noteId} className="flex items-start gap-2 text-xs leading-relaxed text-ink-muted">
         <InfoIcon size={14} className="mt-px shrink-0 text-ink-faint" />
         <span>
-          Skipped attachments can be downloaded later by choosing a bigger option — but only while Slack still has
-          them. Slack keeps attachments for 90 days, so if in doubt, keep more.
+          Skipped attachments can be downloaded later by choosing a bigger option — but only while Slack still has them.
+          Slack keeps attachments for 90 days, so if in doubt, keep more.
         </span>
       </p>
       {update.isError && <FieldError>Couldn’t save: {describeError(update.error)}</FieldError>}

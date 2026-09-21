@@ -73,8 +73,8 @@ function ImportExport({ status }: { status: SyncStatusDTO | undefined }) {
   return (
     <>
       <p className="text-[13px] leading-relaxed text-ink-muted">
-        Have an export of your Slack history? Pick its folder or .zip file to add its messages here.
-        Nothing is duplicated or deleted, so importing the same export twice is safe.
+        Have an export of your Slack history? Pick its folder or .zip file to add its messages here. Nothing is
+        duplicated or deleted, so importing the same export twice is safe.
       </p>
       <div>
         <Button

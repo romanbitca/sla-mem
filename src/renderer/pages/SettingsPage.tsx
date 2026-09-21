@@ -44,7 +44,12 @@ export default function SettingsPage() {
   } else if (settings.isError) {
     settingsCards = (
       <div className="rounded-2xl border border-line bg-raised">
-        <ErrorState compact error={settings.error} title="Couldn’t load your settings" onRetry={() => void settings.refetch()} />
+        <ErrorState
+          compact
+          error={settings.error}
+          title="Couldn’t load your settings"
+          onRetry={() => void settings.refetch()}
+        />
       </div>
     );
   } else {
@@ -63,12 +68,7 @@ export default function SettingsPage() {
           {settingsCards}
           <StorageCard />
           <AboutCard />
-          <AdvancedCard
-            open={advancedOpen}
-            onOpenChange={setAdvancedOpen}
-            status={sync.data}
-            teamDomain={teamDomain}
-          />
+          <AdvancedCard open={advancedOpen} onOpenChange={setAdvancedOpen} status={sync.data} teamDomain={teamDomain} />
         </div>
       </div>
     </section>

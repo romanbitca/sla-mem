@@ -89,7 +89,8 @@ export function useFlag(durationMs: number): [boolean, () => void] {
 }
 
 export function useMediaQuery(query: string): boolean {
-  const get = () => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(query).matches : false);
+  const get = () =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(query).matches : false;
   const [matches, setMatches] = useState(get);
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return;

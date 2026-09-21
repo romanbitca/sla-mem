@@ -97,7 +97,11 @@ function buildLines(lines: Line[], allowQuotes: boolean): MrkdwnNode[] {
       let j = i + 1;
       while (j < lines.length && quoteKind(lines[j]) === 'line') j++;
       const original = lines.slice(i, j);
-      appendQuote(out, original, original.map((l) => stripQuoteMarker(l, 'line')));
+      appendQuote(
+        out,
+        original,
+        original.map((l) => stripQuoteMarker(l, 'line')),
+      );
       i = j;
       continue;
     }

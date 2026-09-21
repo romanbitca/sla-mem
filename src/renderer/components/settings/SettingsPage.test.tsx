@@ -6,6 +6,7 @@ import { AppEffects } from '../../App';
 import { api, ApiError } from '../../lib/api';
 import SettingsPage from '../../pages/SettingsPage';
 import {
+  installFakeBridge,
   makeAppInfo,
   makeConnection,
   makeLoginStatus,
@@ -99,7 +100,9 @@ describe('settings helpers', () => {
 
 describe('Settings — Slack connection', () => {
   it('shows the workspace and account, and reconnects through the sign-in window', async () => {
-    const startLogin = vi.spyOn(api, 'startLogin').mockResolvedValue(makeLoginStatus({ state: 'opening', startedAt: NOW }));
+    const startLogin = vi
+      .spyOn(api, 'startLogin')
+      .mockResolvedValue(makeLoginStatus({ state: 'opening', startedAt: NOW }));
     setup();
     const connection = await card('Slack connection');
     expect(within(connection).getByText('Connected')).toBeTruthy();
@@ -133,7 +136,9 @@ describe('Settings — Slack connection', () => {
   });
 
   it('asks to reconnect when Slack signed the session out', async () => {
-    const startLogin = vi.spyOn(api, 'startLogin').mockResolvedValue(makeLoginStatus({ state: 'opening', startedAt: NOW }));
+    const startLogin = vi
+      .spyOn(api, 'startLogin')
+      .mockResolvedValue(makeLoginStatus({ state: 'opening', startedAt: NOW }));
     setup(makeSettings({ connection: makeConnection({ expired: true }) }));
     const connection = await card('Slack connection');
     expect(within(connection).getByText('Signed out')).toBeTruthy();
@@ -193,9 +198,13 @@ describe('Settings — sync and attachments', () => {
     const update = acceptPatches();
     setup();
     const attachments = await card('Attachments');
-    const recommended = within(attachments).getByRole('radio', { name: /Images & documents up to 25 MB \(recommended\)/ }) as HTMLInputElement;
+    const recommended = within(attachments).getByRole('radio', {
+      name: /Images & documents up to 25 MB \(recommended\)/,
+    }) as HTMLInputElement;
     expect(recommended.checked).toBe(true);
-    expect(attachments.textContent).toMatch(/can be downloaded later by choosing a bigger option — but only while Slack still has them/);
+    expect(attachments.textContent).toMatch(
+      /can be downloaded later by choosing a bigger option — but only while Slack still has them/,
+    );
     fireEvent.click(within(attachments).getByRole('radio', { name: /Everything up to 200 MB/ }));
     await waitFor(() => expect(update).toHaveBeenCalledWith({ attachmentPolicy: 'everything' }));
   });
@@ -203,6 +212,7 @@ describe('Settings — sync and attachments', () => {
 
 describe('Settings — storage', () => {
   it('shows disk use split into messages and attachments, and the folder', async () => {
+    installFakeBridge(() => undefined, 'darwin');
     const show = vi.spyOn(api, 'showDataFolder').mockResolvedValue({ ok: true });
     setup();
     const storage = await card('Storage');
@@ -211,7 +221,7 @@ describe('Settings — storage', () => {
     expect(within(storage).getByText('880 MB')).toBeTruthy();
     expect(within(storage).getByText('200 GB')).toBeTruthy();
     expect(within(storage).getByText('/Users/me/Library/Application Support/Slack Archive')).toBeTruthy();
-    fireEvent.click(within(storage).getByRole('button', { name: 'Show folder' }));
+    fireEvent.click(within(storage).getByRole('button', { name: 'Show in Finder' }));
     await waitFor(() => expect(show).toHaveBeenCalledTimes(1));
   });
 
@@ -378,7 +388,9 @@ describe('Settings — when things fail', () => {
 
   it('says so in plain words when storage can’t be measured', async () => {
     setup();
-    vi.mocked(api.getStorage).mockRejectedValue(new ApiError('internal', 'Something went wrong. Nothing was lost — please try again.'));
+    vi.mocked(api.getStorage).mockRejectedValue(
+      new ApiError('internal', 'Something went wrong. Nothing was lost — please try again.'),
+    );
     cleanup();
     renderWithProviders(<SettingsPage />, { route: '/settings' });
     expect(await screen.findByText('Couldn’t measure the archive')).toBeTruthy();

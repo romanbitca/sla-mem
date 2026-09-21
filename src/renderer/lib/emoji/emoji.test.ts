@@ -125,13 +125,19 @@ describe('generated emoji-map.json', () => {
   });
 
   it('matches every skin variation in emoji-datasource', () => {
-    const source = JSON.parse(datasourceRaw) as { short_name: string; skin_variations?: Record<string, { unified: string }> }[];
+    const source = JSON.parse(datasourceRaw) as {
+      short_name: string;
+      skin_variations?: Record<string, { unified: string }>;
+    }[];
     const table = buildEmojiTable(data);
     const toneOf: Record<string, string> = { '1F3FB': '2', '1F3FC': '3', '1F3FD': '4', '1F3FE': '5', '1F3FF': '6' };
     let checked = 0;
     for (const entry of source) {
       for (const [key, variation] of Object.entries(entry.skin_variations ?? {})) {
-        const tone = key.split('-').map((k) => toneOf[k]).join('-');
+        const tone = key
+          .split('-')
+          .map((k) => toneOf[k])
+          .join('-');
         const expected = String.fromCodePoint(...variation.unified.split('-').map((h) => parseInt(h, 16)));
         expect(table.lookup(entry.short_name, tone), `${entry.short_name} ${tone}`).toBe(expected);
         checked++;

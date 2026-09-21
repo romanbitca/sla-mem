@@ -22,7 +22,11 @@ export function Emoji({ name, size, className }: EmojiProps): JSX.Element {
   const parsed = splitShortcode(name) ?? { name, skinTone: null };
   const drawn = renderEmoji(parsed.name, parsed.skinTone, ctx.customEmojiUrl, size, className);
   if (drawn) return drawn;
-  return <span className={clsx('md-emoji-missing', className)}>{`:${shortcodeWithTone(parsed.name, parsed.skinTone)}:`}</span>;
+  return (
+    <span
+      className={clsx('md-emoji-missing', className)}
+    >{`:${shortcodeWithTone(parsed.name, parsed.skinTone)}:`}</span>
+  );
 }
 
 /**
@@ -43,7 +47,13 @@ export function renderEmoji(
   if (resolved?.kind === 'unicode') {
     const style: CSSProperties | undefined = size ? { fontSize: size, lineHeight: 1 } : undefined;
     return (
-      <span className={clsx('md-emoji', className)} role="img" aria-label={name.replace(/_/g, ' ')} title={title} style={style}>
+      <span
+        className={clsx('md-emoji', className)}
+        role="img"
+        aria-label={name.replace(/_/g, ' ')}
+        title={title}
+        style={style}
+      >
         {resolved.native}
       </span>
     );

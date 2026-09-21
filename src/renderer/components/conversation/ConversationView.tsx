@@ -119,7 +119,9 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
     }
     setMissingTs(ts);
     const nearest = nearestMessage(messages, ts);
-    setRequest(nearest ? { id: nextRequestId.current++, target: { kind: 'message', ts: nearest.ts, highlight: false } } : null);
+    setRequest(
+      nearest ? { id: nextRequestId.current++, target: { kind: 'message', ts: nearest.ts, highlight: false } } : null,
+    );
   }, [request, query.isSuccess, query.isFetching, messages, anchor, setSearchParams]);
 
   const openThread = useStableCallback((threadTs: string) => {

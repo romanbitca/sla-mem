@@ -3,12 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { FileDTO } from '../../../shared/types';
 import { api, ApiError } from '../../lib/api';
-import { makeFile, makeImage, renderWithProviders } from '../../test/helpers';
+import { installFakeBridge, makeFile, makeImage, renderWithProviders } from '../../test/helpers';
 import { FileList, fileStatusNote } from './FileList';
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 function card(name: string): HTMLElement {
@@ -20,7 +21,8 @@ function renderFiles(files: FileDTO[]) {
 }
 
 describe('file cards', () => {
-  it('opens a saved document with the system app or shows it in its folder', async () => {
+  it('opens a saved document with the system app or shows it in Finder', async () => {
+    installFakeBridge(() => undefined, 'darwin');
     const openFile = vi.spyOn(api, 'openFile').mockResolvedValue({ ok: true });
     const revealFile = vi.spyOn(api, 'revealFile').mockResolvedValue({ ok: true });
     renderFiles([
@@ -36,12 +38,18 @@ describe('file cards', () => {
     const el = card('report.pdf');
     expect(el.textContent).toContain('PDF · 2.4 MB');
     fireEvent.click(within(el).getByRole('button', { name: 'Open' }));
-    fireEvent.click(within(el).getByRole('button', { name: 'Show report.pdf in folder' }));
+    fireEvent.click(within(el).getByRole('button', { name: 'Show report.pdf in Finder' }));
     await waitFor(() => expect(openFile).toHaveBeenCalledWith({ fileId: 'F3' }));
     expect(revealFile).toHaveBeenCalledWith({ fileId: 'F3' });
     const slack = within(el).getByRole('link', { name: 'Open report.pdf in Slack' });
     expect(slack.getAttribute('href')).toBe('https://9h.slack.com/files/U1/F3/report.pdf');
     expect(slack.getAttribute('target')).toBe('_blank');
+  });
+
+  it('names the file browser the way Windows does', () => {
+    installFakeBridge(() => undefined, 'win32');
+    renderFiles([makeFile({ id: 'F3', name: 'report.pdf' })]);
+    expect(within(card('report.pdf')).getByRole('button', { name: 'Show report.pdf in Explorer' })).toBeTruthy();
   });
 
   it('never renders a document inline: a PDF shows its saved thumbnail at most', () => {
@@ -84,7 +92,13 @@ describe('file cards', () => {
         status: 'skipped',
         statusReason: 'Too large (320 MB)',
       }),
-      makeFile({ id: 'F11', name: 'soon.zip', available: false, status: 'pending', statusReason: 'Waiting to be downloaded' }),
+      makeFile({
+        id: 'F11',
+        name: 'soon.zip',
+        available: false,
+        status: 'pending',
+        statusReason: 'Waiting to be downloaded',
+      }),
     ]);
     const old = card('old.png');
     expect(old.getAttribute('data-file-status')).toBe('unavailable');
@@ -97,7 +111,13 @@ describe('file cards', () => {
   it('offers Retry on a failed download and says it’s on its way', async () => {
     const retryFile = vi.spyOn(api, 'retryFile').mockResolvedValue({ runId: 12 });
     renderFiles([
-      makeFile({ id: 'F12', name: 'notes.docx', available: false, status: 'failed', statusReason: 'Couldn’t download' }),
+      makeFile({
+        id: 'F12',
+        name: 'notes.docx',
+        available: false,
+        status: 'failed',
+        statusReason: 'Couldn’t download',
+      }),
     ]);
     const el = card('notes.docx');
     expect(el.textContent).toContain('Couldn’t download');

@@ -76,12 +76,7 @@ export function ConnectSlackCard({ variant }: { variant: ConnectPrompt }) {
           </p>
         )}
       </div>
-      <Button
-        variant="primary"
-        loading={pending}
-        onClick={reconnect}
-        className="self-start sm:self-center"
-      >
+      <Button variant="primary" loading={pending} onClick={reconnect} className="self-start sm:self-center">
         {copy.action}
       </Button>
     </section>

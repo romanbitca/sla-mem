@@ -169,7 +169,11 @@ function renderNode(node: MrkdwnNode, key: number, env: RenderEnv): ReactNode {
     case 'emoji': {
       const drawn = renderEmoji(node.name, node.skinTone, env.ctx.customEmojiUrl, env.emojiSize);
       if (drawn) return <Fragment key={key}>{drawn}</Fragment>;
-      return <Fragment key={key}>{highlightText(`:${shortcodeWithTone(node.name, node.skinTone)}:`, env.highlight)}</Fragment>;
+      return (
+        <Fragment key={key}>
+          {highlightText(`:${shortcodeWithTone(node.name, node.skinTone)}:`, env.highlight)}
+        </Fragment>
+      );
     }
     default:
       return renderReference(node, key, env);
@@ -241,7 +245,13 @@ function renderChannel(id: string, label: string, key: number, env: RenderEnv): 
     navigate(href);
   };
   return (
-    <a key={key} className="md-mention md-mention-channel rounded px-0.5" href={href} onClick={onClick} data-channel-id={id}>
+    <a
+      key={key}
+      className="md-mention md-mention-channel rounded px-0.5"
+      href={href}
+      onClick={onClick}
+      data-channel-id={id}
+    >
       {text}
     </a>
   );

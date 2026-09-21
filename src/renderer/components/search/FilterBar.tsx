@@ -135,9 +135,15 @@ export function FilterBar({ state, effective, data, onChange }: FilterBarProps) 
               key={has}
               type="button"
               aria-pressed={pressed}
-              title={pressed ? `Showing only messages with ${label.toLowerCase()}` : `Only messages with ${label.toLowerCase()}`}
+              title={
+                pressed
+                  ? `Showing only messages with ${label.toLowerCase()}`
+                  : `Only messages with ${label.toLowerCase()}`
+              }
               onClick={() =>
-                onChange(setHasFilter(state, pressed ? effective.has.filter((h) => h !== has) : [...effective.has, has], data))
+                onChange(
+                  setHasFilter(state, pressed ? effective.has.filter((h) => h !== has) : [...effective.has, has], data),
+                )
               }
               className={clsx(
                 'focus-ring inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[13px] transition-colors',

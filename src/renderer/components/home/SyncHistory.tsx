@@ -74,7 +74,10 @@ export function SyncHistory({ runs }: { runs: readonly SyncRunDTO[] }) {
                     {timeAgo(run.startedAt, now)}
                   </time>
                   <span className="text-ink-faint tabular-nums">{runDuration(run, now)}</span>
-                  <span className="min-w-0 basis-full truncate text-ink-muted sm:basis-auto sm:flex-1" title={summarizeRun(run)}>
+                  <span
+                    className="min-w-0 basis-full truncate text-ink-muted sm:basis-auto sm:flex-1"
+                    title={summarizeRun(run)}
+                  >
                     {summarizeRun(run)}
                   </span>
                 </li>

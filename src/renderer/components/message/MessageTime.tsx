@@ -12,7 +12,10 @@ export function MessageTime({ message, className }: { message: MessageDTO; class
   return (
     <Link
       to={messagePath(message)}
-      className={clsx('focus-ring rounded text-xs text-ink-faint tabular-nums hover:text-ink-muted hover:underline', className)}
+      className={clsx(
+        'focus-ring rounded text-xs text-ink-faint tabular-nums hover:text-ink-muted hover:underline',
+        className,
+      )}
       title={full}
       aria-label={full}
     >

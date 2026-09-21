@@ -51,7 +51,8 @@ export function Dialog({
   useEffect(() => {
     if (!open) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
-    const target = initialFocusRef?.current ?? panelRef.current?.querySelector<HTMLElement>(FOCUSABLE) ?? panelRef.current;
+    const target =
+      initialFocusRef?.current ?? panelRef.current?.querySelector<HTMLElement>(FOCUSABLE) ?? panelRef.current;
     target?.focus();
     const { overflow } = document.body.style;
     document.body.style.overflow = 'hidden';

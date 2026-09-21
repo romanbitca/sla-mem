@@ -251,7 +251,9 @@ describe('SearchPage', () => {
     expect(screen.queryByRole('button', { name: 'Clear From filter' })).toBeNull();
     // Editing people keeps the app filter typed in the query.
     fireEvent.click(screen.getByRole('button', { name: /^From/ }));
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'From filter' })).getByRole('checkbox', { name: /Carol/ }));
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: 'From filter' })).getByRole('checkbox', { name: /Carol/ }),
+    );
     await waitFor(() => expect(query(location).getAll('user')).toEqual(['U3']));
     expect(query(location).get('q')).toBe('deploy from:GitHub');
   });

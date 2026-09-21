@@ -149,8 +149,8 @@ export function ConnectionCard({ connection }: { connection: SlackConnectionDTO 
         ) : (
           <div className="flex flex-col gap-3">
             <p className="text-[13.5px] leading-relaxed text-ink-muted">
-              You’ll sign in to Slack in a window, just like in your browser. Slack Archive then keeps a copy of your own
-              conversations on this computer. Nothing is uploaded anywhere.
+              You’ll sign in to Slack in a window, just like in your browser. Slack Archive then keeps a copy of your
+              own conversations on this computer. Nothing is uploaded anywhere.
             </p>
             <div>
               <Button variant="primary" icon={<PlugIcon size={15} />} loading={start.isPending} onClick={signIn}>

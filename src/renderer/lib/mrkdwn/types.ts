@@ -103,12 +103,7 @@ export interface EmojiNode {
 }
 
 export type ReferenceNode =
-  | LinkNode
-  | UserMentionNode
-  | ChannelMentionNode
-  | BroadcastNode
-  | UsergroupMentionNode
-  | DateNode;
+  LinkNode | UserMentionNode | ChannelMentionNode | BroadcastNode | UsergroupMentionNode | DateNode;
 
 export type CodeChildNode = TextNode | ReferenceNode;
 

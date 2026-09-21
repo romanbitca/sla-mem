@@ -78,7 +78,8 @@ export function MultiSelectPicker({
     onChange(selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id]);
   };
 
-  const checkboxes = () => Array.from(listRef.current?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]') ?? []);
+  const checkboxes = () =>
+    Array.from(listRef.current?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]') ?? []);
 
   const onFilterKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
@@ -120,7 +121,11 @@ export function MultiSelectPicker({
         {loading && <p className="px-2.5 py-3 text-[13px] text-ink-muted">Loading…</p>}
         {!loading && visible.length === 0 && <p className="px-2.5 py-3 text-[13px] text-ink-muted">{emptyText}</p>}
         {groups.map((group, gi) => (
-          <div key={`${group.title ?? ''}:${gi}`} role="group" aria-labelledby={group.title ? `${baseId}-g${gi}` : undefined}>
+          <div
+            key={`${group.title ?? ''}:${gi}`}
+            role="group"
+            aria-labelledby={group.title ? `${baseId}-g${gi}` : undefined}
+          >
             {group.title && (
               <p
                 id={`${baseId}-g${gi}`}

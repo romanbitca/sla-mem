@@ -2,6 +2,7 @@ import { memo, useState, type ComponentType } from 'react';
 import clsx from 'clsx';
 import type { FileDTO } from '../../../shared/types';
 import { describeError } from '../../lib/api';
+import { fileBrowserName } from '../../lib/bridge';
 import { formatBytes } from '../../lib/format';
 import { useOpenFile, useRetryFile, useRevealFile } from '../../lib/queries';
 import { remoteImageSrc } from '../../lib/remoteImage';
@@ -206,7 +207,13 @@ export const FileCard = memo(function FileCard({ file }: { file: FileDTO }) {
           aria-label={`Open ${title}`}
           className="focus-ring overflow-hidden rounded-md border border-line bg-inset enabled:hover:border-line-strong"
         >
-          <img src={preview} alt="" loading="lazy" decoding="async" className="block max-h-[180px] w-full object-contain object-top" />
+          <img
+            src={preview}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="block max-h-[180px] w-full object-contain object-top"
+          />
         </button>
       )}
       <div className="flex items-center gap-3">
@@ -241,8 +248,8 @@ export const FileCard = memo(function FileCard({ file }: { file: FileDTO }) {
                 Open
               </Button>
               <IconButton
-                label={`Show ${title} in folder`}
-                title="Show in folder"
+                label={`Show ${title} in ${fileBrowserName() ?? 'folder'}`}
+                title={`Show in ${fileBrowserName() ?? 'folder'}`}
                 icon={<FolderIcon size={15} />}
                 onClick={() => reveal.mutate(file.id)}
               />

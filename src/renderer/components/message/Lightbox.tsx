@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { FileDTO } from '../../../shared/types';
 import { describeError } from '../../lib/api';
+import { fileBrowserName } from '../../lib/bridge';
 import { formatBytes } from '../../lib/format';
 import { useKeydown } from '../../lib/hooks';
 import { useOpenFile, useRevealFile } from '../../lib/queries';
@@ -92,7 +93,7 @@ export function Lightbox({ images, index, onIndexChange, onClose }: LightboxProp
           variant="overlay"
         />
         <IconButton
-          label="Show in folder"
+          label={`Show in ${fileBrowserName() ?? 'folder'}`}
           icon={<FolderIcon size={17} />}
           onClick={() => reveal.mutate(file.id)}
           variant="overlay"

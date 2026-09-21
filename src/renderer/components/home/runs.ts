@@ -71,7 +71,9 @@ export function counterLabel(key: string, count: number): string | null {
 export function summarizeRun(run: SyncRunDTO): string {
   const parts = COUNTERS.flatMap(([key, singular, plural]) => {
     const n = run.stats[key];
-    return typeof n === 'number' && Number.isFinite(n) && n > 0 ? [`${n.toLocaleString()} ${n === 1 ? singular : plural}`] : [];
+    return typeof n === 'number' && Number.isFinite(n) && n > 0
+      ? [`${n.toLocaleString()} ${n === 1 ? singular : plural}`]
+      : [];
   });
   const counts = parts.join(' · ');
   switch (run.status) {

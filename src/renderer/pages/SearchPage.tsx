@@ -266,7 +266,12 @@ function ResultsToolbar({
           </select>
         </label>
         <div role="group" aria-label="Result layout" className="flex rounded-lg border border-line bg-raised p-0.5">
-          <ViewButton active={view === 'flat'} onClick={() => onView('flat')} icon={<ListIcon size={14} />} label="List" />
+          <ViewButton
+            active={view === 'flat'}
+            onClick={() => onView('flat')}
+            icon={<ListIcon size={14} />}
+            label="List"
+          />
           <ViewButton
             active={view === 'grouped'}
             onClick={() => onView('grouped')}
@@ -279,7 +284,17 @@ function ResultsToolbar({
   );
 }
 
-function ViewButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: ReactNode; label: string }) {
+function ViewButton({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: ReactNode;
+  label: string;
+}) {
   return (
     <button
       type="button"

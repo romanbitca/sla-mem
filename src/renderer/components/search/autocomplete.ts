@@ -69,12 +69,25 @@ export const MODIFIER_HINTS: readonly ModifierHint[] = [
 ];
 
 function hintSuggestion(hint: ModifierHint): Suggestion {
-  return { id: `mod:${hint.insert}`, kind: 'modifier', insert: hint.insert, label: hint.insert, detail: hint.detail, complete: hint.complete };
+  return {
+    id: `mod:${hint.insert}`,
+    kind: 'modifier',
+    insert: hint.insert,
+    label: hint.insert,
+    detail: hint.detail,
+    complete: hint.complete,
+  };
 }
 
 export function getAutocomplete(q: string, caret: number, source: AutocompleteSource): Autocomplete | null {
   if (q.trim() === '') {
-    return { start: 0, end: q.length, title: 'Narrow your search', suggestions: MODIFIER_HINTS.map(hintSuggestion), autoSelect: false };
+    return {
+      start: 0,
+      end: q.length,
+      title: 'Narrow your search',
+      suggestions: MODIFIER_HINTS.map(hintSuggestion),
+      autoSelect: false,
+    };
   }
   const token = tokenizeQuery(q).find((t) => t.start < caret && caret <= t.end);
   // Quoted text is literal; negated modifiers aren't supported by search.
@@ -208,7 +221,9 @@ export function userRef(user: UserDTO, users: readonly UserDTO[]): string {
   const handle = user.name;
   if (!handle || !SAFE_NAME.test(handle)) return user.id;
   const h = handle.toLowerCase();
-  const holders = users.filter((u) => u.id.toLowerCase() === h || [u.name, u.displayName, u.realName].some((k) => lower(k) === h));
+  const holders = users.filter(
+    (u) => u.id.toLowerCase() === h || [u.name, u.displayName, u.realName].some((k) => lower(k) === h),
+  );
   return holders.length === 1 ? `@${handle}` : user.id;
 }
 
@@ -222,7 +237,9 @@ export function conversationRef(conv: ConversationDTO, source: AutocompleteSourc
   }
   if (conv.type === 'mpim' || !conv.rawName || !SAFE_NAME.test(conv.rawName)) return conv.id;
   const name = conv.rawName.toLowerCase();
-  const holders = source.conversations.filter((c) => c.id.toLowerCase() === name || (c.type !== 'im' && lower(c.rawName) === name));
+  const holders = source.conversations.filter(
+    (c) => c.id.toLowerCase() === name || (c.type !== 'im' && lower(c.rawName) === name),
+  );
   return holders.length === 1 ? `#${conv.rawName}` : conv.id;
 }
 

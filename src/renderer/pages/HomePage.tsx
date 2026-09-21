@@ -2,7 +2,15 @@ import { differenceInCalendarDays } from 'date-fns';
 import type { SyncStatusDTO } from '../../shared/types';
 import { describeError } from '../lib/api';
 import { FREE_PLAN_WINDOW_DAYS, pluralize } from '../lib/format';
-import { useAppInfo, useSettings, useStartSync, useStats, useStorage, useSyncStatus, useWorkspace } from '../lib/queries';
+import {
+  useAppInfo,
+  useSettings,
+  useStartSync,
+  useStats,
+  useStorage,
+  useSyncStatus,
+  useWorkspace,
+} from '../lib/queries';
 import { ArchiveStats, FreeWindowHero } from '../components/home/ArchiveStats';
 import { ConnectSlackCard } from '../components/home/ConnectSlackCard';
 import { ProblemCallout } from '../components/home/ProblemCallout';

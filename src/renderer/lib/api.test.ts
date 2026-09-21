@@ -104,7 +104,9 @@ describe('api over the preload bridge', () => {
 
   it('maps a rejected invoke (no handler in main) to a plain error', async () => {
     const bridge = installFakeBridge();
-    bridge.call.mockRejectedValueOnce(new Error("Error invoking remote method 'archive:getStats': No handler registered"));
+    bridge.call.mockRejectedValueOnce(
+      new Error("Error invoking remote method 'archive:getStats': No handler registered"),
+    );
     const error = (await api.getStats().catch((e: unknown) => e)) as ApiError;
     expect(error.code).toBe('internal');
     expect(describeError(error)).toBe(GENERIC_ERROR);

@@ -8,11 +8,19 @@ const baseCtx: MrkdwnContext = {
   userLabel: (id) => ({ U1: 'Roman', U2: 'Ana' })[id],
   channelLabel: (id) => ({ C1: 'general' })[id],
   customEmojiUrl: (name) =>
-    ({ partyparrot: 'https://emoji.slack-edge.com/T1/partyparrot/abc.gif', yes: 'alias:+1', evil: 'javascript:alert(1)' })[name],
+    ({
+      partyparrot: 'https://emoji.slack-edge.com/T1/partyparrot/abc.gif',
+      yes: 'alias:+1',
+      evil: 'javascript:alert(1)',
+    })[name],
   channelHref: (id) => `/c/${id}`,
 };
 
-function renderMd(text: string, ctx: Partial<MrkdwnContext> = {}, props: { inline?: boolean; className?: string } = {}) {
+function renderMd(
+  text: string,
+  ctx: Partial<MrkdwnContext> = {},
+  props: { inline?: boolean; className?: string } = {},
+) {
   return render(
     <MrkdwnProvider value={{ ...baseCtx, ...ctx }}>
       <Mrkdwn text={text} {...props} />
@@ -153,7 +161,11 @@ describe('<Mrkdwn>', () => {
   });
 
   it('supports inline mode for single-line contexts', () => {
-    const { container } = renderMd('line one\nline two ```code``` &gt; not a block', {}, { inline: true, className: 'truncate' });
+    const { container } = renderMd(
+      'line one\nline two ```code``` &gt; not a block',
+      {},
+      { inline: true, className: 'truncate' },
+    );
     const root = container.firstElementChild as HTMLElement;
     expect(root.tagName).toBe('SPAN');
     expect(root.className).toContain('truncate');
@@ -183,7 +195,9 @@ describe('<Emoji>', () => {
         <Emoji name=":partyparrot:" />
       </MrkdwnProvider>,
     );
-    expect(container.querySelector('img')?.getAttribute('src')).toBe('https://emoji.slack-edge.com/T1/partyparrot/abc.gif');
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(
+      'https://emoji.slack-edge.com/T1/partyparrot/abc.gif',
+    );
   });
 
   it('falls back to the literal :name:', () => {

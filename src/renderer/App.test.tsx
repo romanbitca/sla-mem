@@ -14,7 +14,6 @@ import {
   NOT_CONNECTED,
 } from './test/helpers';
 
-
 beforeEach(() => {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: query.includes('min-width'),

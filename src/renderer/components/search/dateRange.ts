@@ -55,7 +55,12 @@ export function datePresets(now: Date = new Date()): DatePreset[] {
     { id: 'today', label: 'Today', range: { after: today, before: null } },
     { id: '7d', label: 'Last 7 days', range: since(7) },
     { id: '30d', label: 'Last 30 days', range: since(30) },
-    { id: '90d', label: `Last ${FREE_PLAN_WINDOW_DAYS} days`, detail: 'What Slack Free still shows', range: since(FREE_PLAN_WINDOW_DAYS) },
+    {
+      id: '90d',
+      label: `Last ${FREE_PLAN_WINDOW_DAYS} days`,
+      detail: 'What Slack Free still shows',
+      range: since(FREE_PLAN_WINDOW_DAYS),
+    },
     {
       id: 'beyond',
       label: `Older than ${FREE_PLAN_WINDOW_DAYS} days`,

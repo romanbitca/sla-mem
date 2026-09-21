@@ -64,7 +64,8 @@ export function CookieConnectForm({ defaultWorkspace, onConnected, disabled = fa
           Open the developer tools: press <Kbd>F12</Kbd>, or <Kbd>⌥⌘I</Kbd> on a Mac.
         </li>
         <li>
-          Go to <span className="font-medium text-ink">Application → Cookies →</span> <Code>https://app.slack.com</Code>.
+          Go to <span className="font-medium text-ink">Application → Cookies →</span> <Code>https://app.slack.com</Code>
+          .
         </li>
         <li>
           Copy the value of the cookie named <Code>d</Code>. It starts with <Code>xoxd-</Code>.

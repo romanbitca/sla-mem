@@ -52,7 +52,9 @@ export function RevisionsPopover({ conversationId, ts, editedTs, revisionCount }
           aria-label="Edit history"
           className="absolute top-full left-0 z-40 mt-1.5 w-[min(420px,80vw)] animate-pop-in rounded-xl border border-line bg-raised p-1 shadow-pop"
         >
-          <p className="px-3 pt-2 pb-1 text-xs font-semibold tracking-wide text-ink-faint uppercase">Earlier versions</p>
+          <p className="px-3 pt-2 pb-1 text-xs font-semibold tracking-wide text-ink-faint uppercase">
+            Earlier versions
+          </p>
           <div className="scroll-thin max-h-80 overflow-y-auto">
             {revisions.isPending && (
               <div className="flex items-center gap-2 px-3 py-3 text-sm text-ink-muted">
@@ -68,19 +70,19 @@ export function RevisionsPopover({ conversationId, ts, editedTs, revisionCount }
                 {[...revisions.data]
                   .sort((a, b) => b.seenAt - a.seenAt)
                   .map((rev, i) => (
-                  <li key={`${rev.seenAt}:${i}`} className="rounded-lg px-3 py-2 hover:bg-hover">
-                    <p className="mb-0.5 text-xs text-ink-faint">
-                      {rev.editedTs
-                        ? `Version from ${format(tsToDate(rev.editedTs), 'MMM d, yyyy h:mm a')}`
-                        : 'Original version'}
-                      {' · '}
-                      archived {format(new Date(rev.seenAt), 'MMM d, yyyy')}
-                    </p>
-                    <div className="msg-text text-sm text-ink">
-                      <Mrkdwn text={rev.text} />
-                    </div>
-                  </li>
-                ))}
+                    <li key={`${rev.seenAt}:${i}`} className="rounded-lg px-3 py-2 hover:bg-hover">
+                      <p className="mb-0.5 text-xs text-ink-faint">
+                        {rev.editedTs
+                          ? `Version from ${format(tsToDate(rev.editedTs), 'MMM d, yyyy h:mm a')}`
+                          : 'Original version'}
+                        {' · '}
+                        archived {format(new Date(rev.seenAt), 'MMM d, yyyy')}
+                      </p>
+                      <div className="msg-text text-sm text-ink">
+                        <Mrkdwn text={rev.text} />
+                      </div>
+                    </li>
+                  ))}
               </ol>
             )}
           </div>

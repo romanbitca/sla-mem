@@ -26,7 +26,9 @@ describe('mrkdwnToPlainText', () => {
   });
 
   it('renders broadcasts, user groups and dates', () => {
-    expect(mrkdwnToPlainText('<!here> <!channel> <!subteam^S1|@devs> <!subteam^S2|ops>')).toBe('@here @channel @devs @ops');
+    expect(mrkdwnToPlainText('<!here> <!channel> <!subteam^S1|@devs> <!subteam^S2|ops>')).toBe(
+      '@here @channel @devs @ops',
+    );
     expect(mrkdwnToPlainText('<!date^1392734382^{date_short}|Feb 18, 2014>')).toBe('Feb 18, 2014');
   });
 
@@ -44,9 +46,9 @@ describe('mrkdwnToPlainText', () => {
   });
 
   it('resolves skin tones and custom aliases to Unicode', () => {
-    expect(mrkdwnToPlainText(':wave::skin-tone-3: :yes:', { customEmojiUrl: (n) => (n === 'yes' ? 'alias:+1' : undefined) })).toBe(
-      '👋🏼 👍',
-    );
+    expect(
+      mrkdwnToPlainText(':wave::skin-tone-3: :yes:', { customEmojiUrl: (n) => (n === 'yes' ? 'alias:+1' : undefined) }),
+    ).toBe('👋🏼 👍');
   });
 
   it('trims surrounding whitespace', () => {
@@ -124,7 +126,9 @@ describe('safeHref', () => {
 
 describe('safeImageSrc (custom emoji)', () => {
   it('allows Slack’s emoji CDN, proxied web images and raster data images only', () => {
-    expect(safeImageSrc('https://emoji.slack-edge.com/T1/party/abc.gif')).toBe('https://emoji.slack-edge.com/T1/party/abc.gif');
+    expect(safeImageSrc('https://emoji.slack-edge.com/T1/party/abc.gif')).toBe(
+      'https://emoji.slack-edge.com/T1/party/abc.gif',
+    );
     expect(safeImageSrc('https://example.com/party.gif')).toBe(
       `https://slack-imgs.com/?c=1&o1=ro&url=${encodeURIComponent('https://example.com/party.gif')}`,
     );

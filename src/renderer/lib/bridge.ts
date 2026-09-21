@@ -13,12 +13,20 @@ export function getBridge(): ArchiveBridge | null {
   return bridge ?? null;
 }
 
+/** What the OS calls its file browser, for "Show in Finder" / "Show in Explorer" (PLAN §3.4). */
+export function fileBrowserName(platform: Platform = currentPlatform()): string | null {
+  if (platform === 'darwin') return 'Finder';
+  if (platform === 'win32') return 'Explorer';
+  return null;
+}
+
 /** The OS the app runs on: from the bridge, or guessed from the user agent (tests, previews). */
 export function currentPlatform(): Platform {
   const fromBridge = getBridge()?.platform;
   if (fromBridge) return fromBridge;
   const ua = typeof navigator === 'undefined' ? '' : `${navigator.platform} ${navigator.userAgent}`;
-  if (/Mac|iPhone|iPad/i.test(ua)) return 'darwin';
-  if (/Win/i.test(ua)) return 'win32';
+  // Careful: "darwin" contains "win".
+  if (/Mac|darwin|iPhone|iPad/i.test(ua)) return 'darwin';
+  if (/Windows|Win32|Win64/i.test(ua)) return 'win32';
   return 'linux';
 }

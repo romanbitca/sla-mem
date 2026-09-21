@@ -75,7 +75,12 @@ export function ThreadPanel({ conversationId, threadTs, highlightTs = null, onCl
       <div ref={scrollRef} className="scroll-thin min-h-0 flex-1 overflow-y-auto pb-6" data-testid="thread-scroller">
         {thread.isPending && <LoadingState label="Loading thread…" />}
         {thread.isError && (
-          <ErrorState error={thread.error} title="Couldn’t load this thread" onRetry={() => void thread.refetch()} compact />
+          <ErrorState
+            error={thread.error}
+            title="Couldn’t load this thread"
+            onRetry={() => void thread.refetch()}
+            compact
+          />
         )}
         {data && !data.parent && data.replies.length === 0 && (
           <EmptyState compact title="Thread not found" description="This thread isn’t in the archive." />
@@ -84,11 +89,7 @@ export function ThreadPanel({ conversationId, threadTs, highlightTs = null, onCl
           <>
             {data.parent ? (
               <div className="pt-3 pb-1">
-                <MessageItem
-                  message={data.parent}
-                  showThreadSummary={false}
-                  highlighted={flashTs === data.parent.ts}
-                />
+                <MessageItem message={data.parent} showThreadSummary={false} highlighted={flashTs === data.parent.ts} />
               </div>
             ) : (
               <p className="mx-5 mt-4 flex items-center gap-2 rounded-lg bg-inset px-3 py-2 text-xs text-ink-muted">
@@ -120,8 +121,7 @@ export function ThreadPanel({ conversationId, threadTs, highlightTs = null, onCl
             ))}
             {data.parent && data.replies.length < data.parent.replyCount && (
               <p className="mx-5 mt-3 text-xs text-ink-faint">
-                {pluralize(data.parent.replyCount - data.replies.length, 'reply', 'replies')} in Slack weren’t
-                archived.
+                {pluralize(data.parent.replyCount - data.replies.length, 'reply', 'replies')} in Slack weren’t archived.
               </p>
             )}
           </>

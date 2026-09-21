@@ -59,7 +59,9 @@ describe('search URL <-> state', () => {
     const s = state({ q: 'a b', user: ['U2', 'U3'], has: ['thread', 'file'], after: '2026-01-01' });
     expect(serializeSearchUrl(s)).toBe('?q=a+b&user=U2&user=U3&after=2026-01-01&has=file&has=thread');
     expect(serializeSearchUrl(EMPTY_SEARCH)).toBe('');
-    expect(searchLocation(state({ q: 'x', sort: 'oldest', view: 'grouped' }))).toBe('/search?q=x&sort=oldest&view=grouped');
+    expect(searchLocation(state({ q: 'x', sort: 'oldest', view: 'grouped' }))).toBe(
+      '/search?q=x&sort=oldest&view=grouped',
+    );
   });
 
   it('round-trips', () => {
@@ -123,7 +125,9 @@ describe('effective filters', () => {
     // Unresolvable modifiers stay put so their warning stays visible.
     expect(setUserFilter(s, ['U3'], data)).toEqual(state({ q: 'deploy from:@nobody', user: ['U3'] }));
     expect(setConversationFilter(state({ q: 'in:#general x' }), [], data)).toEqual(state({ q: 'x' }));
-    expect(setHasFilter(state({ q: 'has:link' }), ['file', 'link'], data)).toEqual(state({ q: 'has:link', has: ['file'] }));
+    expect(setHasFilter(state({ q: 'has:link' }), ['file', 'link'], data)).toEqual(
+      state({ q: 'has:link', has: ['file'] }),
+    );
   });
 
   it('replaces typed dates when the date chip is edited', () => {
@@ -134,7 +138,11 @@ describe('effective filters', () => {
   });
 
   it('clears every chip filter but keeps words, is:thread and unresolved modifiers', () => {
-    const s = state({ q: '"release notes" from:@bob in:#general is:thread from:@ghost', has: ['file'], after: '2026-01-01' });
+    const s = state({
+      q: '"release notes" from:@bob in:#general is:thread from:@ghost',
+      has: ['file'],
+      after: '2026-01-01',
+    });
     expect(clearFilters(s, data)).toEqual(state({ q: '"release notes" is:thread from:@ghost' }));
   });
 });

@@ -98,7 +98,12 @@ describe('grouping', () => {
     const a = at(0);
     const b = at(1);
     const c = at(2);
-    expect(dedupeMessages([[a, b], [b, c]])).toEqual([a, b, c]);
+    expect(
+      dedupeMessages([
+        [a, b],
+        [b, c],
+      ]),
+    ).toEqual([a, b, c]);
   });
 });
 

@@ -16,7 +16,11 @@ export function shortcodeWithTone(name: string, skinTone: string | null): string
  * matters for speed. Custom values of the form `alias:target` are followed (bounded, to survive
  * alias cycles), including aliases that point at standard emoji.
  */
-export function resolveEmoji(name: string, skinTone: string | null, customEmojiUrl: CustomLookup): ResolvedEmoji | null {
+export function resolveEmoji(
+  name: string,
+  skinTone: string | null,
+  customEmojiUrl: CustomLookup,
+): ResolvedEmoji | null {
   const native = emojiFromShortcode(shortcodeWithTone(name, skinTone));
   if (native) return { kind: 'unicode', native };
   return resolveCustom(name, customEmojiUrl, 0);

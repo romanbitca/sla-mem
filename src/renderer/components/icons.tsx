@@ -178,10 +178,7 @@ export const HistoryIcon = makeIcon(
     <path d="M3 3v5h5M12 7v5l3 2" />
   </>,
 );
-export const TrashIcon = makeIcon(
-  'Trash',
-  <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />,
-);
+export const TrashIcon = makeIcon('Trash', <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />);
 export const AlertIcon = makeIcon(
   'Alert',
   <>
@@ -286,7 +283,10 @@ export const GlobeIcon = makeIcon(
   </>,
 );
 export const PlugIcon = makeIcon('Plug', <path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4" />);
-export const LogOutIcon = makeIcon('LogOut', <path d="M9 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3M16 16l4-4-4-4M20 12H9" />);
+export const LogOutIcon = makeIcon(
+  'LogOut',
+  <path d="M9 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3M16 16l4-4-4-4M20 12H9" />,
+);
 export const InfoIcon = makeIcon(
   'Info',
   <>

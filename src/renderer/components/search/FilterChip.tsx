@@ -70,7 +70,10 @@ export function FilterChip({ label, value, icon, onClear, children, panelClassNa
           onClick={toggle}
           aria-haspopup="dialog"
           aria-expanded={open}
-          className={clsx('focus-ring flex h-full max-w-64 items-center gap-1.5 rounded-full pl-3', active ? 'pr-1.5' : 'pr-2.5')}
+          className={clsx(
+            'focus-ring flex h-full max-w-64 items-center gap-1.5 rounded-full pl-3',
+            active ? 'pr-1.5' : 'pr-2.5',
+          )}
         >
           <span className="shrink-0 opacity-80">{icon}</span>
           <span className={clsx('shrink-0', active && 'font-medium')}>{label}</span>
