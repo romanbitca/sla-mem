@@ -426,7 +426,7 @@ describe('sanitizeFileName', () => {
 describe('fileTarget', () => {
   it('builds <filesDir>/<id>/<name>', () => {
     const t = fileTarget('/data/files', { id: 'F1', name: 'a.pdf', title: null, filetype: 'pdf' });
-    expect(t.absPath).toBe(path.join('/data/files', 'F1', 'a.pdf'));
+    expect(t.absPath).toBe(path.resolve('/data/files', 'F1', 'a.pdf'));
     expect(t.relPath).toBe(path.join('F1', 'a.pdf'));
   });
 
