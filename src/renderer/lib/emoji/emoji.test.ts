@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { emojiFromShortcode, isEmojiMapLoaded, loadEmojiMap, splitShortcode } from './index';
 import { applySkinTone, buildEmojiTable, type EmojiMapData } from './table';
 // Raw text via Vite (these tests run in the renderer's config, without Node's fs).
@@ -6,9 +6,12 @@ import mapRaw from './emoji-map.json?raw';
 import datasourceRaw from 'emoji-datasource/emoji.json?raw';
 
 describe('before the map is loaded', () => {
-  it('returns undefined instead of throwing', () => {
-    expect(isEmojiMapLoaded()).toBe(false);
-    expect(emojiFromShortcode('smile')).toBeUndefined();
+  it('returns undefined instead of throwing', async () => {
+    // A fresh copy of the module: other tests in this file may already have loaded the map.
+    vi.resetModules();
+    const fresh = await import('./index');
+    expect(fresh.isEmojiMapLoaded()).toBe(false);
+    expect(fresh.emojiFromShortcode('smile')).toBeUndefined();
   });
 });
 
