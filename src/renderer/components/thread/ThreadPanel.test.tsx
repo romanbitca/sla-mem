@@ -4,7 +4,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import type { ThreadDTO } from '../../../shared/types';
 import { api, ApiError } from '../../lib/api';
 import { makeFile, makeMessage, renderWithProviders } from '../../test/helpers';
-import { ThreadPanel } from './ThreadPanel';
+import { THREAD_WINDOW, ThreadPanel } from './ThreadPanel';
 
 afterEach(() => {
   cleanup();
@@ -45,6 +45,23 @@ function renderPanel(props: { highlightTs?: string | null; onClose?: () => void 
   );
   return { ...utils, onClose };
 }
+
+function longThread(count: number): ThreadDTO {
+  return {
+    parent: makeMessage({ ts: PARENT_TS, threadTs: PARENT_TS, text: 'the incident', replyCount: count }),
+    replies: Array.from({ length: count }, (_, i) =>
+      makeMessage({
+        ts: `${1_700_000_100 + i * 10}.000000`,
+        threadTs: PARENT_TS,
+        isReply: true,
+        userId: i % 2 ? 'U2' : 'U3',
+        text: `update ${i}`,
+      }),
+    ),
+  };
+}
+
+const drawnReplies = () => screen.queryAllByText(/^update \d+$/).length;
 
 describe('ThreadPanel', () => {
   it('shows the parent and every reply, grouping consecutive replies by author', async () => {
@@ -127,5 +144,36 @@ describe('ThreadPanel', () => {
     vi.spyOn(api, 'getThread').mockResolvedValue({ parent: null, replies: [] });
     renderPanel();
     await screen.findByText('Thread not found');
+  });
+  it('draws a very long thread in steps instead of all at once', async () => {
+    const count = 2 * THREAD_WINDOW + 50;
+    vi.spyOn(api, 'getThread').mockResolvedValue(longThread(count));
+    renderPanel();
+    await screen.findByText('update 0');
+    expect(screen.getByText(`${count} replies`)).toBeTruthy();
+    expect(drawnReplies()).toBe(THREAD_WINDOW);
+    expect(screen.queryByRole('button', { name: /earlier repl/ })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: `Show ${THREAD_WINDOW} more replies` }));
+    expect(drawnReplies()).toBe(2 * THREAD_WINDOW);
+    fireEvent.click(screen.getByRole('button', { name: 'Show 50 more replies' }));
+    expect(drawnReplies()).toBe(count);
+    expect(screen.queryByRole('button', { name: /more repl/ })).toBeNull();
+  });
+
+  it('opens a long thread around a linked reply, with earlier replies a click away', async () => {
+    const count = 3 * THREAD_WINDOW;
+    const thread = longThread(count);
+    const target = thread.replies[2 * THREAD_WINDOW + 10];
+    vi.spyOn(api, 'getThread').mockResolvedValue(thread);
+    renderPanel({ highlightTs: target.ts });
+    const reply = await screen.findByText(target.text);
+    await waitFor(() => expect(reply.closest('article')!.dataset.highlighted).toBe('true'));
+    expect(drawnReplies()).toBe(THREAD_WINDOW);
+    expect(screen.queryByText('update 0')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: `Show ${THREAD_WINDOW} earlier replies` }));
+    expect(drawnReplies()).toBe(2 * THREAD_WINDOW);
+    expect(screen.getByText(target.text)).toBeTruthy();
   });
 });

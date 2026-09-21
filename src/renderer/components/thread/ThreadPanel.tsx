@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import type { MessageDTO } from '../../../shared/types';
 import { useDirectory } from '../../lib/directory';
 import { formatDate, formatDayLabel, pluralize } from '../../lib/format';
 import { groupByDay, localDayKey } from '../../lib/grouping';
@@ -23,6 +24,21 @@ export interface ThreadPanelProps {
 
 const HIGHLIGHT_MS = 3000;
 
+/**
+ * Replies drawn at once (PLAN Stage 8, very large threads): a thread of thousands of replies
+ * opens as fast as a short one, and shows more in steps of this size.
+ */
+export const THREAD_WINDOW = 200;
+
+/** The replies to draw first: the start of the thread, or a window around the linked reply. */
+function initialRange(replies: MessageDTO[], highlightTs: string | null): [number, number] {
+  if (replies.length <= THREAD_WINDOW) return [0, replies.length];
+  const i = highlightTs ? replies.findIndex((r) => r.ts === highlightTs) : -1;
+  if (i < 0) return [0, THREAD_WINDOW];
+  const start = Math.max(0, Math.min(i - THREAD_WINDOW / 2, replies.length - THREAD_WINDOW));
+  return [start, start + THREAD_WINDOW];
+}
+
 /** Right-hand panel: thread parent plus all archived replies. Esc or the close button dismisses it. */
 export function ThreadPanel({ conversationId, threadTs, highlightTs = null, onClose }: ThreadPanelProps) {
   const thread = useThread(conversationId, threadTs);
@@ -37,8 +53,28 @@ export function ThreadPanel({ conversationId, threadTs, highlightTs = null, onCl
 
   const data = thread.data;
   const replies = data?.replies;
-  const days = useMemo(() => groupByDay(replies ?? []), [replies]);
+  // The drawn range belongs to one thread and link; anything else starts from its initial range.
+  const rangeKey = `${threadTs}|${highlightTs ?? ''}|${replies?.length ?? 0}`;
+  const [shown, setShown] = useState<{ key: string; range: [number, number] } | null>(null);
+  const [start, end] = shown?.key === rangeKey ? shown.range : replies ? initialRange(replies, highlightTs) : [0, 0];
+  const visible = useMemo(() => (replies ?? []).slice(start, end), [replies, start, end]);
+  const days = useMemo(() => groupByDay(visible), [visible]);
   const parentDay = data?.parent ? localDayKey(tsToMs(data.parent.ts)) : null;
+  const total = replies?.length ?? 0;
+
+  // Drawing earlier replies above must not move what the reader is looking at.
+  const heightBeforeEarlier = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (!container || heightBeforeEarlier.current == null) return;
+    container.scrollTop += container.scrollHeight - heightBeforeEarlier.current;
+    heightBeforeEarlier.current = null;
+  }, [start]);
+  const showEarlier = () => {
+    heightBeforeEarlier.current = scrollRef.current?.scrollHeight ?? null;
+    setShown({ key: rangeKey, range: [Math.max(0, start - THREAD_WINDOW), end] });
+  };
+  const showLater = () => setShown({ key: rangeKey, range: [start, Math.min(total, end + THREAD_WINDOW)] });
 
   // Bring the linked reply into view once it's rendered.
   useLayoutEffect(() => {
@@ -100,6 +136,11 @@ export function ThreadPanel({ conversationId, threadTs, highlightTs = null, onCl
               <span>{pluralize(data.replies.length, 'reply', 'replies')}</span>
               <span className="h-px flex-1 bg-line" />
             </div>
+            {start > 0 && (
+              <MoreReplies onClick={showEarlier}>
+                Show {pluralize(Math.min(start, THREAD_WINDOW), 'earlier reply', 'earlier replies')}
+              </MoreReplies>
+            )}
             {days.map((day) => (
               <section key={day.key} aria-label={formatDate(day.date, 'PPPP') || undefined}>
                 {day.key !== parentDay && (
@@ -118,6 +159,11 @@ export function ThreadPanel({ conversationId, threadTs, highlightTs = null, onCl
                 ))}
               </section>
             ))}
+            {end < total && (
+              <MoreReplies onClick={showLater}>
+                Show {pluralize(Math.min(total - end, THREAD_WINDOW), 'more reply', 'more replies')}
+              </MoreReplies>
+            )}
             {data.parent && data.replies.length < data.parent.replyCount && (
               <p className="mx-5 mt-3 text-xs text-ink-faint">
                 {pluralize(data.parent.replyCount - data.replies.length, 'reply', 'replies')} in Slack weren’t archived.
@@ -127,5 +173,19 @@ export function ThreadPanel({ conversationId, threadTs, highlightTs = null, onCl
         )}
       </div>
     </aside>
+  );
+}
+
+function MoreReplies({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <div className="px-5 py-2">
+      <button
+        type="button"
+        onClick={onClick}
+        className="focus-ring w-full rounded-md border border-line px-3 py-1.5 text-[13px] font-medium text-accent-text hover:bg-hover"
+      >
+        {children}
+      </button>
+    </div>
   );
 }

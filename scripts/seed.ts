@@ -81,6 +81,12 @@ function resetOutDir(out: string): void {
   }
   fs.mkdirSync(out, { recursive: true });
   fs.writeFileSync(path.join(out, MARKER), 'Synthetic demo archive written by scripts/seed.ts. Safe to delete.\n');
+  // Open straight into the archive (no onboarding), and never try to sync a workspace that
+  // doesn't exist.
+  fs.writeFileSync(
+    path.join(out, 'config.json'),
+    JSON.stringify({ preferences: { onboardingComplete: true, syncIntervalMinutes: 0 } }, null, 2) + '\n',
+  );
 }
 
 function shown(p: string): string {
