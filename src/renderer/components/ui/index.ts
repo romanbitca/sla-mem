@@ -7,3 +7,4 @@ export { Kbd, modKeyLabel } from './Kbd';
 export { Dialog, ConfirmDialog, type DialogProps, type ConfirmDialogProps } from './Dialog';
 export { Card, type CardProps } from './Card';
 export { Callout, type CalloutTone } from './Callout';
+export { ErrorBoundary } from './ErrorBoundary';

@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router';
 import clsx from 'clsx';
 import { isTypingTarget, useKeydown, useMediaQuery } from '../../lib/hooks';
 import { useSyncStatus } from '../../lib/queries';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { ShellContext, type ShellContextValue } from './shell';
 import { Sidebar } from './Sidebar';
 import { UpdateBanner } from './UpdateBanner';
@@ -106,7 +107,11 @@ export function AppShell() {
         />
         <main ref={mainRef} id="main" tabIndex={-1} className="flex min-h-0 min-w-0 flex-1 flex-col outline-none">
           <UpdateBanner />
-          <Outlet />
+          {/* A page that crashes shows a recovery card; the sidebar keeps working, and going
+              anywhere else starts that page afresh. */}
+          <ErrorBoundary resetKey={location.pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </ShellContext.Provider>

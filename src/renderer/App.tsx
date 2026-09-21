@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { HashRouter, Route, Routes } from 'react-router';
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { AppShell } from './components/layout/AppShell';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { LoadingState } from './components/ui/Spinner';
 import { DirectoryProvider } from './lib/directory';
 import { useArchiveEvents } from './lib/events';
@@ -87,7 +88,9 @@ export function App() {
           Plain state updates (no transitions) keep scroll restoration in step with the URL. */}
       <HashRouter useTransitions={false}>
         <AppEffects />
-        <AppGate />
+        <ErrorBoundary className="flex h-full flex-col items-center justify-center gap-3 bg-canvas px-6 text-center">
+          <AppGate />
+        </ErrorBoundary>
       </HashRouter>
     </AppProviders>
   );
