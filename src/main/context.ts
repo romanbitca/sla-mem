@@ -38,6 +38,8 @@ export interface PlatformHooks {
   openExternal(url: string): Promise<boolean>;
   applyTheme(theme: ThemePreference): void;
   applyLaunchAtLogin(enabled: boolean): void;
+  /** Shows or removes the menu bar / tray icon. */
+  applyTrayIcon(visible: boolean): void;
   appInfo(): AppInfoDTO;
 }
 
@@ -132,7 +134,7 @@ const POLICY_RANK: Record<AttachmentPolicy, number> = { none: 0, standard: 1, ev
  */
 export function wireServices(
   s: AppServices,
-  hooks: Pick<PlatformHooks, 'applyTheme' | 'applyLaunchAtLogin'>,
+  hooks: Pick<PlatformHooks, 'applyTheme' | 'applyLaunchAtLogin' | 'applyTrayIcon'>,
 ): () => void {
   let prefs: PreferencesDTO = s.prefs.get();
   const onConnected = () => {
@@ -152,6 +154,7 @@ export function wireServices(
     const before = prefs;
     prefs = next;
     if (next.theme !== before.theme) hooks.applyTheme(next.theme);
+    if (next.showTrayIcon !== before.showTrayIcon) hooks.applyTrayIcon(next.showTrayIcon);
     if (next.launchAtLogin !== before.launchAtLogin || next.onboardingComplete !== before.onboardingComplete) {
       hooks.applyLaunchAtLogin(next.onboardingComplete && next.launchAtLogin);
     }

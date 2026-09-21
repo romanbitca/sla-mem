@@ -33,7 +33,7 @@ import { applyLaunchAtLogin, wasOpenedAtLogin } from './login-item';
 import { DATA_DIR_NAME, explicitDataDir, LEGACY_DATA_DIR_NAME, moveLegacyDataDir, type LegacyMove } from './paths';
 import { ARCHIVE_SCHEME, serveArchiveFile } from './protocol';
 import { denyPermissions, hardenWebContents, openExternalSafe } from './security';
-import { createTray, type TrayController } from './tray';
+import { createTray, IDLE_TRAY_STATE, type TrayController, type TrayState } from './tray';
 
 const isDev = !app.isPackaged;
 const rendererDevUrl = isDev ? process.env.ELECTRON_RENDERER_URL : undefined;
@@ -77,6 +77,8 @@ protocol.registerSchemesAsPrivileged([
 let services: AppServices | null = null;
 let mainWindow: BrowserWindow | null = null;
 let tray: TrayController | null = null;
+/** What the tray shows, kept so the icon can be turned off and on again in Settings. */
+let trayState: TrayState = IDLE_TRAY_STATE;
 let quitting = false;
 let syncBlocker: number | null = null;
 let stopStatus: (() => void) | null = null;
@@ -141,8 +143,8 @@ function createMainWindow(s: AppServices): BrowserWindow {
     if (quitting) return;
     event.preventDefault();
     win.hide();
-    if (process.platform === 'win32' && !s.prefs.getInternal().trayHintShown) {
-      tray?.showBalloonOnce(
+    if (process.platform === 'win32' && tray && !s.prefs.getInternal().trayHintShown) {
+      tray.showBalloonOnce(
         'sla-mem is still running',
         'It keeps archiving in the background. Use the tray icon to open it or quit.',
       );
@@ -190,6 +192,7 @@ let startHidden = false;
 function showMainWindow(path?: string): void {
   if (!services) return;
   startHidden = false;
+  if (process.platform === 'darwin') void app.dock?.show();
   if (!mainWindow || mainWindow.isDestroyed()) mainWindow = createMainWindow(services);
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.show();
@@ -262,6 +265,7 @@ function platformHooks(s: AppServices): PlatformHooks {
       nativeTheme.themeSource = theme;
     },
     applyLaunchAtLogin,
+    applyTrayIcon: (visible) => setTrayVisible(s, visible),
     appInfo: (): AppInfoDTO => ({
       version: app.getVersion(),
       platform: process.platform === 'darwin' || process.platform === 'win32' ? process.platform : 'linux',
@@ -308,12 +312,18 @@ function wireStatus(s: AppServices): () => void {
     const status = s.runs.status();
     send('sync-status', status);
     const connection = s.connection.status();
-    tray?.update({
+    const { progress } = status;
+    trayState = {
       syncing: status.running,
       connected: connection.connected,
       lastSuccessAt: status.lastSuccessAt,
       problem: status.problem && status.problem.kind !== 'offline' ? shortProblem(status.problem.kind) : null,
-    });
+      progress:
+        status.running && progress?.current != null && progress.total != null
+          ? { current: progress.current, total: progress.total }
+          : null,
+    };
+    tray?.update(trayState);
   }, 400);
 
   s.runs.subscribe((event) => {
@@ -421,6 +431,32 @@ function buildMenu(s: AppServices): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+/**
+ * The menu bar / tray icon, per Settings. Without it the app keeps running in the background and
+ * is reopened like any other app (the Dock, Applications or the Start menu).
+ */
+function setTrayVisible(s: AppServices, visible: boolean): void {
+  if (visible && !tray) {
+    tray = createTray(
+      resourcesDir(),
+      {
+        open: () => showMainWindow(),
+        syncNow: () => safeStartSync(s),
+        settings: () => showMainWindow('/settings'),
+        quit: () => {
+          quitting = true;
+          app.quit();
+        },
+      },
+      trayState,
+    );
+  } else if (!visible && tray) {
+    tray.destroy();
+    tray = null;
+    if (process.platform === 'darwin') void app.dock?.show();
+  }
+}
+
 function safeStartSync(s: AppServices): void {
   try {
     s.runs.startSync();
@@ -504,15 +540,7 @@ async function start(): Promise<void> {
     copyright: '© 2026 Roman Bitca',
   });
 
-  tray = createTray(resourcesDir(), {
-    open: () => showMainWindow(),
-    syncNow: () => safeStartSync(s),
-    settings: () => showMainWindow('/settings'),
-    quit: () => {
-      quitting = true;
-      app.quit();
-    },
-  });
+  setTrayVisible(s, s.prefs.get().showTrayIcon);
   stopStatus = wireStatus(s);
 
   // Keep the login item in step with the preference (it may have been changed by the OS or a reinstall).
@@ -521,7 +549,8 @@ async function start(): Promise<void> {
 
   startHidden = prefs.onboardingComplete && wasOpenedAtLogin();
   mainWindow = createMainWindow(s);
-  if (startHidden && process.platform === 'darwin') app.dock?.hide();
+  // Started at login: just the menu bar icon. Without the icon, the Dock icon stays as the way in.
+  if (startHidden && process.platform === 'darwin' && prefs.showTrayIcon) app.dock?.hide();
 
   s.scheduler.start();
   s.updates.start();

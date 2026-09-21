@@ -44,9 +44,7 @@ export function SyncHistory({ runs }: { runs: readonly SyncRunDTO[] }) {
           </span>
           <span className="text-[14px] font-semibold text-ink">Sync history</span>
           <span className="min-w-0 flex-1 truncate text-[13px] text-ink-muted">
-            {latest
-              ? `Last: ${KIND_LABEL[latest.kind].toLowerCase()} ${timeAgo(latest.finishedAt ?? latest.startedAt, now)} · ${summarizeRun(latest)}`
-              : 'Nothing yet'}
+            {latest ? headerSummary(latest, now) : 'Nothing yet'}
           </span>
           <ChevronDownIcon
             size={15}
@@ -64,20 +62,34 @@ export function SyncHistory({ runs }: { runs: readonly SyncRunDTO[] }) {
                 <li key={run.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-[13px] first:pt-0">
                   <StatusBadge status={run.status} />
                   <span className="font-medium text-ink">{KIND_LABEL[run.kind]}</span>
-                  <time
-                    className="text-ink-muted"
-                    dateTime={isoDateTime(new Date(run.startedAt))}
-                    title={formatFullDateTime(new Date(run.startedAt))}
-                  >
-                    {timeAgo(run.startedAt, now)}
-                  </time>
-                  <span className="text-ink-faint tabular-nums">{runDuration(run, now)}</span>
-                  <span
-                    className="min-w-0 basis-full truncate text-ink-muted sm:basis-auto sm:flex-1"
-                    title={summarizeRun(run)}
-                  >
-                    {summarizeRun(run)}
-                  </span>
+                  {run.status === 'running' ? (
+                    // Still running: how long it has been going is the one number that matters.
+                    <span
+                      className="text-ink-faint tabular-nums"
+                      title={`Started ${formatFullDateTime(new Date(run.startedAt))}`}
+                    >
+                      for {runDuration(run, now)}
+                    </span>
+                  ) : (
+                    <>
+                      <time
+                        className="text-ink-muted"
+                        dateTime={isoDateTime(new Date(run.startedAt))}
+                        title={formatFullDateTime(new Date(run.startedAt))}
+                      >
+                        {timeAgo(run.startedAt, now)}
+                      </time>
+                      <span className="text-ink-faint tabular-nums">{runDuration(run, now)}</span>
+                    </>
+                  )}
+                  {summarizeRun(run) && (
+                    <span
+                      className="min-w-0 basis-full truncate text-ink-muted sm:basis-auto sm:flex-1"
+                      title={summarizeRun(run)}
+                    >
+                      {summarizeRun(run)}
+                    </span>
+                  )}
                 </li>
               ))}
             </ol>
@@ -97,4 +109,13 @@ export function SyncHistory({ runs }: { runs: readonly SyncRunDTO[] }) {
       )}
     </section>
   );
+}
+
+/** The folded header: a running sync says how long it has been going, a finished one when it ran. */
+function headerSummary(run: SyncRunDTO, now: number): string {
+  const summary = summarizeRun(run);
+  if (run.status === 'running') {
+    return [`${KIND_LABEL[run.kind]} running for ${runDuration(run, now)}`, summary].filter(Boolean).join(' · ');
+  }
+  return `Last: ${KIND_LABEL[run.kind].toLowerCase()} ${timeAgo(run.finishedAt ?? run.startedAt, now)} · ${summary}`;
 }

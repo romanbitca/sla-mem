@@ -2,13 +2,13 @@ import clsx from 'clsx';
 import type { SyncProgress, SyncRunDTO } from '../../../shared/types';
 import { formatFullDateTime } from '../../lib/format';
 import { useNow } from '../../lib/hooks';
-import { KIND_LABEL, phaseLabel, progressFraction, relativeTime, runDuration } from './runs';
+import { KIND_LABEL, phaseLabel, progressFraction, runDuration } from './runs';
 
 export interface RunProgressProps {
   run: SyncRunDTO | null;
   progress: SyncProgress | null;
   className?: string;
-  /** Hide the "Started … · running for …" line (onboarding keeps it simple). */
+  /** Hide the "Running for …" line (onboarding keeps it simple). */
   compact?: boolean;
 }
 
@@ -63,9 +63,8 @@ export function RunProgress({ run, progress, className, compact = false }: RunPr
         </p>
       )}
       {run && !compact && (
-        <p className="text-xs text-ink-faint">
-          Started <span title={formatFullDateTime(new Date(run.startedAt))}>{relativeTime(run.startedAt, now)}</span> ·
-          running for {runDuration(run, now)}
+        <p className="text-xs text-ink-faint" title={`Started ${formatFullDateTime(new Date(run.startedAt))}`}>
+          Running for {runDuration(run, now)}
         </p>
       )}
     </div>

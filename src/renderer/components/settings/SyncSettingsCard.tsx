@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import type { PreferencesDTO, SyncInterval, SyncStatusDTO } from '../../../shared/types';
 import { describeError, presentableMessage } from '../../lib/api';
+import { reopenHint, trayPlaceName } from '../../lib/bridge';
 import { useFlag, useNow } from '../../lib/hooks';
 import { useCancelSync, useStartSync, useUpdatePreferences } from '../../lib/queries';
 import { SCHEDULE_OPTIONS } from '../connect/connection';
@@ -18,11 +19,21 @@ export interface SyncSettingsCardProps {
   statusError: unknown;
 }
 
-/** How often to sync and whether to start at login (saved on change), plus last/next sync. */
+/**
+ * How often to sync, whether to start at login and whether to keep an icon in the menu bar /
+ * tray (saved on change), plus last/next sync.
+ */
 export function SyncSettingsCard({ preferences, status, statusError }: SyncSettingsCardProps) {
   const update = useUpdatePreferences();
   const [saved, flashSaved] = useFlag(2000);
-  const ids = { interval: useId(), intervalHint: useId(), login: useId(), loginHint: useId() };
+  const ids = {
+    interval: useId(),
+    intervalHint: useId(),
+    login: useId(),
+    loginHint: useId(),
+    tray: useId(),
+    trayHint: useId(),
+  };
 
   return (
     <Card
@@ -75,6 +86,23 @@ export function SyncSettingsCard({ preferences, status, statusError }: SyncSetti
             aria-labelledby={ids.login}
             aria-describedby={ids.loginHint}
             onChange={(checked) => update.mutate({ launchAtLogin: checked }, { onSuccess: flashSaved })}
+          />
+        </SettingRow>
+        <SettingRow
+          label={`Show sla-mem in the ${trayPlaceName()}`}
+          labelId={ids.tray}
+          description={
+            preferences.showTrayIcon
+              ? 'Shows sync progress and opens sla-mem at any time.'
+              : `sla-mem keeps syncing in the background. Open it from ${reopenHint()} to see it again.`
+          }
+          descriptionId={ids.trayHint}
+        >
+          <Switch
+            checked={preferences.showTrayIcon}
+            aria-labelledby={ids.tray}
+            aria-describedby={ids.trayHint}
+            onChange={(checked) => update.mutate({ showTrayIcon: checked }, { onSuccess: flashSaved })}
           />
         </SettingRow>
       </div>

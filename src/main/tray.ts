@@ -1,25 +1,15 @@
 /**
  * The tray / menu-bar icon (PLAN §8.3): the app keeps syncing after its window is closed, so the
- * icon is how people reach it — Open, Sync now, when it last synced, Settings, Quit — and a small
- * badge shows while a sync runs.
+ * icon is how people reach it — Open, Sync now, when it last synced (or how far a sync has got),
+ * Settings, Quit — and a small badge shows while a sync runs. It can be turned off in Settings.
  */
 import path from 'node:path';
-import { Menu, Tray, nativeImage, type NativeImage } from 'electron';
+import { Menu, Tray, nativeImage, type MenuItemConstructorOptions, type NativeImage } from 'electron';
+import { IDLE_TRAY_STATE, trayMenu, trayStatus, type TrayAction, type TrayState } from './tray-menu';
 
-export interface TrayState {
-  syncing: boolean;
-  connected: boolean;
-  lastSuccessAt: number | null;
-  /** A short problem line ("Slack signed you out"), shown instead of the last-sync time. */
-  problem: string | null;
-}
+export { IDLE_TRAY_STATE, type TrayState } from './tray-menu';
 
-export interface TrayActions {
-  open(): void;
-  syncNow(): void;
-  settings(): void;
-  quit(): void;
-}
+export type TrayActions = Record<TrayAction, () => void>;
 
 export interface TrayController {
   update(state: TrayState): void;
@@ -27,7 +17,11 @@ export interface TrayController {
   destroy(): void;
 }
 
-export function createTray(resourcesDir: string, actions: TrayActions): TrayController {
+export function createTray(
+  resourcesDir: string,
+  actions: TrayActions,
+  initial: TrayState = IDLE_TRAY_STATE,
+): TrayController {
   const mac = process.platform === 'darwin';
   const icon = (syncing: boolean): NativeImage => {
     const name = mac ? (syncing ? 'traySyncingTemplate' : 'trayTemplate') : syncing ? 'tray-win-syncing' : 'tray-win';
@@ -35,34 +29,25 @@ export function createTray(resourcesDir: string, actions: TrayActions): TrayCont
     if (mac) image.setTemplateImage(true);
     return image;
   };
-  const tray = new Tray(icon(false));
-  let state: TrayState = { syncing: false, connected: false, lastSuccessAt: null, problem: null };
-  let lastIconSyncing = false;
+  let state: TrayState = initial;
+  const tray = new Tray(icon(state.syncing));
+  let lastIconSyncing = state.syncing;
 
   const render = () => {
-    const status = state.syncing
-      ? 'Syncing…'
-      : state.problem
-        ? state.problem
-        : !state.connected
-          ? 'Not connected to Slack'
-          : state.lastSuccessAt
-            ? `Last synced ${relativeTime(state.lastSuccessAt, Date.now())}`
-            : 'Not synced yet';
-    tray.setToolTip(`sla-mem — ${status}`);
+    const now = Date.now();
+    tray.setToolTip(`sla-mem — ${trayStatus(state, now)}`);
     tray.setContextMenu(
-      Menu.buildFromTemplate([
-        { label: 'Open sla-mem', click: actions.open },
-        {
-          label: state.syncing ? 'Syncing…' : 'Sync now',
-          enabled: !state.syncing && state.connected,
-          click: actions.syncNow,
-        },
-        { label: status, enabled: false },
-        { type: 'separator' },
-        { label: 'Settings…', click: actions.settings },
-        { label: 'Quit sla-mem', click: actions.quit },
-      ]),
+      Menu.buildFromTemplate(
+        trayMenu(state, now).map((item): MenuItemConstructorOptions =>
+          'separator' in item
+            ? { type: 'separator' }
+            : {
+                label: item.label,
+                enabled: item.enabled,
+                click: item.action ? actions[item.action] : undefined,
+              },
+        ),
+      ),
     );
     if (state.syncing !== lastIconSyncing) {
       tray.setImage(icon(state.syncing));
@@ -90,15 +75,4 @@ export function createTray(resourcesDir: string, actions: TrayActions): TrayCont
       tray.destroy();
     },
   };
-}
-
-export function relativeTime(then: number, now: number): string {
-  const s = Math.max(0, Math.round((now - then) / 1000));
-  if (s < 60) return 'just now';
-  const m = Math.round(s / 60);
-  if (m < 60) return `${m} minute${m === 1 ? '' : 's'} ago`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
-  const d = Math.round(h / 24);
-  return `${d} day${d === 1 ? '' : 's'} ago`;
 }

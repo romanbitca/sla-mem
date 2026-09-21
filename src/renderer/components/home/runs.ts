@@ -79,7 +79,8 @@ export function summarizeRun(run: SyncRunDTO): string {
   const counts = parts.join(' · ');
   switch (run.status) {
     case 'running':
-      return counts ? `In progress · ${counts} so far` : 'In progress';
+      // "Running" is already said by the badge or the line around it.
+      return counts ? `${counts} so far` : '';
     case 'cancelled':
       return counts ? `Cancelled · ${counts} kept` : 'Cancelled';
     case 'error':

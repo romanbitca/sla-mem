@@ -5,7 +5,7 @@ import { cleanup, renderHook } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { SyncStatusDTO } from '../../shared/types';
 import { makeRun, makeSyncStatus, testQueryClient } from '../test/helpers';
-import { isRunFinished, lastFinishedRunKey, qk, useSyncRunWatcher } from './queries';
+import { isRunFinished, lastFinishedRunKey, LIVE_REFRESH_MS, qk, useSyncRunWatcher } from './queries';
 
 afterEach(() => {
   cleanup();
@@ -60,6 +60,24 @@ describe('useSyncRunWatcher', () => {
   it('does nothing on the first status it sees', () => {
     const { refreshed } = watch(idle());
     expect(refreshed()).toBe(false);
+  });
+
+  it('keeps the sidebar and numbers current while a long sync moves on', () => {
+    const at = (current: number) =>
+      makeSyncStatus({
+        ...running(),
+        progress: { phase: 'history', message: 'Fetching', current, total: 111 },
+      });
+    const now = vi.spyOn(Date, 'now').mockReturnValue(100_000);
+    const { rerender, invalidate, refreshed } = watch(at(1));
+    const lists = () => invalidate.mock.calls.filter(([f]) => f?.queryKey === qk.conversations).length;
+    expect(lists()).toBe(1);
+    rerender({ status: at(2) }); // too soon: at most every LIVE_REFRESH_MS
+    expect(lists()).toBe(1);
+    now.mockReturnValue(100_000 + LIVE_REFRESH_MS);
+    rerender({ status: at(3) });
+    expect(lists()).toBe(2);
+    expect(refreshed()).toBe(false); // message pages are left alone until the sync ends
   });
 
   it('refreshes the archive when a run it saw running finishes', () => {

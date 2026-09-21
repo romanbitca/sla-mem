@@ -407,10 +407,17 @@ export interface PreferencesDTO {
   launchAtLogin: boolean;
   theme: ThemePreference;
   onboardingComplete: boolean;
+  /** The menu-bar (macOS) / tray (Windows) icon. Without it the app is reopened like any app. */
+  showTrayIcon: boolean;
+  /** Conversations never synced: no history, threads or attachments are fetched for them. */
+  excludedConversationIds: string[];
 }
 
 export type PreferencesPatch = Partial<
-  Pick<PreferencesDTO, 'syncIntervalMinutes' | 'attachmentPolicy' | 'launchAtLogin' | 'theme'>
+  Pick<
+    PreferencesDTO,
+    'syncIntervalMinutes' | 'attachmentPolicy' | 'launchAtLogin' | 'theme' | 'showTrayIcon' | 'excludedConversationIds'
+  >
 >;
 
 export interface SettingsDTO {

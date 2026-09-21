@@ -186,6 +186,19 @@ describe('Settings — sync and attachments', () => {
     expect(within(sync).getByText('in 55 minutes')).toBeTruthy();
   });
 
+  it('can hide the menu bar icon, and then says how to open the app again', async () => {
+    const update = acceptPatches();
+    setup();
+    const sync = await card('Sync');
+    const icon = within(sync).getByRole('switch', {
+      name: /^Show sla-mem in the (menu bar|system tray)$/,
+    }) as HTMLInputElement;
+    expect(icon.checked).toBe(true);
+    fireEvent.click(icon);
+    await waitFor(() => expect(update).toHaveBeenCalledWith({ showTrayIcon: false }));
+    expect(await within(sync).findByText(/keeps syncing in the background\. Open it from/)).toBeTruthy();
+  });
+
   it('rolls back a choice main refuses, and says why', async () => {
     vi.spyOn(api, 'updatePreferences').mockRejectedValue(new ApiError('invalid', 'That schedule isn’t possible.'));
     setup();

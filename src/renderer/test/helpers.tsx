@@ -201,6 +201,8 @@ export function makePreferences(overrides: Partial<PreferencesDTO> = {}): Prefer
     launchAtLogin: true,
     theme: 'system',
     onboardingComplete: true,
+    showTrayIcon: true,
+    excludedConversationIds: [],
     ...overrides,
   };
 }

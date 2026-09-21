@@ -274,6 +274,30 @@ export function useSyncRunWatcher(status: SyncStatusDTO | undefined): void {
     seen.current = { running, finished };
     if (prev && ((prev.running && !running) || prev.finished !== finished)) void invalidateArchiveData(qc);
   }, [running, finished, qc]);
+
+  // A first sync can take the better part of an hour: as it moves on, the sidebar and the numbers
+  // follow (message pages are left alone, so reading isn't disturbed).
+  const step = status?.running ? `${status.progress?.phase ?? ''}:${status.progress?.current ?? ''}` : null;
+  const lastLive = useRef(0);
+  useEffect(() => {
+    if (!step) return;
+    const now = Date.now();
+    if (now - lastLive.current < LIVE_REFRESH_MS) return;
+    lastLive.current = now;
+    void refreshArchiveLists(qc);
+  }, [step, qc]);
+}
+
+/** How often lists refresh at most while a sync runs. */
+export const LIVE_REFRESH_MS = 10_000;
+
+/** The light parts of the archive, cheap to reload during a sync. */
+export function refreshArchiveLists(qc: QueryClient): Promise<void> {
+  return Promise.all(
+    [qk.conversations, qk.users, qk.stats, qk.workspace, qk.storage].map((queryKey) =>
+      qc.invalidateQueries({ queryKey }),
+    ),
+  ).then(() => undefined);
 }
 
 /** Whether run `runId` has finished; with no id (main started nothing), once nothing runs. */

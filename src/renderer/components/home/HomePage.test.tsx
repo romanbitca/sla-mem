@@ -137,7 +137,7 @@ describe('run helpers', () => {
     );
     expect(summarizeRun(makeRun({ id: 1, status: 'cancelled', stats: {} }))).toBe('Cancelled');
     expect(summarizeRun(makeRun({ id: 1, status: 'running', stats: { messagesInserted: 9 } }))).toBe(
-      'In progress · 9 new messages so far',
+      '9 new messages so far',
     );
     expect(phaseLabel('auth')).toBe('Checking your Slack connection');
     expect(phaseLabel('something_new')).toBe('Working…');
@@ -200,7 +200,7 @@ describe('HomePage', () => {
     expect(bar.getAttribute('aria-valuenow')).toBe('25');
     expect(screen.getByText('Fetching messages')).toBeTruthy();
     expect(screen.getByText('Fetching #general — 1,240 messages so far')).toBeTruthy();
-    expect(screen.getByText(/running for 1m \d+s/)).toBeTruthy();
+    expect(screen.getByText(/^Running for 1m \d+s$/)).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Syncing…' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(cancel).toHaveBeenCalledTimes(1));

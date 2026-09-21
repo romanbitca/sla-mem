@@ -20,6 +20,16 @@ export function fileBrowserName(platform: Platform = currentPlatform()): string 
   return null;
 }
 
+/** Where the app's icon lives while it runs in the background: "menu bar" (macOS) or "system tray". */
+export function trayPlaceName(platform: Platform = currentPlatform()): string {
+  return platform === 'darwin' ? 'menu bar' : 'system tray';
+}
+
+/** Where people open the app from again when it has no icon in the menu bar / tray. */
+export function reopenHint(platform: Platform = currentPlatform()): string {
+  return platform === 'win32' ? 'the Start menu' : 'Applications or the Dock';
+}
+
 /** The OS the app runs on: from the bridge, or guessed from the user agent (tests, previews). */
 export function currentPlatform(): Platform {
   const fromBridge = getBridge()?.platform;

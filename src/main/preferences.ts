@@ -23,6 +23,8 @@ export const DEFAULT_PREFERENCES: Readonly<PreferencesDTO> = Object.freeze({
   launchAtLogin: true,
   theme: 'system',
   onboardingComplete: false,
+  showTrayIcon: true,
+  excludedConversationIds: [],
 });
 
 /** App state that isn't a user preference but must survive restarts. */
@@ -129,7 +131,19 @@ function sanitize(p: Partial<PreferencesDTO>): PreferencesDTO {
     launchAtLogin: typeof p.launchAtLogin === 'boolean' ? p.launchAtLogin : d.launchAtLogin,
     theme: THEMES.includes(p.theme as ThemePreference) ? (p.theme as ThemePreference) : d.theme,
     onboardingComplete: typeof p.onboardingComplete === 'boolean' ? p.onboardingComplete : d.onboardingComplete,
+    showTrayIcon: typeof p.showTrayIcon === 'boolean' ? p.showTrayIcon : d.showTrayIcon,
+    excludedConversationIds: conversationIds(p.excludedConversationIds) ?? [],
   };
+}
+
+const CONVERSATION_ID = /^[CDG][A-Z0-9]{2,31}$/;
+const MAX_EXCLUDED = 10_000;
+
+/** A clean, de-duplicated list of Slack conversation ids, or null when `v` isn't one. */
+function conversationIds(v: unknown): string[] | null {
+  if (!Array.isArray(v) || v.length > MAX_EXCLUDED) return null;
+  if (!v.every((id) => typeof id === 'string' && CONVERSATION_ID.test(id))) return null;
+  return [...new Set(v as string[])].sort();
 }
 
 function validatePatch(patch: unknown): PreferencesPatch {
@@ -154,6 +168,16 @@ function validatePatch(patch: unknown): PreferencesPatch {
         if (!THEMES.includes(value as ThemePreference)) throw invalid('Invalid theme');
         out.theme = value as ThemePreference;
         break;
+      case 'showTrayIcon':
+        if (typeof value !== 'boolean') throw invalid('Invalid menu bar icon value');
+        out.showTrayIcon = value;
+        break;
+      case 'excludedConversationIds': {
+        const ids = conversationIds(value);
+        if (!ids) throw invalid('Invalid list of conversations not to archive');
+        out.excludedConversationIds = ids;
+        break;
+      }
       default:
         throw invalid(`Unknown setting “${key.slice(0, 40)}”`);
     }
