@@ -132,7 +132,9 @@ describe('Settings — Slack connection', () => {
     await waitFor(() => expect(disconnect).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(await within(connection).findByText('Not connected')).toBeTruthy();
-    expect(within(connection).getByRole('button', { name: 'Connect Slack' })).toBeTruthy();
+    const connect = within(connection).getByRole('button', { name: 'Connect Slack' });
+    // Focus stays in the card, on what comes next, instead of falling back to the page.
+    await waitFor(() => expect(document.activeElement).toBe(connect));
   });
 
   it('asks to reconnect when Slack signed the session out', async () => {

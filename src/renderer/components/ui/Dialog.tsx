@@ -1,11 +1,8 @@
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import clsx from 'clsx';
-import { useKeydown } from '../../lib/hooks';
+import { FOCUSABLE, trapTab, useKeydown } from '../../lib/hooks';
 import { Button } from './Button';
-
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export interface DialogProps {
   open: boolean;
@@ -73,25 +70,7 @@ export function Dialog({
         onClose();
         return;
       }
-      if (e.key !== 'Tab') return;
-      const panel = panelRef.current;
-      if (!panel) return;
-      const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (items.length === 0) {
-        e.preventDefault();
-        panel.focus();
-        return;
-      }
-      const first = items[0];
-      const last = items[items.length - 1];
-      const active = document.activeElement;
-      if (e.shiftKey && (active === first || !panel.contains(active))) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && (active === last || !panel.contains(active))) {
-        e.preventDefault();
-        first.focus();
-      }
+      trapTab(e, panelRef.current);
     },
     { enabled: open, overlay: true },
   );

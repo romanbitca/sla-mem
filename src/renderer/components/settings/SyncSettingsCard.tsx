@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import type { PreferencesDTO, SyncInterval, SyncStatusDTO } from '../../../shared/types';
-import { describeError } from '../../lib/api';
+import { describeError, presentableMessage } from '../../lib/api';
 import { useFlag, useNow } from '../../lib/hooks';
 import { useCancelSync, useStartSync, useUpdatePreferences } from '../../lib/queries';
 import { SCHEDULE_OPTIONS } from '../connect/connection';
@@ -131,7 +131,9 @@ function SyncNow({ status, error, manual }: { status: SyncStatusDTO | undefined;
           </Button>
         )}
         {status.blockedReason && !status.running && (
-          <span className="text-xs text-ink-muted">{status.blockedReason}</span>
+          <span className="text-xs text-ink-muted">
+            {presentableMessage(status.blockedReason, 'Syncing isn’t possible right now.')}
+          </span>
         )}
       </div>
       {(startSync.error ?? cancelSync.error) != null && (

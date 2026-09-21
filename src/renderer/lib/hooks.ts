@@ -31,6 +31,39 @@ export function useKeydown(handler: KeyHandler, opts: { enabled?: boolean; overl
   }, [enabled, overlay, stable]);
 }
 
+/** Elements Tab can reach inside a modal. */
+export const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Keeps Tab / Shift+Tab inside a modal panel (wrapping at either end). Call it from the modal's
+ * keydown handler; it ignores other keys.
+ */
+export function trapTab(e: KeyboardEvent, panel: HTMLElement | null): void {
+  if (e.key !== 'Tab' || !panel) return;
+  const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
+  if (items.length === 0) {
+    e.preventDefault();
+    panel.focus();
+    return;
+  }
+  const first = items[0];
+  const last = items[items.length - 1];
+  const active = document.activeElement;
+  if (e.shiftKey && (active === first || !panel.contains(active))) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && (active === last || !panel.contains(active))) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
+/** Whether a modal (dialog, image viewer) is open: page shortcuts must not act behind it. */
+export function isModalOpen(): boolean {
+  return document.querySelector('[aria-modal="true"]') != null;
+}
+
 /** True when the event originates from a text field, where single-key shortcuts must not fire. */
 export function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;

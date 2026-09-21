@@ -4,7 +4,7 @@ import type { FileDTO } from '../../../shared/types';
 import { describeError } from '../../lib/api';
 import { fileBrowserName } from '../../lib/bridge';
 import { formatBytes } from '../../lib/format';
-import { useKeydown } from '../../lib/hooks';
+import { trapTab, useKeydown } from '../../lib/hooks';
 import { useOpenFile, useRevealFile } from '../../lib/queries';
 import { remoteImageSrc } from '../../lib/remoteImage';
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, ExternalLinkIcon, FolderIcon } from '../icons';
@@ -22,6 +22,7 @@ export interface LightboxProps {
  * Keys are handled in the capture phase and consumed so Esc doesn't also close the thread.
  */
 export function Lightbox({ images, index, onIndexChange, onClose }: LightboxProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const open = useOpenFile();
   const reveal = useRevealFile();
@@ -51,6 +52,9 @@ export function Lightbox({ images, index, onIndexChange, onClose }: LightboxProp
       } else if (e.key === 'ArrowLeft' && count > 1) {
         e.preventDefault();
         onIndexChange((index - 1 + count) % count);
+      } else {
+        // A modal: Tab cycles through the viewer's own buttons, never the page behind it.
+        trapTab(e, rootRef.current);
       }
     },
     { overlay: true },
@@ -64,6 +68,7 @@ export function Lightbox({ images, index, onIndexChange, onClose }: LightboxProp
 
   return createPortal(
     <div
+      ref={rootRef}
       role="dialog"
       aria-modal="true"
       aria-label={`Image viewer: ${title}`}

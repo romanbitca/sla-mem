@@ -2,13 +2,25 @@
 import { describe, expect, it } from 'vitest';
 import type { MessageDTO, MessagesPage } from '../../shared/types';
 import { makeMessage } from '../test/helpers';
-import { formatBytes, formatCount, formatDayLabel, formatShortDate, formatTsRange, joinNames } from './format';
+import {
+  formatBytes,
+  formatCount,
+  formatDate,
+  formatDayLabel,
+  formatFullDateTime,
+  formatShortDate,
+  formatTime,
+  formatTsRange,
+  formatTsShort,
+  isoDateTime,
+  joinNames,
+} from './format';
 import { authorKey, dedupeMessages, groupByDay, guessThreadParent, isContinuation } from './grouping';
 import { messagePath, slackPermalink } from './links';
 import { getNewerParam, getOlderParam } from './queries';
 import { remoteImageSrc, slackProxyUrl } from './remoteImage';
 import { attachmentColor, safeHref } from './safeUrl';
-import { workspaceHost, workspaceSlug } from './workspaceName';
+import { workspaceHost } from './workspaceName';
 import { compareTs, isValidTs, parseLocalDate, parseTsParam, toLocalDateInput, tsJustBefore, tsToMs } from './ts';
 
 describe('ts helpers', () => {
@@ -159,6 +171,19 @@ describe('format', () => {
     expect(formatTsRange(null, '1700000000.0')).toBeNull();
     expect(formatTsRange('1700000000.0', '1700000000.0')).toMatch(/^Nov 1[45], 2023$/);
   });
+
+  it('formats an invalid date as nothing instead of throwing (archived data can be malformed)', () => {
+    const bad = new Date(NaN);
+    expect(formatTime(bad)).toBe('');
+    expect(formatFullDateTime(bad)).toBe('');
+    expect(formatDayLabel(bad)).toBe('');
+    expect(formatShortDate(bad)).toBe('');
+    expect(formatDate(bad, 'PPPP')).toBe('');
+    expect(isoDateTime(bad)).toBeUndefined();
+    expect(formatTsShort('garbage')).toBe('');
+    expect(formatTsRange('garbage', '1700000000.0')).toBeNull();
+    expect(isoDateTime(new Date(0))).toBe('1970-01-01T00:00:00.000Z');
+  });
 });
 
 describe('links and url safety', () => {
@@ -188,6 +213,7 @@ describe('links and url safety', () => {
     const top = { conversationId: 'C0123', ts: '1712345678.123456', threadTs: null, isReply: false };
     expect(slackPermalink(null, top)).toBeNull();
     expect(slackPermalink('', top)).toBeNull();
+    expect(slackPermalink('evil.example:8080', top)).toBeNull();
     expect(slackPermalink('9h', { ...top, ts: 'nope' })).toBeNull();
     expect(slackPermalink('9h', { ...top, conversationId: '../C1' })).toBeNull();
   });
@@ -270,9 +296,11 @@ describe('workspace names', () => {
     expect(workspaceHost('9H.slack.com')).toBe('9h.slack.com');
     expect(workspaceHost('https://9h.slack.com/archives/C1')).toBe('9h.slack.com');
     expect(workspaceHost('  ')).toBeNull();
+    expect(workspaceHost('acme.enterprise.slack.com')).toBe('acme.enterprise.slack.com');
+    expect(workspaceHost('evil.example:8080')).toBeNull();
+    expect(workspaceHost('https://user@evil.example/')).toBeNull();
+    expect(workspaceHost('two words')).toBeNull();
+    expect(workspaceHost('-bad-.slack.com')).toBeNull();
     expect(workspaceHost(null)).toBeNull();
-    expect(workspaceSlug('9h.slack.com')).toBe('9h');
-    expect(workspaceSlug('9hdigital')).toBe('9hdigital');
-    expect(workspaceSlug(undefined)).toBeNull();
   });
 });

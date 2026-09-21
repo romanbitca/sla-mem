@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
 import clsx from 'clsx';
 import type { AttachmentDTO } from '../../../shared/types';
+import { hasVisibleBlocks } from '../../lib/blockkit';
 import { Mrkdwn } from '../../lib/mrkdwn';
 import { remoteImageSrc } from '../../lib/remoteImage';
 import { attachmentColor, safeHref } from '../../lib/safeUrl';
@@ -27,7 +28,7 @@ export function AttachmentCard({ attachment: a }: { attachment: AttachmentDTO })
   // Newer apps put Block Kit inside attachments (for the colour rail); those blocks are the
   // content, and the legacy fields are only a fallback (pitfall 16).
   const blocks = a.blocks ?? [];
-  if (blocks.length > 0) {
+  if (hasVisibleBlocks(blocks)) {
     return (
       <div className="max-w-[560px]">
         {a.pretext && (

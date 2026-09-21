@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import clsx from 'clsx';
 import type { MessageDTO } from '../../../shared/types';
-import { formatFullDateTime, formatTime } from '../../lib/format';
+import { formatFullDateTime, formatTime, isoDateTime } from '../../lib/format';
 import { messagePath } from '../../lib/links';
 import { tsToDate } from '../../lib/ts';
 
@@ -17,9 +17,9 @@ export function MessageTime({ message, className }: { message: MessageDTO; class
         className,
       )}
       title={full}
-      aria-label={full}
+      aria-label={full || 'Open this message'}
     >
-      <time dateTime={date.toISOString()}>{formatTime(date)}</time>
+      <time dateTime={isoDateTime(date)}>{formatTime(date) || '—'}</time>
     </Link>
   );
 }

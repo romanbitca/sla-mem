@@ -2,7 +2,15 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { cleanup, screen, within } from '@testing-library/react';
 import type { BlockDTO } from '../../../shared/types';
-import { listMarker, plainTextNodes, richBlockNodes, richInlineNodes, richList, textObject } from '../../lib/blockkit';
+import {
+  hasVisibleBlocks,
+  listMarker,
+  plainTextNodes,
+  richBlockNodes,
+  richInlineNodes,
+  richList,
+  textObject,
+} from '../../lib/blockkit';
 import { loadEmojiMap } from '../../lib/emoji';
 import { makeAttachment, makeMessage, renderWithProviders } from '../../test/helpers';
 import { BlockKit } from './BlockKit';
@@ -120,6 +128,20 @@ const richBlocks: BlockDTO[] = [
     ],
   },
 ];
+
+describe('hasVisibleBlocks', () => {
+  it('is true only when something would be drawn', () => {
+    expect(hasVisibleBlocks([])).toBe(false);
+    expect(hasVisibleBlocks(null)).toBe(false);
+    expect(hasVisibleBlocks([{ type: 'input', label: { type: 'plain_text', text: 'Name' }, element: {} }])).toBe(false);
+    expect(hasVisibleBlocks([{ type: 'section' }, { type: 'rich_text', elements: [] }, { nope: 1 }])).toBe(false);
+    expect(hasVisibleBlocks([{ type: 'divider' }])).toBe(true);
+    expect(hasVisibleBlocks([{ type: 'section', text: { type: 'mrkdwn', text: '*Deploy* done' } }])).toBe(true);
+    expect(hasVisibleBlocks([{ type: 'markdown', text: '**hi**' }])).toBe(true);
+    expect(hasVisibleBlocks(richBlocks)).toBe(true);
+    expect(hasVisibleBlocks(deployBlocks)).toBe(true);
+  });
+});
 
 function renderBlocks(blocks: BlockDTO[]) {
   return renderWithProviders(<BlockKit blocks={blocks} />);

@@ -241,6 +241,37 @@ export function isBlock(value: unknown): value is BlockDTO {
   return isObj(value) && typeof value.type === 'string';
 }
 
+/** Whether BlockKit draws something for this block (mirrors what each type renders). */
+function blockHasContent(block: Loose): boolean {
+  switch (block.type) {
+    case 'rich_text':
+    case 'context':
+    case 'actions':
+      return objects(block.elements).length > 0;
+    case 'header':
+      return textObject(block.text) != null;
+    case 'section':
+      return textObject(block.text) != null || objects(block.fields).length > 0 || isObj(block.accessory);
+    case 'image':
+      return str(block.image_url) !== '' || isObj(block.slack_file);
+    case 'divider':
+    case 'video':
+    case 'file':
+      return true;
+    default:
+      // Unknown types (e.g. `input`) show their text when they carry some, else nothing.
+      return (typeof block.text === 'string' && block.text.trim() !== '') || textObject(block.text) != null;
+  }
+}
+
+/**
+ * Whether a message's blocks draw anything. When they don't (only `input` blocks, empty
+ * sections), its `text` is shown instead of a blank row.
+ */
+export function hasVisibleBlocks(blocks: readonly unknown[] | null | undefined): boolean {
+  return (blocks ?? []).some((b) => isBlock(b) && blockHasContent(b));
+}
+
 /** Text of a button-like element (`text` is a plain_text object; selects have placeholders). */
 export function elementLabel(el: Loose): string {
   for (const key of ['text', 'placeholder'] as const) {

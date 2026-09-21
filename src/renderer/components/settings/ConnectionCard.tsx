@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import clsx from 'clsx';
 import type { SlackConnectionDTO } from '../../../shared/types';
 import { describeError } from '../../lib/api';
-import { formatFullDateTime } from '../../lib/format';
+import { formatFullDateTime, isoDateTime } from '../../lib/format';
 import { useNow } from '../../lib/hooks';
 import {
   isLoginActive,
@@ -40,10 +40,13 @@ export function ConnectionCard({ connection }: { connection: SlackConnectionDTO 
   const disconnect = useDisconnect();
   const [confirming, setConfirming] = useState(false);
   const disconnectRef = useRef<HTMLButtonElement>(null);
+  // The card's main action (Reconnect or Connect Slack): where focus goes once Disconnect is gone.
+  const primaryRef = useRef<HTMLButtonElement>(null);
 
   const state = status?.state;
   const active = isLoginActive(state);
-  const failed = follower.followed && (state === 'error' || state === 'cancelled');
+  // Main pushes "cancelled" before it answers Cancel: that's the reader's own choice, not a failure.
+  const failed = follower.followed && !cancel.isPending && (state === 'error' || state === 'cancelled');
   const justConnected = follower.followed && state === 'connected' && connection.connected && !connection.expired;
   const hasAccount = connection.connected || connection.teamId != null;
   const teamName = connection.teamName || workspaceHost(connection.teamDomain) || 'Your Slack workspace';
@@ -118,7 +121,7 @@ export function ConnectionCard({ connection }: { connection: SlackConnectionDTO 
                       {connection.userName || connection.method ? ' · ' : ''}
                       Connected{' '}
                       <time
-                        dateTime={new Date(connection.connectedAt).toISOString()}
+                        dateTime={isoDateTime(new Date(connection.connectedAt))}
                         title={formatFullDateTime(new Date(connection.connectedAt))}
                       >
                         {timeAgo(connection.connectedAt, now)}
@@ -130,7 +133,7 @@ export function ConnectionCard({ connection }: { connection: SlackConnectionDTO 
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {!connection.expired && (
-                <Button icon={<SyncIcon size={14} />} loading={start.isPending} onClick={signIn}>
+                <Button ref={primaryRef} icon={<SyncIcon size={14} />} loading={start.isPending} onClick={signIn}>
                   Reconnect
                 </Button>
               )}
@@ -153,7 +156,13 @@ export function ConnectionCard({ connection }: { connection: SlackConnectionDTO 
               own conversations on this computer. Nothing is uploaded anywhere.
             </p>
             <div>
-              <Button variant="primary" icon={<PlugIcon size={15} />} loading={start.isPending} onClick={signIn}>
+              <Button
+                ref={primaryRef}
+                variant="primary"
+                icon={<PlugIcon size={15} />}
+                loading={start.isPending}
+                onClick={signIn}
+              >
                 Connect Slack
               </Button>
             </div>
@@ -191,6 +200,9 @@ export function ConnectionCard({ connection }: { connection: SlackConnectionDTO 
             onSuccess: () => {
               setConfirming(false);
               follower.reset();
+              // The Disconnect button that opened the dialog is gone: keep keyboard focus in the
+              // card, on what comes next, rather than dropping it to the page.
+              requestAnimationFrame(() => primaryRef.current?.focus());
             },
           })
         }

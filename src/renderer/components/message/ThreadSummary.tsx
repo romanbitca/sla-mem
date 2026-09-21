@@ -2,6 +2,7 @@ import { memo } from 'react';
 import type { MessageDTO } from '../../../shared/types';
 import { useDirectory } from '../../lib/directory';
 import { formatTsShort, pluralize } from '../../lib/format';
+import { isValidTs } from '../../lib/ts';
 import { ChevronRightIcon } from '../icons';
 import { Avatar } from './Avatar';
 
@@ -44,7 +45,7 @@ export const ThreadSummary = memo(function ThreadSummary({
       <span className="text-[13px] font-semibold text-accent-text group-hover/thread:underline">
         {pluralize(message.replyCount, 'reply', 'replies')}
       </span>
-      {message.latestReply && (
+      {isValidTs(message.latestReply) && (
         <span className="truncate text-xs text-ink-faint">Last reply {formatTsShort(message.latestReply)}</span>
       )}
       <ChevronRightIcon

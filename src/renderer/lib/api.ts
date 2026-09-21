@@ -66,20 +66,39 @@ const DEFAULT_MESSAGES: Record<IpcErrorCode, string> = {
 };
 
 // Main already speaks plain language; these are a safety net so nothing technical ever reaches
-// the reader: session secrets, the words token/cookie, Slack error codes (`invalid_auth`), errno
-// names (`ENOSPC`), HTTP statuses and stack traces.
+// the reader: session secrets, the words token/cookie, error codes (`invalid_auth`,
+// `SQLITE_BUSY`, `net::ERR_…`, `ENOSPC`), HTTP statuses, exception names and stack traces.
 const SECRET = /xox[a-z]-/i;
 const TOKEN_WORDS = /\b(?:tokens?|xox[a-z]?)\b/i;
 const COOKIE_WORDS = /\bcookies?\b/i;
-const SNAKE_CASE_CODE = /\b[a-z]+(?:_[a-z]+)+\b/;
+/** `invalid_auth`, `Invalid_Auth`, `SQLITE_BUSY`, but not a channel name like `#dev_ops`. */
+const CODE_WORD = /(?<![#@\w])[A-Za-z0-9]+(?:_[A-Za-z0-9]+)+\b/;
 const ERRNO = /\bE[A-Z]{3,}\b/;
-const TECHNICAL = /\n\s*at\s|Error invoking remote method|\bHTTP\b|\bstatus(?: code)? \d{3}\b/i;
+const TECHNICAL = new RegExp(
+  [
+    String.raw`\n\s*at\s`, // stack frames
+    String.raw`Error invoking remote method`,
+    String.raw`\bnet::`,
+    String.raw`\bfetch failed\b`,
+    String.raw`\bsocket hang up\b`,
+    String.raw`\bgetaddrinfo\b`,
+    String.raw`\bHTTP\b`,
+    // "status 500", "Slack returned 429 …", "Request failed: 503 …"
+    String.raw`\b(?:status|code|returned|responded|request failed)\b\D{0,12}\b[1-5]\d{2}\b`,
+    String.raw`\bof (?:undefined|null)\b`,
+    String.raw`\bis not (?:a function|defined)\b`,
+  ].join('|'),
+  'i',
+);
+/** Case matters here: "TypeError:" and HTTP reason phrases, not the same words in a sentence. */
+const TECHNICAL_EXACT =
+  /\b(?:[A-Z][a-z]+)*Error:|\b(?:Too Many Requests|Service Unavailable|Bad Gateway|Internal Server Error|Gateway Time-?out)\b/;
 
 function isPresentable(message: string, allowCookie: boolean): boolean {
   if (!message.trim() || message.length > 400) return false;
   if (SECRET.test(message) || TOKEN_WORDS.test(message)) return false;
   if (!allowCookie && COOKIE_WORDS.test(message)) return false;
-  return !SNAKE_CASE_CODE.test(message) && !ERRNO.test(message) && !TECHNICAL.test(message);
+  return ![CODE_WORD, ERRNO, TECHNICAL, TECHNICAL_EXACT].some((re) => re.test(message));
 }
 
 export interface DescribeOptions {

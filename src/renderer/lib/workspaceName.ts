@@ -1,6 +1,6 @@
 /**
- * Slack workspace names as the UI shows them. The server may store a team domain as the bare
- * subdomain ("9h") or as the host ("9h.slack.com"); these accept either (and URLs).
+ * Slack workspace addresses as the UI shows them. A team domain may arrive as the bare
+ * subdomain ("9h") or as the host ("9h.slack.com"); this accepts either (and URLs).
  */
 
 function hostOf(input: string): string {
@@ -10,17 +10,16 @@ function hostOf(input: string): string {
   return s;
 }
 
-/** "9h" | "9h.slack.com" | "https://9h.slack.com/…" → "9h.slack.com". Null when empty. */
+/** Letters, digits and hyphens, dot-separated: no port, credentials or stray characters. */
+const DNS_NAME = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/;
+
+/**
+ * "9h" | "9h.slack.com" | "https://9h.slack.com/…" → "9h.slack.com". Null when empty or not a
+ * plain host name (it ends up in links, so "evil.example:8080" or "a@b" are refused).
+ */
 export function workspaceHost(domain: string | null | undefined): string | null {
   if (!domain) return null;
   const host = hostOf(domain);
-  if (!host) return null;
+  if (!host || host.length > 253 || !DNS_NAME.test(host)) return null;
   return host.includes('.') ? host : `${host}.slack.com`;
-}
-
-/** "9h.slack.com" → "9h" (for file names and CLI examples). Null when empty. */
-export function workspaceSlug(domain: string | null | undefined): string | null {
-  const host = workspaceHost(domain);
-  if (!host) return null;
-  return host.endsWith('.slack.com') ? host.slice(0, -'.slack.com'.length) : host;
 }

@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } fr
 import { useNavigate } from 'react-router';
 import clsx from 'clsx';
 import type { SettingsDTO, SlackConnectionDTO } from '../../../shared/types';
-import { describeError } from '../../lib/api';
+import { describeError, isConflict, presentableMessage } from '../../lib/api';
 import { FREE_PLAN_WINDOW_DAYS } from '../../lib/format';
 import { useStableCallback } from '../../lib/hooks';
 import {
@@ -13,6 +13,7 @@ import {
   useLoginFollower,
   useLoginStatus,
   useStartLogin,
+  useStartSync,
   useStats,
   useSyncStatus,
 } from '../../lib/queries';
@@ -186,7 +187,8 @@ function ConnectStep({
   const otherId = useId();
 
   const active = isLoginActive(status?.state);
-  const failed = follower.followed && (status?.state === 'error' || status?.state === 'cancelled');
+  // Main pushes "cancelled" before it answers Cancel: that's the reader's own choice, not a failure.
+  const failed = follower.followed && !cancel.isPending && (status?.state === 'error' || status?.state === 'cancelled');
   const signIn = () =>
     start.mutate(connection.teamDomain ? { workspace: connection.teamDomain } : {}, { onSuccess: follower.follow });
 
@@ -349,10 +351,7 @@ function HistoryStep({
             Couldn’t check on the first sync: {describeError(sync.error)} It continues in the background.
           </p>
         ) : (
-          <p role="status" className="flex items-center gap-2.5 text-[14px] text-ink-muted">
-            <Spinner size={15} className="text-accent-text" />
-            Starting the first sync…
-          </p>
+          <FirstSyncWaiting blockedReason={status?.blockedReason ?? null} />
         )}
       </div>
 
@@ -403,6 +402,49 @@ function HistoryStep({
           </span>
         )}
       </div>
+    </div>
+  );
+}
+
+/** How long "Starting the first sync…" may show before offering to start it by hand. */
+export const FIRST_SYNC_GRACE_MS = 10_000;
+
+/**
+ * Main starts the first sync as soon as Slack is connected. If nothing has started after a
+ * moment (it was cancelled by quitting, or syncing is blocked), say so and offer to start it,
+ * rather than showing "Starting…" forever.
+ */
+function FirstSyncWaiting({ blockedReason }: { blockedReason: string | null }) {
+  const [late, setLate] = useState(false);
+  const startSync = useStartSync();
+  useEffect(() => {
+    const id = setTimeout(() => setLate(true), FIRST_SYNC_GRACE_MS);
+    return () => clearTimeout(id);
+  }, []);
+
+  if (!late) {
+    return (
+      <p role="status" className="flex items-center gap-2.5 text-[14px] text-ink-muted">
+        <Spinner size={15} className="text-accent-text" />
+        Starting the first sync…
+      </p>
+    );
+  }
+  // "Already running" means it did start: the progress replaces this in a moment.
+  const error = startSync.isError && !isConflict(startSync.error) ? startSync.error : null;
+  return (
+    <div className="flex flex-col items-start gap-2.5">
+      <p className="text-[14px] text-ink-muted">
+        {presentableMessage(blockedReason, 'The first sync hasn’t started yet.')}
+      </p>
+      <Button size="sm" variant="primary" loading={startSync.isPending} onClick={() => startSync.mutate()}>
+        Start it now
+      </Button>
+      {error != null && (
+        <p role="alert" className="text-[13px] text-danger">
+          {describeError(error)}
+        </p>
+      )}
     </div>
   );
 }

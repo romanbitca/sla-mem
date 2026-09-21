@@ -244,6 +244,18 @@ describe('HomePage', () => {
     expect(showLogs).toHaveBeenCalledTimes(1);
   });
 
+  it('never shows a technical problem message: PLAN §8.5’s words stand in', async () => {
+    setup(
+      makeSyncStatus({
+        problem: { kind: 'disk_full', message: 'SQLITE_FULL: database or disk is full', action: null },
+      }),
+    );
+    expect(
+      await screen.findByText('Your disk is full, so new messages can’t be saved. Free up space and we’ll continue.'),
+    ).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/SQLITE/);
+  });
+
   it('warns clearly when the last successful sync is over a month old', async () => {
     const startSync = vi.spyOn(api, 'startSync').mockResolvedValue({ runId: 7 });
     setup(makeSyncStatus({ stale: true, lastSuccessAt: NOW - 34 * DAY }));

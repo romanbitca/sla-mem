@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import type { ProblemDTO } from '../../../shared/types';
-import { describeError } from '../../lib/api';
+import { describeError, presentableMessage } from '../../lib/api';
 import { useSettings, useShowLogs, useStartLogin, useStartSync, useWorkspace } from '../../lib/queries';
 import { AlertIcon } from '../icons';
 import { Button } from '../ui/Button';
@@ -21,6 +21,16 @@ export function useReconnect() {
   return { reconnect, pending: start.isPending, error: start.error };
 }
 
+/** PLAN §8.5's wording, for when main's message isn't fit to show as it is. */
+const PROBLEM_FALLBACK: Record<ProblemDTO['kind'], string> = {
+  signed_out: 'Slack signed you out. Reconnect to keep archiving.',
+  offline: 'Can’t reach Slack right now. We’ll try again automatically.',
+  disk_full: 'Your disk is full, so new messages can’t be saved. Free up space and we’ll continue.',
+  wrong_account:
+    'You signed in to a different Slack workspace or account than the one this archive keeps. Reconnect with that one.',
+  unexpected: 'Something went wrong. Nothing was lost.',
+};
+
 /**
  * The last run's failure (PLAN §8.5): main's plain-language message plus the one action that
  * fixes it. Unexpected failures offer both "Try again" and "Show logs".
@@ -40,7 +50,9 @@ export function ProblemCallout({ problem, className }: { problem: ProblemDTO; cl
       role="alert"
       className={className}
     >
-      <p className="font-medium">{problem.message}</p>
+      <p className="font-medium">
+        {presentableMessage(problem.message, PROBLEM_FALLBACK[problem.kind] ?? PROBLEM_FALLBACK.unexpected)}
+      </p>
       {(problem.action === 'reconnect' || retry || logs) && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {problem.action === 'reconnect' && (

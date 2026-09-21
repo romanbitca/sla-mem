@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import clsx from 'clsx';
 import type { MessageDTO, SearchHit } from '../../../shared/types';
 import { useDirectory } from '../../lib/directory';
-import { formatFullDateTime, formatShortDate, isBeyondFreeWindow, pluralize } from '../../lib/format';
+import { formatFullDateTime, formatShortDate, isBeyondFreeWindow, isoDateTime, pluralize } from '../../lib/format';
 import { conversationPath, messagePath } from '../../lib/links';
 import { mrkdwnToPlainText, useMrkdwnContext } from '../../lib/mrkdwn';
 import { tsToDate } from '../../lib/ts';
@@ -161,7 +161,7 @@ export const HitRow = memo(function HitRow({ hit, showConversation }: { hit: Sea
             </span>
           )}
           <time
-            dateTime={date.toISOString()}
+            dateTime={isoDateTime(date)}
             title={formatFullDateTime(date)}
             className="text-xs text-ink-faint tabular-nums"
           >

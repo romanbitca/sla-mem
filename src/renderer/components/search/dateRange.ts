@@ -3,8 +3,7 @@
  * exclusive, like Slack's `before:` modifier. The picker shows an inclusive "to" day instead,
  * which is what people mean by "March 1 to March 31".
  */
-import { format } from 'date-fns';
-import { FREE_PLAN_WINDOW_DAYS } from '../../lib/format';
+import { FREE_PLAN_WINDOW_DAYS, formatDate } from '../../lib/format';
 import { addDays, localDay, type DateRange } from './resolve';
 
 /** Inclusive last day for an exclusive `before`. */
@@ -24,7 +23,7 @@ function dayDate(day: string): Date {
 
 function formatDayShort(day: string, now: Date): string {
   const date = dayDate(day);
-  return date.getFullYear() === now.getFullYear() ? format(date, 'MMM d') : format(date, 'MMM d, yyyy');
+  return formatDate(date, date.getFullYear() === now.getFullYear() ? 'MMM d' : 'MMM d, yyyy');
 }
 
 /** "Mar 1 – Mar 31", "On Mar 4", "Since Mar 1", "Before Mar 1, 2025", or null for any time. */

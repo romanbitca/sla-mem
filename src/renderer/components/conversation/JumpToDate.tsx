@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { api, describeError } from '../../lib/api';
 import { usePopover } from '../../lib/hooks';
-import { parseLocalDate, toLocalDateInput, tsJustBefore, tsToDate } from '../../lib/ts';
+import { isValidTs, parseLocalDate, toLocalDateInput, tsJustBefore, tsToDate } from '../../lib/ts';
 import { CalendarIcon } from '../icons';
 import { Button } from '../ui/Button';
 
@@ -31,8 +31,8 @@ export function JumpToDate({ conversationId, oldestTs, latestTs, onJump }: JumpT
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const min = oldestTs ? toLocalDateInput(tsToDate(oldestTs)) : undefined;
-  const max = latestTs ? toLocalDateInput(tsToDate(latestTs)) : undefined;
+  const min = isValidTs(oldestTs) ? toLocalDateInput(tsToDate(oldestTs)) : undefined;
+  const max = isValidTs(latestTs) ? toLocalDateInput(tsToDate(latestTs)) : undefined;
 
   const jump = async (date: Date | null) => {
     setBusy(true);

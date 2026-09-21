@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import clsx from 'clsx';
 import type { SyncRunDTO } from '../../../shared/types';
 import { describeError } from '../../lib/api';
-import { formatFullDateTime } from '../../lib/format';
+import { formatFullDateTime, isoDateTime } from '../../lib/format';
 import { useNow } from '../../lib/hooks';
 import { useShowLogs } from '../../lib/queries';
 import { readJsonPref, writeJsonPref } from '../../lib/storage';
@@ -66,7 +66,7 @@ export function SyncHistory({ runs }: { runs: readonly SyncRunDTO[] }) {
                   <span className="font-medium text-ink">{KIND_LABEL[run.kind]}</span>
                   <time
                     className="text-ink-muted"
-                    dateTime={new Date(run.startedAt).toISOString()}
+                    dateTime={isoDateTime(new Date(run.startedAt))}
                     title={formatFullDateTime(new Date(run.startedAt))}
                   >
                     {timeAgo(run.startedAt, now)}

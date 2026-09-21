@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import clsx from 'clsx';
-import { isTypingTarget, useKeydown, useMediaQuery } from '../../lib/hooks';
+import { isModalOpen, isTypingTarget, useKeydown, useMediaQuery } from '../../lib/hooks';
 import { useSyncStatus } from '../../lib/queries';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { ShellContext, type ShellContextValue } from './shell';
@@ -53,7 +53,8 @@ export function AppShell() {
   }, []);
 
   useKeydown((e) => {
-    if (e.defaultPrevented) return;
+    // Behind a dialog or the image viewer, the page's shortcuts would move focus out of it.
+    if (e.defaultPrevented || isModalOpen()) return;
     const mod = e.metaKey || e.ctrlKey;
     if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
       e.preventDefault();

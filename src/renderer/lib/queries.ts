@@ -29,6 +29,7 @@ import type {
   SettingsDTO,
   SlackConnectionDTO,
   StartLoginRequest,
+  SyncRunDTO,
   SyncStatusDTO,
 } from '../../shared/types';
 import { api, type MessagesWindow } from './api';
@@ -247,19 +248,52 @@ export function invalidateArchiveData(qc: QueryClient): Promise<void> {
   ).then(() => undefined);
 }
 
+/** Identifies the latest finished run ("id:finishedAt"); null before any has finished. */
+export function lastFinishedRunKey(status: SyncStatusDTO): string | null {
+  let latest: SyncRunDTO | null = null;
+  for (const run of status.recentRuns) {
+    if (run.finishedAt != null && (!latest || run.id > latest.id)) latest = run;
+  }
+  return latest ? `${latest.id}:${latest.finishedAt}` : null;
+}
+
 /**
- * Mount once (app level): refreshes archive data when a run goes from running to finished,
- * whether it was started here, by the schedule or from the tray.
+ * Mount once (app level): refreshes archive data when a run finishes, whether it was started
+ * here, by the schedule or from the tray. A short run (a single file's Retry) can start and end
+ * between two pushes of the throttled status, so a newly finished run counts as much as seeing
+ * `running` go from true to false.
  */
 export function useSyncRunWatcher(status: SyncStatusDTO | undefined): void {
   const qc = useQueryClient();
-  const wasRunning = useRef<boolean | null>(null);
+  const seen = useRef<{ running: boolean; finished: string | null } | null>(null);
   const running = status?.running;
+  const finished = status ? lastFinishedRunKey(status) : undefined;
   useEffect(() => {
-    if (running == null) return;
-    if (wasRunning.current === true && !running) void invalidateArchiveData(qc);
-    wasRunning.current = running;
-  }, [running, qc]);
+    if (running == null || finished === undefined) return;
+    const prev = seen.current;
+    seen.current = { running, finished };
+    if (prev && ((prev.running && !running) || prev.finished !== finished)) void invalidateArchiveData(qc);
+  }, [running, finished, qc]);
+}
+
+/** Whether run `runId` has finished; with no id (main started nothing), once nothing runs. */
+export function isRunFinished(status: SyncStatusDTO, runId: number | null): boolean {
+  if (runId == null) return !status.running;
+  return status.recentRuns.some((run) => run.id === runId && run.finishedAt != null);
+}
+
+/**
+ * `isRunFinished` over the cached sync status, for a run this screen started (e.g. a file's
+ * Retry). Reads what main pushes without starting another poll: many cards may ask at once.
+ */
+export function useRunFinished(runId: number | null, enabled: boolean): boolean {
+  const { data } = useQuery({
+    queryKey: qk.syncStatus,
+    queryFn: ({ signal }) => api.getSyncStatus(signal),
+    enabled: false,
+    select: (status: SyncStatusDTO) => isRunFinished(status, runId),
+  });
+  return enabled && data === true;
 }
 
 export function useStartSync() {
@@ -398,9 +432,19 @@ export function isLoginUpdate(cached: LoginStatusDTO | undefined, incoming: Logi
 }
 
 /**
+ * Writes a sign-in status (pushed by main, or a reply) into the cache. A sign-in that just
+ * completed changes the workspace, the connection and what sync can do, so those refresh too.
+ */
+export function applyLoginStatus(qc: QueryClient, status: LoginStatusDTO): void {
+  const prev = qc.getQueryData<LoginStatusDTO>(qk.loginStatus);
+  qc.setQueryData(qk.loginStatus, status);
+  if (status.state === 'connected' && prev?.state !== 'connected') void invalidateConnectionData(qc);
+}
+
+/**
  * Start / choose / cancel answer with the new sign-in status. A status fetch still in flight was
  * asked before the change, so it's cancelled: landing after this result it would overwrite it
- * (e.g. "idle" right after Start).
+ * (e.g. "idle" right after Start). The reply goes through the same path as a pushed status.
  */
 function useLoginMutation<V>(fn: (vars: V) => Promise<LoginStatusDTO>) {
   const qc = useQueryClient();
@@ -408,9 +452,7 @@ function useLoginMutation<V>(fn: (vars: V) => Promise<LoginStatusDTO>) {
     mutationFn: fn,
     onMutate: () => qc.cancelQueries({ queryKey: qk.loginStatus }),
     onSuccess: (status) => {
-      if (isLoginUpdate(qc.getQueryData<LoginStatusDTO>(qk.loginStatus), status)) {
-        qc.setQueryData(qk.loginStatus, status);
-      }
+      if (isLoginUpdate(qc.getQueryData<LoginStatusDTO>(qk.loginStatus), status)) applyLoginStatus(qc, status);
     },
   });
 }

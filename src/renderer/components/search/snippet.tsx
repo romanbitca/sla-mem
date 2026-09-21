@@ -99,12 +99,17 @@ export function snippetPieces(
     }
   };
 
+  const re = new RegExp(SHORTCODE.source, SHORTCODE.flags);
   let last = 0;
-  for (const m of text.matchAll(SHORTCODE)) {
-    const start = m.index ?? 0;
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    const start = m.index;
     const end = start + m[0].length;
     const skinTone = m[2] ?? null;
-    if (!canDraw(m[1], skinTone)) continue;
+    if (!canDraw(m[1], skinTone)) {
+      // Not an emoji ("10:30:"): its closing colon may open a real one, as in "10:30:tada:".
+      re.lastIndex = start + 1;
+      continue;
+    }
     pushText(last, start);
     pieces.push({ kind: 'emoji', text: m[0], match: matched.subarray(start, end).includes(1), name: m[1], skinTone });
     last = end;

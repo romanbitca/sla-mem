@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { LoginStatusDTO, SettingsDTO } from '../../../shared/types';
 import { App } from '../../App';
+import { FIRST_SYNC_GRACE_MS } from './Onboarding';
 import {
   appFixtures,
   installFixtureBridge,
@@ -158,6 +159,36 @@ describe('Onboarding', () => {
     expect(await screen.findByText('Checking your sign-in with Slack…')).toBeTruthy();
   });
 
+  it('refreshes the saved connection when the reply to Continue already says “connected”', async () => {
+    const connection = makeConnection({ teamName: '9H', userName: 'roman' });
+    start({
+      chooseLoginTeam: () => {
+        // Main saved the connection and answers; its pushes haven't arrived yet.
+        settings = { ...settings, connection };
+        return (login = makeLoginStatus({ state: 'connected', startedAt: STARTED, connection }));
+      },
+    });
+    await toConnectStep();
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Slack' }));
+    await screen.findByText('Opening the Slack sign-in window…');
+    login = makeLoginStatus({
+      state: 'choose_team',
+      startedAt: STARTED,
+      teams: [
+        { id: 'T1', name: 'Acme', domain: 'acme' },
+        { id: 'T9H', name: '9H', domain: '9h' },
+      ],
+    });
+    bridge.emit('login-status', login);
+    const group = await screen.findByRole('group', { name: /more than one workspace/ });
+    const settingsCalls = () => bridge.call.mock.calls.filter(([m]) => m === 'getSettings').length;
+    const before = settingsCalls();
+    fireEvent.click(within(group).getByRole('radio', { name: /9H/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByRole('heading', { name: 'Getting your history' })).toBeTruthy();
+    await waitFor(() => expect(settingsCalls()).toBeGreaterThan(before));
+  });
+
   it('keeps a step main already pushed when the reply to Start arrives late', async () => {
     let reply: (value: LoginStatusDTO) => void = () => {};
     start({ startLogin: () => new Promise<LoginStatusDTO>((resolve) => (reply = resolve)) });
@@ -180,6 +211,28 @@ describe('Onboarding', () => {
     await waitFor(() => expect(bridge.call).toHaveBeenCalledWith('cancelLogin'));
     expect(await screen.findByRole('button', { name: 'Connect Slack' })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('never flashes a failure when main pushes “cancelled” before answering Cancel', async () => {
+    let reply: (value: LoginStatusDTO) => void = () => {};
+    start({
+      cancelLogin: () => {
+        login = makeLoginStatus({ state: 'cancelled', startedAt: STARTED, message: 'Sign-in was cancelled.' });
+        bridge.emit('login-status', login);
+        return new Promise<LoginStatusDTO>((resolve) => (reply = resolve));
+      },
+    });
+    await toConnectStep();
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Slack' }));
+    await screen.findByText('Opening the Slack sign-in window…');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(bridge.call).toHaveBeenCalledWith('cancelLogin'));
+    expect(await screen.findByRole('button', { name: 'Connect Slack' })).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+    reply(login);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Connect Slack' })).toBeTruthy();
   });
 
   it('after a cancelled or failed sign-in: plain words, Try again, and the other ways', async () => {
@@ -240,6 +293,26 @@ describe('Onboarding', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /Start Slack Archive when I log in/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Finish' }));
     await waitFor(() => expect(bridge.call).toHaveBeenCalledWith('completeOnboarding', { launchAtLogin: false }));
+  });
+
+  it('offers to start the first sync by hand when it hasn’t started after a while', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      start({
+        getSettings: () => ({ ...fresh, connection: makeConnection() }),
+        startSync: { code: 'conflict', message: 'A sync is already running.' },
+      });
+      expect(await screen.findByText('Starting the first sync…')).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Start it now' })).toBeNull();
+      act(() => vi.advanceTimersByTime(FIRST_SYNC_GRACE_MS));
+      fireEvent.click(await screen.findByRole('button', { name: 'Start it now' }));
+      await waitFor(() => expect(bridge.call).toHaveBeenCalledWith('startSync'));
+      // "Already running" isn't an error worth showing: the progress takes over.
+      await new Promise((r) => setTimeout(r, 20));
+      expect(screen.queryByRole('alert')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('shows a first-sync problem with its fix', async () => {

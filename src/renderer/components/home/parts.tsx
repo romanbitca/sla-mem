@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react';
 import clsx from 'clsx';
 import type { RunStatus } from '../../../shared/types';
-import { formatFullDateTime } from '../../lib/format';
+import { formatFullDateTime, isoDateTime } from '../../lib/format';
 import { STATUS_LABEL, relativeTime, timeAgo } from './runs';
 
 const STATUS_STYLE: Record<RunStatus, string> = {
@@ -50,7 +50,7 @@ export function Fact({ label, children }: { label: string; children: ReactNode }
 export function TimeAgo({ ms, now, past = false }: { ms: number; now: number; past?: boolean }) {
   const date = new Date(ms);
   return (
-    <time dateTime={date.toISOString()} title={formatFullDateTime(date)}>
+    <time dateTime={isoDateTime(date)} title={formatFullDateTime(date)}>
       {past ? timeAgo(ms, now) : relativeTime(ms, now)}
     </time>
   );

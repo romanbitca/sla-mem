@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import type { MessageDTO } from '../../../shared/types';
 import { Mrkdwn } from '../../lib/mrkdwn';
 import { useDirectory } from '../../lib/directory';
+import { hasVisibleBlocks } from '../../lib/blockkit';
 import { isSystemMessage } from '../../lib/grouping';
 import { slackPermalink } from '../../lib/links';
 import { CornerDownRightIcon, ThreadIcon } from '../icons';
@@ -60,8 +61,9 @@ function StandardMessageRow({
 }: MessageItemProps) {
   const dir = useDirectory();
   const author = resolveAuthor(message, dir);
-  // App/bot layouts: the blocks are the message and `text` is only its notification fallback.
-  const hasBlocks = message.blocks.length > 0;
+  // App/bot layouts: the blocks are the message and `text` is only its notification fallback
+  // (unless the blocks draw nothing the archive can show, e.g. only form inputs).
+  const hasBlocks = hasVisibleBlocks(message.blocks);
   const showText = !hasBlocks && message.text.trim() !== '' && !textDuplicatesAttachment(message);
   const permalink = slackPermalink(dir.teamDomain, message);
   const isBroadcast = message.subtype === 'thread_broadcast';
@@ -180,6 +182,34 @@ function StandardMessageRow({
   );
 }
 
+/** What a channel event says when Slack stored no text for it. */
+const SYSTEM_EVENT: Record<string, string> = {
+  channel_join: 'joined the channel',
+  group_join: 'joined the channel',
+  channel_leave: 'left the channel',
+  group_leave: 'left the channel',
+  channel_topic: 'changed the topic',
+  group_topic: 'changed the topic',
+  channel_purpose: 'changed the description',
+  group_purpose: 'changed the description',
+  channel_name: 'renamed the channel',
+  group_name: 'renamed the channel',
+  channel_archive: 'archived the channel',
+  group_archive: 'archived the channel',
+  channel_unarchive: 'unarchived the channel',
+  group_unarchive: 'unarchived the channel',
+  pinned_item: 'pinned a message',
+  unpinned_item: 'unpinned a message',
+  bot_add: 'added an app',
+  bot_remove: 'removed an app',
+};
+
+/** "Alice joined the channel", for an event without stored text (never the raw subtype). */
+export function systemEventFallback(subtype: string | null, authorLabel: string): string {
+  const what = subtype && Object.hasOwn(SYSTEM_EVENT, subtype) ? SYSTEM_EVENT[subtype] : 'updated the channel';
+  return `${authorLabel} ${what}`;
+}
+
 function SystemMessageRow({ message, highlighted = false, className }: MessageItemProps) {
   const dir = useDirectory();
   const author = resolveAuthor(message, dir);
@@ -197,7 +227,11 @@ function SystemMessageRow({ message, highlighted = false, className }: MessageIt
         <Avatar seed={author.seed} label={author.label} src={author.avatarUrl} size={20} />
       </div>
       <div className="min-w-0 flex-1">
-        <Mrkdwn text={message.text || `${author.label} (${message.subtype ?? 'event'})`} inline />{' '}
+        {message.text.trim() ? (
+          <Mrkdwn text={message.text} inline />
+        ) : (
+          <span>{systemEventFallback(message.subtype, author.label)}</span>
+        )}{' '}
         <MessageTime message={message} className="ml-1 opacity-0 group-hover/msg:opacity-100" />
       </div>
     </article>

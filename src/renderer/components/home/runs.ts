@@ -36,6 +36,7 @@ export function formatDuration(ms: number): string {
 
 /** "just now", "5 minutes ago", "in 12 minutes". */
 export function relativeTime(ms: number, now: number): string {
+  if (!Number.isFinite(ms) || !Number.isFinite(now)) return '';
   if (Math.abs(ms - now) < 45_000) return ms <= now ? 'just now' : 'in a moment';
   return formatDistanceStrict(ms, now, { addSuffix: true });
 }

@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import clsx from 'clsx';
-import { differenceInCalendarDays, format } from 'date-fns';
+import { differenceInCalendarDays } from 'date-fns';
 import type { StatsDTO, StorageDTO } from '../../../shared/types';
-import { FREE_PLAN_WINDOW_DAYS, formatBytes, pluralize } from '../../lib/format';
+import { FREE_PLAN_WINDOW_DAYS, formatBytes, formatDate, pluralize } from '../../lib/format';
 import { tsToDate } from '../../lib/ts';
 import { ArchiveIcon, CalendarIcon, DatabaseIcon, FileIcon, HashIcon, MessageIcon } from '../icons';
 import { ErrorState } from '../ui/EmptyState';
@@ -112,7 +112,11 @@ function FilesCard({ stats, filesBytes }: { stats: StatsDTO; filesBytes: number 
 }
 
 function RangeCard({ stats }: { stats: StatsDTO }) {
-  if (!stats.oldestTs || !stats.newestTs) {
+  const oldest = tsToDate(stats.oldestTs ?? '');
+  const newest = tsToDate(stats.newestTs ?? '');
+  const from = formatDate(oldest, 'MMM d, yyyy');
+  const to = formatDate(newest, 'MMM d, yyyy');
+  if (!from || !to) {
     return (
       <StatCard
         className="lg:col-span-3"
@@ -123,15 +127,13 @@ function RangeCard({ stats }: { stats: StatsDTO }) {
       />
     );
   }
-  const oldest = tsToDate(stats.oldestTs);
-  const newest = tsToDate(stats.newestTs);
   const days = differenceInCalendarDays(newest, oldest) + 1;
   return (
     <StatCard
       className="lg:col-span-3"
       icon={<CalendarIcon size={16} />}
       label="Archive covers"
-      value={<span className="text-xl">{`${format(oldest, 'MMM d, yyyy')} – ${format(newest, 'MMM d, yyyy')}`}</span>}
+      value={<span className="text-xl">{`${from} – ${to}`}</span>}
       detail={`${pluralize(days, 'day')} of history`}
     />
   );

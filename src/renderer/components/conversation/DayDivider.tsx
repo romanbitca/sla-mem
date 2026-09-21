@@ -1,6 +1,5 @@
 import { memo } from 'react';
-import { format } from 'date-fns';
-import { formatDayLabel, isBeyondFreeWindow } from '../../lib/format';
+import { formatDate, formatDayLabel, isBeyondFreeWindow } from '../../lib/format';
 import { ArchiveIcon } from '../icons';
 
 /**
@@ -15,7 +14,9 @@ export const DayDivider = memo(function DayDivider({ date, id }: { date: Date; i
       <span
         className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full border border-line bg-canvas px-3 text-xs font-semibold text-ink-muted shadow-xs"
         title={
-          beyond ? `${format(date, 'PPPP')} · older than 90 days: no longer visible in Slack` : format(date, 'PPPP')
+          beyond
+            ? `${formatDate(date, 'PPPP')} · older than 90 days: no longer visible in Slack`
+            : formatDate(date, 'PPPP')
         }
       >
         {formatDayLabel(date)}

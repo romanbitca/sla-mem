@@ -1,9 +1,8 @@
-import { format } from 'date-fns';
 import { Mrkdwn } from '../../lib/mrkdwn';
 import { usePopover } from '../../lib/hooks';
 import { useRevisions } from '../../lib/queries';
-import { formatFullDateTime } from '../../lib/format';
-import { tsToDate } from '../../lib/ts';
+import { formatDate, formatFullDateTime } from '../../lib/format';
+import { isValidTs, tsToDate } from '../../lib/ts';
 import { describeError } from '../../lib/api';
 import { Spinner } from '../ui/Spinner';
 
@@ -15,7 +14,7 @@ export interface RevisionsPopoverProps {
 }
 
 function editedTitle(editedTs: string | null): string {
-  return editedTs ? `Edited ${formatFullDateTime(tsToDate(editedTs))}` : 'Edited';
+  return isValidTs(editedTs) ? `Edited ${formatFullDateTime(tsToDate(editedTs))}` : 'Edited';
 }
 
 /**
@@ -69,20 +68,22 @@ export function RevisionsPopover({ conversationId, ts, editedTs, revisionCount }
               <ol className="flex flex-col">
                 {[...revisions.data]
                   .sort((a, b) => b.seenAt - a.seenAt)
-                  .map((rev, i) => (
-                    <li key={`${rev.seenAt}:${i}`} className="rounded-lg px-3 py-2 hover:bg-hover">
-                      <p className="mb-0.5 text-xs text-ink-faint">
-                        {rev.editedTs
-                          ? `Version from ${format(tsToDate(rev.editedTs), 'MMM d, yyyy h:mm a')}`
-                          : 'Original version'}
-                        {' · '}
-                        archived {format(new Date(rev.seenAt), 'MMM d, yyyy')}
-                      </p>
-                      <div className="msg-text text-sm text-ink">
-                        <Mrkdwn text={rev.text} />
-                      </div>
-                    </li>
-                  ))}
+                  .map((rev, i) => {
+                    const version = isValidTs(rev.editedTs)
+                      ? `Version from ${formatDate(tsToDate(rev.editedTs), 'MMM d, yyyy h:mm a')}`
+                      : 'Original version';
+                    const archived = formatDate(new Date(rev.seenAt), 'MMM d, yyyy');
+                    return (
+                      <li key={`${rev.seenAt}:${i}`} className="rounded-lg px-3 py-2 hover:bg-hover">
+                        <p className="mb-0.5 text-xs text-ink-faint">
+                          {archived ? `${version} · archived ${archived}` : version}
+                        </p>
+                        <div className="msg-text text-sm text-ink">
+                          <Mrkdwn text={rev.text} />
+                        </div>
+                      </li>
+                    );
+                  })}
               </ol>
             )}
           </div>

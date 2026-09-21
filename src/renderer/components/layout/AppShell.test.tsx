@@ -111,6 +111,34 @@ describe('describeSync', () => {
       'Not synced yet',
     );
   });
+
+  it('keeps “synced … ago” current and never announces the ticking parts', () => {
+    const at = Date.now() - 10 * 60_000;
+    const status = makeSyncStatus({ lastSuccessAt: at });
+    expect(describeSync(status, null, false, at + 5 * 60_000).text).toBe('Synced 5 minutes ago');
+    expect(describeSync(status, null, false, at + 2 * 3_600_000).text).toBe('Synced 2 hours ago');
+    expect(describeSync(status, null, false).announce).toBe('Synced');
+    const running = makeSyncStatus({
+      running: true,
+      progress: { phase: 'history', message: 'Fetching #general — 40 messages so far', current: 3, total: 12 },
+    });
+    expect(describeSync(running, null, false)).toMatchObject({
+      announce: 'Syncing…',
+      detail: 'Fetching #general — 40 messages so far',
+    });
+  });
+
+  it('says when syncing is blocked instead of showing a green “synced”', () => {
+    const blocked = makeSyncStatus({ blockedReason: 'Your disk is full, so new messages can’t be saved.' });
+    expect(describeSync(blocked, null, false)).toMatchObject({
+      text: 'Sync paused',
+      tone: 'warn',
+      detail: 'Your disk is full, so new messages can’t be saved.',
+    });
+    expect(describeSync(makeSyncStatus({ blockedReason: 'ENOSPC' }), null, false).detail).toBe(
+      'Syncing isn’t possible right now.',
+    );
+  });
 });
 
 describe('AppShell', () => {
@@ -137,6 +165,27 @@ describe('AppShell', () => {
     fireEvent.submit(search.closest('form')!);
     await waitFor(() => expect(location?.pathname).toBe('/search'));
     expect(new URLSearchParams(location!.search).get('q')).toBe('from:@bob deploy');
+  });
+
+  it('leaves the page shortcuts alone while a dialog is open', async () => {
+    renderApp();
+    const search = screen.getByRole('searchbox', { name: 'Search archive' });
+    const modal = document.createElement('div');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    const inside = document.createElement('button');
+    modal.append(inside);
+    document.body.append(modal);
+    try {
+      inside.focus();
+      fireEvent.keyDown(window, { key: 'k', metaKey: true });
+      fireEvent.keyDown(window, { key: '/' });
+      await new Promise((r) => setTimeout(r, 20));
+      expect(document.activeElement).toBe(inside);
+      expect(document.activeElement).not.toBe(search);
+    } finally {
+      modal.remove();
+    }
   });
 
   it('moves through the filtered list with arrow keys and opens with Enter', async () => {
@@ -214,8 +263,11 @@ describe('AppShell', () => {
       makeSyncStatus({ recentRuns: [], lastSuccessAt: null, blockedReason: 'Connect Slack to start syncing.' }),
     );
     renderApp();
-    const indicator = (await screen.findByText('Connect Slack', { selector: '[role="status"]' })).closest('a')!;
+    const indicator = await screen.findByTitle('Open Settings to connect Slack');
+    expect(indicator.textContent).toBe('Connect Slack');
     expect(indicator.getAttribute('href')).toBe('/settings');
+    // Screen readers hear the state once, from a live region outside the link.
+    expect(screen.getByText('Connect Slack', { selector: '[role="status"]' }).closest('a')).toBeNull();
     expect(screen.getAllByText('Slack Archive').length).toBeGreaterThan(0);
   });
 

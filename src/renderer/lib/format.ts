@@ -4,16 +4,36 @@ import { tsToDate } from './ts';
 /** Slack Free only shows this much history; older messages exist only in the archive. */
 export const FREE_PLAN_WINDOW_DAYS = 90;
 
+/**
+ * Whether a Date holds an actual time. date-fns throws on an invalid one, and archived data
+ * (or an imported export) can carry a malformed timestamp: a bad date must never take a whole
+ * screen down, so everything here formats it as '' instead.
+ */
+export function isValidDate(date: Date): boolean {
+  return !Number.isNaN(date.getTime());
+}
+
+/** date-fns `format` that returns '' for an invalid date. */
+export function formatDate(date: Date, pattern: string): string {
+  return isValidDate(date) ? format(date, pattern) : '';
+}
+
+/** For `<time dateTime>`: nothing rather than a crash when the date is invalid. */
+export function isoDateTime(date: Date): string | undefined {
+  return isValidDate(date) ? date.toISOString() : undefined;
+}
+
 export function formatTime(date: Date): string {
-  return format(date, 'h:mm a');
+  return formatDate(date, 'h:mm a');
 }
 
 export function formatFullDateTime(date: Date): string {
-  return format(date, "EEEE, MMMM d, yyyy 'at' h:mm:ss a");
+  return formatDate(date, "EEEE, MMMM d, yyyy 'at' h:mm:ss a");
 }
 
 /** Day divider label: "Today", "Yesterday", "Monday, March 4th" or with the year when not current. */
 export function formatDayLabel(date: Date, now: Date = new Date()): string {
+  if (!isValidDate(date)) return '';
   const days = differenceInCalendarDays(now, date);
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
@@ -22,6 +42,7 @@ export function formatDayLabel(date: Date, now: Date = new Date()): string {
 
 /** Compact date for summaries: "today at 3:04 PM", "yesterday at …", "Mar 4", "Mar 4, 2023". */
 export function formatShortDate(date: Date, now: Date = new Date()): string {
+  if (!isValidDate(date)) return '';
   const days = differenceInCalendarDays(now, date);
   if (days === 0) return `today at ${formatTime(date)}`;
   if (days === 1) return `yesterday at ${formatTime(date)}`;
@@ -35,8 +56,9 @@ export function formatTsShort(ts: string, now?: Date): string {
 /** "Mar 4, 2024 – Sep 21, 2026" for the range an archive/conversation covers. */
 export function formatTsRange(oldestTs: string | null, latestTs: string | null): string | null {
   if (!oldestTs || !latestTs) return null;
-  const from = format(tsToDate(oldestTs), 'MMM d, yyyy');
-  const to = format(tsToDate(latestTs), 'MMM d, yyyy');
+  const from = formatDate(tsToDate(oldestTs), 'MMM d, yyyy');
+  const to = formatDate(tsToDate(latestTs), 'MMM d, yyyy');
+  if (!from || !to) return null;
   return from === to ? from : `${from} – ${to}`;
 }
 

@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { format } from 'date-fns';
 import { useDirectory } from '../../lib/directory';
-import { formatDayLabel, pluralize } from '../../lib/format';
+import { formatDate, formatDayLabel, pluralize } from '../../lib/format';
 import { groupByDay, localDayKey } from '../../lib/grouping';
 import { useKeydown } from '../../lib/hooks';
 import { useThread } from '../../lib/queries';
@@ -102,7 +101,7 @@ export function ThreadPanel({ conversationId, threadTs, highlightTs = null, onCl
               <span className="h-px flex-1 bg-line" />
             </div>
             {days.map((day) => (
-              <section key={day.key} aria-label={format(day.date, 'PPPP')}>
+              <section key={day.key} aria-label={formatDate(day.date, 'PPPP') || undefined}>
                 {day.key !== parentDay && (
                   <p className="px-5 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-ink-faint uppercase">
                     {formatDayLabel(day.date)}

@@ -254,6 +254,43 @@ describe('MessageItem', () => {
     expect(within(article).queryByText('Reactions')).toBeNull();
   });
 
+  it('names a channel event Slack stored without text in plain words, never its subtype', () => {
+    renderItem({ message: makeMessage({ ts: TS, userId: 'U2', subtype: 'channel_leave', text: '' }) });
+    const article = screen.getByRole('article');
+    expect(article.textContent).toContain('Bob left the channel');
+    expect(article.textContent).not.toContain('channel_leave');
+  });
+
+  it('shows the text when the blocks hold nothing the archive can draw (e.g. only a form input)', () => {
+    renderItem({
+      message: makeMessage({
+        ts: TS,
+        text: 'Please fill in the standup form',
+        blocks: [{ type: 'input', block_id: 'b1', label: { type: 'plain_text', text: 'Yesterday' }, element: {} }],
+      }),
+    });
+    expect(screen.getByText('Please fill in the standup form')).toBeTruthy();
+  });
+
+  it('survives malformed timestamps from the archive instead of crashing the page', () => {
+    renderItem({
+      message: makeMessage({
+        ts: TS,
+        text: 'still readable',
+        editedTs: 'garbage',
+        threadTs: TS,
+        replyCount: 2,
+        latestReply: 'not-a-ts',
+        revisionCount: 0,
+      }),
+      onOpenThread: () => {},
+    });
+    expect(screen.getByText('still readable')).toBeTruthy();
+    expect(screen.getByText('(edited)').getAttribute('title')).toBe('Edited');
+    expect(screen.getByText('2 replies')).toBeTruthy();
+    expect(screen.queryByText(/Last reply/)).toBeNull();
+  });
+
   it('flags the highlighted row for the flash animation', () => {
     renderItem({ message: makeMessage({ ts: TS }), highlighted: true });
     expect(screen.getByRole('article').dataset.highlighted).toBe('true');

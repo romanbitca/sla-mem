@@ -1,9 +1,17 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { FileDTO } from '../../../shared/types';
 import { api, ApiError } from '../../lib/api';
-import { installFakeBridge, makeFile, makeImage, renderWithProviders } from '../../test/helpers';
+import {
+  installFakeBridge,
+  makeFile,
+  makeImage,
+  makeRun,
+  makeSyncStatus,
+  renderWithProviders,
+} from '../../test/helpers';
+import { qk } from '../../lib/queries';
 import { FileList, fileStatusNote } from './FileList';
 
 afterEach(() => {
@@ -126,11 +134,76 @@ describe('file cards', () => {
     expect(await within(el).findByText(/Downloading again/)).toBeTruthy();
   });
 
+  it('can retry again once the download it started has finished (and failed again)', async () => {
+    const retryFile = vi.spyOn(api, 'retryFile').mockResolvedValue({ runId: 12 });
+    const failed = makeFile({ id: 'F12', name: 'notes.docx', available: false, status: 'failed' });
+    const { client } = renderFiles([failed]);
+    client.setQueryData(qk.syncStatus, makeSyncStatus());
+    const el = card('notes.docx');
+    fireEvent.click(within(el).getByRole('button', { name: 'Retry' }));
+    const retrying = await within(el).findByRole('button', { name: 'Retrying…' });
+    expect(retrying.hasAttribute('disabled')).toBe(true);
+
+    // Main reports the download run as finished; the file is still not saved.
+    act(() => {
+      client.setQueryData(
+        qk.syncStatus,
+        makeSyncStatus({ recentRuns: [makeRun({ id: 12, kind: 'files', status: 'error' }), makeRun({ id: 1 })] }),
+      );
+    });
+    const again = await within(el).findByRole('button', { name: 'Retry' });
+    expect(again.hasAttribute('disabled')).toBe(false);
+    expect(within(el).queryByText(/Downloading again/)).toBeNull();
+    fireEvent.click(again);
+    await waitFor(() => expect(retryFile).toHaveBeenCalledTimes(2));
+  });
+
+  it('never shows a raw download error as the reason', () => {
+    renderFiles([
+      makeFile({
+        id: 'F14',
+        name: 'raw.bin',
+        available: false,
+        status: 'failed',
+        statusReason: 'net::ERR_CONNECTION_RESET',
+      }),
+    ]);
+    const el = card('raw.bin');
+    expect(el.textContent).toContain('Couldn’t download');
+    expect(el.textContent).not.toMatch(/ERR_|net::/);
+  });
+
   it('explains a failed action in plain words', async () => {
     vi.spyOn(api, 'openFile').mockRejectedValue(new ApiError('not_found', 'That file is no longer on this computer.'));
     renderFiles([makeFile({ id: 'F13', name: 'gone.txt' })]);
     fireEvent.click(within(card('gone.txt')).getByRole('button', { name: 'Open' }));
     expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'That file is no longer on this computer.');
+  });
+});
+
+describe('image viewer', () => {
+  it('keeps Tab inside the viewer and steps through images with the arrow keys', () => {
+    renderFiles([
+      makeImage({ id: 'I1', name: 'one.png', url: 'archive://file/I1' }),
+      makeImage({ id: 'I2', name: 'two.png', url: 'archive://file/I2' }),
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: 'View image one.png' }));
+    const viewer = screen.getByRole('dialog', { name: 'Image viewer: one.png' });
+    const buttons = within(viewer).getAllByRole('button');
+    const first = buttons[0];
+    const last = buttons[buttons.length - 1];
+    expect(document.activeElement).toBe(within(viewer).getByRole('button', { name: 'Close image viewer' }));
+
+    last.focus();
+    fireEvent.keyDown(document.activeElement!, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+    fireEvent.keyDown(document.activeElement!, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(last);
+
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowRight' });
+    expect(screen.getByRole('dialog', { name: 'Image viewer: two.png' })).toBeTruthy();
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
 

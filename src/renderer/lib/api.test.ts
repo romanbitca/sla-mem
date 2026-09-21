@@ -137,6 +137,18 @@ describe('describeError', () => {
       'The xoxc-123-abc session is gone',
       'Bad cookie',
       "Error invoking remote method 'archive:x'",
+      'net::ERR_INTERNET_DISCONNECTED',
+      'SQLITE_BUSY: database is locked',
+      "TypeError: Cannot read properties of undefined (reading 'x')",
+      "Cannot read properties of undefined (reading 'x')",
+      'SyntaxError: Unexpected token < in JSON at position 0',
+      'Slack returned 429 Too Many Requests',
+      'Request failed: 503 Service Unavailable',
+      'Invalid_Auth',
+      'fetch failed',
+      'getaddrinfo ENOTFOUND slack.com',
+      'socket hang up',
+      'x.map is not a function',
     ];
     for (const message of technical) {
       const shown = describeError(err('internal', message));
@@ -156,6 +168,18 @@ describe('describeError', () => {
   it('hides the message of anything that isn’t an ApiError (a bug on our side)', () => {
     expect(describeError(new TypeError("Cannot read properties of undefined (reading 'x')"))).toBe(GENERIC_ERROR);
     expect(describeError('nope')).toBe(GENERIC_ERROR);
+  });
+
+  it('keeps ordinary sentences, including ones with channel names and numbers', () => {
+    const plain = [
+      'Can’t reach Slack right now. We’ll try again automatically.',
+      'Your disk is full, so new messages can’t be saved. Free up space and we’ll continue.',
+      'Fetching #dev_ops — 1,240 messages so far',
+      'Too large to download (over 25 MB). Raise the limit in Settings to get it.',
+      'Removed from Slack',
+      'Slack is busy, so this may take a little longer.',
+    ];
+    for (const message of plain) expect(describeError(err('internal', message)), message).toBe(message);
   });
 
   it('filters messages from main that are shown directly', () => {

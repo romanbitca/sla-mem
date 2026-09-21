@@ -1,10 +1,10 @@
 import { memo, useState, type ComponentType } from 'react';
 import clsx from 'clsx';
 import type { FileDTO } from '../../../shared/types';
-import { describeError } from '../../lib/api';
+import { describeError, presentableMessage } from '../../lib/api';
 import { fileBrowserName } from '../../lib/bridge';
 import { formatBytes } from '../../lib/format';
-import { useOpenFile, useRetryFile, useRevealFile } from '../../lib/queries';
+import { useOpenFile, useRetryFile, useRevealFile, useRunFinished } from '../../lib/queries';
 import { remoteImageSrc } from '../../lib/remoteImage';
 import { safeHref } from '../../lib/safeUrl';
 import {
@@ -79,7 +79,9 @@ export interface FileStatusNote {
 /** Why a file has no local copy, phrased for the reader; null when it's archived. */
 export function fileStatusNote(file: Pick<FileDTO, 'available' | 'status' | 'statusReason'>): FileStatusNote | null {
   if (file.available) return null;
-  const reason = (label: string) => (file.statusReason && file.statusReason !== label ? file.statusReason : null);
+  // Main words these plainly, but a raw download error must never reach the card.
+  const shown = presentableMessage(file.statusReason, '');
+  const reason = (label: string) => (shown && shown !== label ? shown : null);
   switch (file.status) {
     case 'pending':
       return { label: 'Not downloaded yet', reason: reason('Not downloaded yet'), retry: false };
@@ -188,6 +190,10 @@ export const FileCard = memo(function FileCard({ file }: { file: FileDTO }) {
   const open = useOpenFile();
   const reveal = useRevealFile();
   const retry = useRetryFile();
+  // "Retrying" lasts until the download run it started has finished; then the card shows the
+  // outcome, and a file that failed again can be retried again.
+  const retryDone = useRunFinished(retry.data?.runId ?? null, retry.isSuccess);
+  const retrying = retry.isSuccess && !retryDone;
   const actionError = open.error ?? reveal.error ?? retry.error;
   const meta = fileMeta(file);
 
@@ -261,10 +267,10 @@ export const FileCard = memo(function FileCard({ file }: { file: FileDTO }) {
               variant="secondary"
               icon={<SyncIcon size={13} />}
               loading={retry.isPending}
-              disabled={retry.isSuccess}
+              disabled={retrying}
               onClick={() => retry.mutate(file.id)}
             >
-              {retry.isSuccess ? 'Retrying…' : 'Retry'}
+              {retrying ? 'Retrying…' : 'Retry'}
             </Button>
           )}
           {permalink && (
@@ -281,7 +287,7 @@ export const FileCard = memo(function FileCard({ file }: { file: FileDTO }) {
           )}
         </div>
       </div>
-      {retry.isSuccess && (
+      {retrying && note?.retry && (
         <p role="status" className="text-xs text-ink-muted">
           Downloading again. It appears here once it’s saved.
         </p>

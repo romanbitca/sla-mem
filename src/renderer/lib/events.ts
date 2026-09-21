@@ -6,10 +6,12 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import type { LoginStatusDTO, SettingsDTO } from '../../shared/types';
+import type { SettingsDTO } from '../../shared/types';
 import { getBridge } from './bridge';
 import { useStableCallback } from './hooks';
-import { invalidateConnectionData, qk } from './queries';
+import { applyLoginStatus, qk } from './queries';
+
+export { applyLoginStatus };
 
 /** Routes main may ask for: app paths only (`/settings`, `/c/C123?ts=…`), never URLs. */
 export function isAppPath(path: unknown): path is string {
@@ -21,13 +23,6 @@ function connectionChanged(prev: SettingsDTO | undefined, next: SettingsDTO): bo
   const a = prev.connection;
   const b = next.connection;
   return a.connected !== b.connected || a.expired !== b.expired || a.teamId !== b.teamId;
-}
-
-export function applyLoginStatus(qc: QueryClient, status: LoginStatusDTO): void {
-  const prev = qc.getQueryData<LoginStatusDTO>(qk.loginStatus);
-  qc.setQueryData(qk.loginStatus, status);
-  // A completed sign-in changes the workspace, the connection and what sync can do.
-  if (status.state === 'connected' && prev?.state !== 'connected') void invalidateConnectionData(qc);
 }
 
 export function applySettings(qc: QueryClient, settings: SettingsDTO): void {
