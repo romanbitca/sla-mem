@@ -1,0 +1,99 @@
+# Packaging (PLAN §9): unsigned builds for macOS (dmg + zip, Apple Silicon and Intel) and Windows
+# (NSIS installer), published to GitHub Releases by .github/workflows/release.yml.
+appId: com.9h.slack-archive
+productName: Slack Archive
+copyright: Copyright © 2026 Roman Bitca
+
+directories:
+  output: release/${version}
+  buildResources: build
+
+# Only the built app goes in (plus production node_modules, which electron-builder always adds).
+# A files list made only of exclusions would silently fall back to "everything", so each platform
+# below repeats the includes.
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+  # better-sqlite3 ships its SQLite sources and every platform's prebuilt binary; the app needs one.
+  - '!node_modules/better-sqlite3/{deps,src}{,/**/*}'
+  - '!node_modules/better-sqlite3/binding.gyp'
+
+# Native modules can't be loaded from inside app.asar.
+asarUnpack:
+  - '**/*.node'
+
+extraResources:
+  - from: resources/tray
+    to: tray
+
+# better-sqlite3 13 is a Node-API module with bundled prebuilds: nothing to rebuild for Electron.
+npmRebuild: false
+buildDependenciesFromSource: false
+
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true # the Slack sign-in session's cookies are encrypted at rest (PLAN §3.5)
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  darkModeSupport: true
+  # No paid certificate (PLAN §1.4): ad-hoc signing, which Apple Silicon requires to run at all.
+  identity: '-'
+  hardenedRuntime: false
+  # The zip (for update downloads); the dmg sets its own name below.
+  artifactName: Slack-Archive-${version}-${arch}-mac.${ext}
+  gatekeeperAssess: false
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  files:
+    - out/**
+    - package.json
+    - '!**/*.map'
+    - '!node_modules/better-sqlite3/{deps,src}{,/**/*}'
+    - '!node_modules/better-sqlite3/binding.gyp'
+    - '!node_modules/better-sqlite3/prebuilds/{linux-*,linuxmusl-*,win32-*}.node'
+
+dmg:
+  artifactName: Slack-Archive-${version}-${arch}.${ext}
+  title: Slack Archive ${version}
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+  files:
+    - out/**
+    - package.json
+    - '!**/*.map'
+    - '!node_modules/better-sqlite3/{deps,src}{,/**/*}'
+    - '!node_modules/better-sqlite3/binding.gyp'
+    - '!node_modules/better-sqlite3/prebuilds/{linux-*,linuxmusl-*,darwin-*,win32-arm64}.node'
+
+nsis:
+  # One click, per user, no administrator rights: the simplest install for non-technical colleagues.
+  oneClick: true
+  perMachine: false
+  artifactName: Slack-Archive-Setup-${version}.${ext}
+  shortcutName: Slack Archive
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  runAfterFinish: true
+  # Uninstalling the app must never delete the archive.
+  deleteAppDataOnUninstall: false
+
+publish:
+  provider: github
+  owner: romanbitca
+  repo: sla-mem
+  # Drafts let the owner write release notes for non-technical readers before publishing.
+  releaseType: draft

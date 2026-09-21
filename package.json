@@ -36,7 +36,8 @@
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
     "bench": "tsx scripts/bench.ts",
-    "dev:mock": "cross-env SLACK_ARCHIVE_DATA_DIR=./.mock-data SLACK_ARCHIVE_SLACK_API=http://127.0.0.1:4849/api SLACK_ARCHIVE_SLACK_WEB=http://127.0.0.1:4849 electron-vite dev"
+    "dev:mock": "cross-env SLACK_ARCHIVE_DATA_DIR=./.mock-data SLACK_ARCHIVE_SLACK_API=http://127.0.0.1:4849/api SLACK_ARCHIVE_SLACK_WEB=http://127.0.0.1:4849 electron-vite dev",
+    "e2e": "tsx scripts/e2e.ts"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
