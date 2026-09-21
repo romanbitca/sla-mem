@@ -49,10 +49,10 @@ export function createTray(resourcesDir: string, actions: TrayActions): TrayCont
           : state.lastSuccessAt
             ? `Last synced ${relativeTime(state.lastSuccessAt, Date.now())}`
             : 'Not synced yet';
-    tray.setToolTip(`Slack Archive — ${status}`);
+    tray.setToolTip(`sla-mem — ${status}`);
     tray.setContextMenu(
       Menu.buildFromTemplate([
-        { label: 'Open Slack Archive', click: actions.open },
+        { label: 'Open sla-mem', click: actions.open },
         {
           label: state.syncing ? 'Syncing…' : 'Sync now',
           enabled: !state.syncing && state.connected,
@@ -61,7 +61,7 @@ export function createTray(resourcesDir: string, actions: TrayActions): TrayCont
         { label: status, enabled: false },
         { type: 'separator' },
         { label: 'Settings…', click: actions.settings },
-        { label: 'Quit Slack Archive', click: actions.quit },
+        { label: 'Quit sla-mem', click: actions.quit },
       ]),
     );
     if (state.syncing !== lastIconSyncing) {

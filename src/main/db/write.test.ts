@@ -31,7 +31,7 @@ import {
 } from './write';
 import { listCustomEmoji } from './read';
 
-const filesDir = fs.mkdtempSync(path.join(os.tmpdir(), 'slack-archive-files-'));
+const filesDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sla-mem-files-'));
 afterAll(() => fs.rmSync(filesDir, { recursive: true, force: true }));
 
 function row(db: DB, ts: string, conv = 'C1'): MessageRow {

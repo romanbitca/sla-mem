@@ -268,7 +268,7 @@ describe('AppShell', () => {
     expect(indicator.getAttribute('href')).toBe('/settings');
     // Screen readers hear the state once, from a live region outside the link.
     expect(screen.getByText('Connect Slack', { selector: '[role="status"]' }).closest('a')).toBeNull();
-    expect(screen.getAllByText('Slack Archive').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('sla-mem').length).toBeGreaterThan(0);
   });
 
   it('shows the workspace name and host', async () => {

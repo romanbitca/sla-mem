@@ -40,7 +40,7 @@ describe('App', () => {
       }),
     );
     render(<App />);
-    expect(await screen.findByRole('heading', { name: 'Welcome to Slack Archive' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Welcome to sla-mem' })).toBeTruthy();
     expect(screen.queryByRole('complementary', { name: 'Sidebar' })).toBeNull();
   });
 

@@ -104,7 +104,7 @@ describe('backup', () => {
         destDir: dest,
         now: new Date(2026, 8, 21, 9, 5),
       });
-      expect(path.basename(result.path)).toBe('Slack Archive backup 2026-09-21 0905.zip');
+      expect(path.basename(result.path)).toBe('sla-mem backup 2026-09-21 0905.zip');
       const entries = await unzip(result.path, path.join(dest, 'restored'));
       expect(entries.sort()).toEqual(['README.txt', 'archive.db', 'config.json', 'files/F1/photo.png']);
       const restored = openDb(path.join(dest, 'restored', 'archive.db'));
@@ -118,7 +118,7 @@ describe('backup', () => {
         destDir: dest,
         now: new Date(2026, 8, 21, 9, 5),
       });
-      expect(path.basename(second.path)).toBe('Slack Archive backup 2026-09-21 0905 (2).zip');
+      expect(path.basename(second.path)).toBe('sla-mem backup 2026-09-21 0905 (2).zip');
     } finally {
       fs.rmSync(dest, { recursive: true, force: true });
     }
@@ -149,19 +149,19 @@ async function unzip(zipPath: string, into: string): Promise<string[]> {
 describe('updates', () => {
   const assets = [
     {
-      name: 'Slack-Archive-1.2.0-arm64.dmg',
-      browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/Slack-Archive-1.2.0-arm64.dmg',
+      name: 'sla-mem-1.2.0-arm64.dmg',
+      browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/sla-mem-1.2.0-arm64.dmg',
     },
     {
-      name: 'Slack-Archive-1.2.0.dmg',
-      browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/Slack-Archive-1.2.0.dmg',
+      name: 'sla-mem-1.2.0.dmg',
+      browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/sla-mem-1.2.0.dmg',
     },
     {
-      name: 'Slack-Archive-Setup-1.2.0.exe',
-      browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/Slack-Archive-Setup-1.2.0.exe',
+      name: 'sla-mem-setup-1.2.0.exe',
+      browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/sla-mem-setup-1.2.0.exe',
     },
     {
-      name: 'Slack-Archive-Setup-1.2.0.exe.blockmap',
+      name: 'sla-mem-setup-1.2.0.exe.blockmap',
       browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/x.blockmap',
     },
   ];
@@ -175,7 +175,7 @@ describe('updates', () => {
   it('picks the installer for this computer', () => {
     expect(pickAsset(assets, 'darwin', 'arm64')).toMatch(/arm64\.dmg$/);
     expect(pickAsset(assets, 'darwin', 'x64')).toMatch(/1\.2\.0\.dmg$/);
-    expect(pickAsset(assets, 'win32', 'x64')).toMatch(/Setup-1\.2\.0\.exe$/);
+    expect(pickAsset(assets, 'win32', 'x64')).toMatch(/sla-mem-setup-1\.2\.0\.exe$/);
     expect(pickAsset(assets, 'linux', 'x64')).toBeNull();
   });
 

@@ -16,7 +16,7 @@ and Windows for every push.
 | `npm run build && npm run e2e` (16 steps)      | ✅ passed                                                                        |
 | `npm run bench` (300k) and `--messages 500000` | ✅ all checks within the §6.3 targets                                            |
 | Packaged macOS app                             | ✅ opened on a demo archive: the UI loads from `app.asar`, IPC and SQLite answer |
-| Packaged Windows installer                     | ✅ built by the Release workflow on Windows: `Slack-Archive-Setup-0.1.0.exe`     |
+| Packaged Windows installer                     | ✅ built by the Release workflow on Windows: `sla-mem-setup-0.1.0.exe`           |
 
 "e2e NN" below is a numbered line of `npm run e2e`: 01 mock Slack up · 02 sign-in through
 onboarding · 03 first sync · 04 archive counts · 05 credentials encrypted · 06 UI: home, a channel,

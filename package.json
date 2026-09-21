@@ -1,6 +1,6 @@
 {
-  "name": "slack-archive",
-  "productName": "Slack Archive",
+  "name": "sla-mem",
+  "productName": "sla-mem",
   "version": "0.1.0",
   "private": true,
   "description": "Keeps a permanent, private, searchable copy of your own Slack history on your computer.",
@@ -17,7 +17,7 @@
   },
   "scripts": {
     "dev": "electron-vite dev",
-    "dev:demo": "cross-env SLACK_ARCHIVE_DATA_DIR=./.demo-data electron-vite dev",
+    "dev:demo": "cross-env SLA_MEM_DATA_DIR=./.demo-data electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json --composite false && tsc --noEmit -p tsconfig.web.json --composite false",
@@ -36,7 +36,7 @@
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
     "bench": "tsx scripts/bench.ts",
-    "dev:mock": "cross-env SLACK_ARCHIVE_DATA_DIR=./.mock-data SLACK_ARCHIVE_SLACK_API=http://127.0.0.1:4849/api SLACK_ARCHIVE_SLACK_WEB=http://127.0.0.1:4849 electron-vite dev",
+    "dev:mock": "cross-env SLA_MEM_DATA_DIR=./.mock-data SLA_MEM_SLACK_API=http://127.0.0.1:4849/api SLA_MEM_SLACK_WEB=http://127.0.0.1:4849 electron-vite dev",
     "e2e": "tsx scripts/e2e.ts"
   },
   "dependencies": {

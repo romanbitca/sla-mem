@@ -31,7 +31,7 @@ import { startMockSlack, type MockSlack } from '../test/mock-slack/server';
 declare const window: { archive: ArchiveBridge };
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'slack-archive-e2e-'));
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sla-mem-e2e-'));
 const shots = path.join(ROOT, '.e2e-data', 'shots');
 fs.mkdirSync(shots, { recursive: true });
 
@@ -50,9 +50,9 @@ async function launch(mock: MockSlack): Promise<{ app: ElectronApplication; page
     cwd: ROOT,
     env: {
       ...process.env,
-      SLACK_ARCHIVE_DATA_DIR: dataDir,
-      SLACK_ARCHIVE_SLACK_API: mock.apiBaseUrl,
-      SLACK_ARCHIVE_SLACK_WEB: mock.url,
+      SLA_MEM_DATA_DIR: dataDir,
+      SLA_MEM_SLACK_API: mock.apiBaseUrl,
+      SLA_MEM_SLACK_WEB: mock.url,
     },
   });
   const page = await app.firstWindow();
@@ -121,7 +121,7 @@ async function signIn(app: ElectronApplication, page: Page): Promise<void> {
 
 /** First run through the real onboarding screens: Welcome → Connect Slack → Getting your history. */
 async function onboardThroughUi(app: ElectronApplication, page: Page): Promise<void> {
-  await page.getByRole('heading', { name: 'Welcome to Slack Archive' }).waitFor();
+  await page.getByRole('heading', { name: 'Welcome to sla-mem' }).waitFor();
   await page.screenshot({ path: path.join(shots, 'onboarding-welcome.png') });
   await page.getByRole('button', { name: 'Get started' }).click();
   await page.getByRole('heading', { name: 'Connect Slack' }).waitFor();

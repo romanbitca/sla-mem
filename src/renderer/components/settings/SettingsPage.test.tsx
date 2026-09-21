@@ -178,7 +178,7 @@ describe('Settings — sync and attachments', () => {
     await waitFor(() => expect(update).toHaveBeenCalledWith({ syncIntervalMinutes: 360 }));
     expect(await within(sync).findByText('Saved')).toBeTruthy();
 
-    const login = within(sync).getByRole('switch', { name: 'Start Slack Archive when I log in' }) as HTMLInputElement;
+    const login = within(sync).getByRole('switch', { name: 'Start sla-mem when I log in' }) as HTMLInputElement;
     expect(login.checked).toBe(true);
     fireEvent.click(login);
     await waitFor(() => expect(update).toHaveBeenCalledWith({ launchAtLogin: false }));
@@ -222,7 +222,7 @@ describe('Settings — storage', () => {
     expect(within(storage).getByText('340 MB')).toBeTruthy();
     expect(within(storage).getByText('880 MB')).toBeTruthy();
     expect(within(storage).getByText('200 GB')).toBeTruthy();
-    expect(within(storage).getByText('/Users/me/Library/Application Support/Slack Archive')).toBeTruthy();
+    expect(within(storage).getByText('/Users/me/Library/Application Support/sla-mem')).toBeTruthy();
     fireEvent.click(within(storage).getByRole('button', { name: 'Show in Finder' }));
     await waitFor(() => expect(show).toHaveBeenCalledTimes(1));
   });
@@ -257,10 +257,10 @@ describe('Settings — storage', () => {
     fireEvent.click(within(storage).getByRole('button', { name: 'Back up now' }));
     await waitFor(() => expect(backup).toHaveBeenCalledTimes(1));
     expect(within(storage).queryByText(/Backup saved/)).toBeNull();
-    backup.mockResolvedValueOnce({ path: '/Volumes/Backup/Slack Archive 2026-09-21.zip', bytes: 1.2 * 1024 ** 3 });
+    backup.mockResolvedValueOnce({ path: '/Volumes/Backup/sla-mem 2026-09-21.zip', bytes: 1.2 * 1024 ** 3 });
     fireEvent.click(within(storage).getByRole('button', { name: 'Back up now' }));
     expect(
-      await within(storage).findByText('Backup saved (1.2 GB): /Volumes/Backup/Slack Archive 2026-09-21.zip'),
+      await within(storage).findByText('Backup saved (1.2 GB): /Volumes/Backup/sla-mem 2026-09-21.zip'),
     ).toBeTruthy();
   });
 });

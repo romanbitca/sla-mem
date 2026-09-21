@@ -24,7 +24,7 @@ const configured = new WeakSet<Session>();
 export function chromeUserAgent(defaultUserAgent: string): string {
   return defaultUserAgent
     .split(' ')
-    .filter((token) => !/^(Electron|slack-archive|Slack(%20|\s)?Archive)\//i.test(token))
+    .filter((token) => !/^(Electron|sla-mem|Slack(%20|\s)?Archive)\//i.test(token))
     .join(' ');
 }
 
@@ -92,7 +92,7 @@ export function createElectronSignInSurface(opts: ElectronSignInOptions): SignIn
       win = new BrowserWindow({
         width: 1000,
         height: 760,
-        title: 'Sign in to Slack — Slack Archive',
+        title: 'Sign in to Slack — sla-mem',
         autoHideMenuBar: true,
         show: true,
         webPreferences: secureWebPreferences,

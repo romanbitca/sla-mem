@@ -3,7 +3,7 @@
  * and a preference that fails to persist must never break the UI.
  */
 
-const PREFIX = 'slack-archive:';
+const PREFIX = 'sla-mem:';
 
 export function readPref(key: string): string | null {
   try {

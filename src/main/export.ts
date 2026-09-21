@@ -146,7 +146,7 @@ class MarkdownWriter {
   }
 
   header(c: ConversationDTO): string {
-    const facts = [`Exported from Slack Archive on ${this.date.format(this.opts.now ?? new Date())}`];
+    const facts = [`Exported from sla-mem on ${this.date.format(this.opts.now ?? new Date())}`];
     if (c.oldestTs && c.latestTs) {
       facts.push(`${this.date.format(tsDate(c.oldestTs))} – ${this.date.format(tsDate(c.latestTs))}`);
     }

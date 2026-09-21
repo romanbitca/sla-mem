@@ -115,7 +115,7 @@ export function Sidebar({ searchRef, syncStatus, syncError, onClose, className, 
   };
 
   let navIndex = 0;
-  const teamName = workspace?.teamName || 'Slack Archive';
+  const teamName = workspace?.teamName || 'sla-mem';
   const host = workspaceHost(workspace?.teamDomain);
   // No Slack session saved: the footer points at Settings → Connect Slack.
   const needsConnection = workspace != null && !workspace.connected;

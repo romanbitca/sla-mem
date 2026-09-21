@@ -13,7 +13,7 @@ const DISMISSED_PREF = 'update.dismissed';
 
 /** The one step that follows the download (unsigned builds update by hand; PLAN §9.5). */
 export function updateInstruction(platform: Platform): string {
-  if (platform === 'darwin') return 'Open the download and drag Slack Archive to Applications, replacing the old one.';
+  if (platform === 'darwin') return 'Open the download and drag sla-mem to Applications, replacing the old one.';
   if (platform === 'win32') return 'Run the installer. Your archive stays where it is.';
   return 'Install the new version the same way you installed this one.';
 }

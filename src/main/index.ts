@@ -30,7 +30,7 @@ import { createHandlers } from './ipc';
 import { settingsDTO } from './ipc/actions';
 import { registerIpc } from './ipc/register';
 import { applyLaunchAtLogin, wasOpenedAtLogin } from './login-item';
-import { explicitDataDir } from './paths';
+import { DATA_DIR_NAME, explicitDataDir, LEGACY_DATA_DIR_NAME, moveLegacyDataDir, type LegacyMove } from './paths';
 import { ARCHIVE_SCHEME, serveArchiveFile } from './protocol';
 import { denyPermissions, hardenWebContents, openExternalSafe } from './security';
 import { createTray, type TrayController } from './tray';
@@ -40,18 +40,32 @@ const rendererDevUrl = isDev ? process.env.ELECTRON_RENDERER_URL : undefined;
 const rendererFile = path.join(__dirname, '../renderer/index.html');
 const USER_GUIDE_URL = 'https://github.com/romanbitca/sla-mem/blob/main/docs/INSTALL.md';
 
-app.setName('Slack Archive');
-// Development runs keep their own data, far from a real archive in the same user account.
+app.setName('sla-mem');
+// Development runs keep their own data, far from a real archive in the same user account. An
+// archive from before the app was renamed ("Slack Archive") moves to the new folder once.
 const dataDirOverride = explicitDataDir(process.argv, process.env, process.cwd());
-if (dataDirOverride) app.setPath('userData', dataDirOverride);
-else if (isDev) app.setPath('userData', path.join(app.getPath('appData'), 'Slack Archive (dev)'));
-if (process.platform === 'win32') app.setAppUserModelId('com.9h.slack-archive');
+let legacyMove: LegacyMove = 'none';
+if (dataDirOverride) {
+  app.setPath('userData', dataDirOverride);
+} else {
+  const appData = app.getPath('appData');
+  const kind = isDev ? 'development' : 'production';
+  const target = path.join(appData, DATA_DIR_NAME[kind]);
+  const legacy = path.join(appData, LEGACY_DATA_DIR_NAME[kind]);
+  legacyMove = moveLegacyDataDir(legacy, target);
+  // A folder that couldn't move is used where it is; while the old app runs, nothing is touched
+  // (see the check before start below) and this run only needs a scratch folder.
+  if (legacyMove === 'failed') app.setPath('userData', legacy);
+  else if (legacyMove === 'in-use') app.setPath('userData', path.join(app.getPath('temp'), `sla-mem-${process.pid}`));
+  else app.setPath('userData', target);
+}
+if (process.platform === 'win32') app.setAppUserModelId('com.9h.sla-mem');
 
 // The development mock Slack (test/mock-slack) is only ever reachable from unpackaged builds.
 const slackOverrides = isDev
   ? {
-      apiBaseUrl: process.env.SLACK_ARCHIVE_SLACK_API || undefined,
-      webOrigin: process.env.SLACK_ARCHIVE_SLACK_WEB || undefined,
+      apiBaseUrl: process.env.SLA_MEM_SLACK_API || undefined,
+      webOrigin: process.env.SLA_MEM_SLACK_WEB || undefined,
     }
   : {};
 
@@ -101,7 +115,7 @@ function createMainWindow(s: AppServices): BrowserWindow {
     minWidth: 760,
     minHeight: 480,
     show: false,
-    title: 'Slack Archive',
+    title: 'sla-mem',
     autoHideMenuBar: true,
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#161617' : '#fbfbfa',
     webPreferences: {
@@ -129,7 +143,7 @@ function createMainWindow(s: AppServices): BrowserWindow {
     win.hide();
     if (process.platform === 'win32' && !s.prefs.getInternal().trayHintShown) {
       tray?.showBalloonOnce(
-        'Slack Archive is still running',
+        'sla-mem is still running',
         'It keeps archiving in the background. Use the tray icon to open it or quit.',
       );
       s.prefs.setInternal({ trayHintShown: true });
@@ -220,7 +234,7 @@ function platformHooks(s: AppServices): PlatformHooks {
     },
     async chooseBackupFolder() {
       const r = await dialog.showOpenDialog(mainWindow!, {
-        title: 'Back up Slack Archive',
+        title: 'Back up sla-mem',
         message: 'Choose where to save the backup',
         buttonLabel: 'Save backup here',
         properties: ['openDirectory', 'createDirectory'],
@@ -311,7 +325,7 @@ function wireStatus(s: AppServices): () => void {
       syncBlocker = null;
       const problem = s.runs.status().problem;
       if (problem?.kind === 'signed_out' && (!mainWindow || !mainWindow.isVisible()))
-        notify('Slack signed you out', 'Open Slack Archive and click Reconnect to keep archiving.');
+        notify('Slack signed you out', 'Open sla-mem and click Reconnect to keep archiving.');
     }
   });
   s.connection.on('changed', () => {
@@ -358,7 +372,7 @@ function buildMenu(s: AppServices): void {
     ...(mac
       ? [
           {
-            label: 'Slack Archive',
+            label: 'sla-mem',
             submenu: [
               { role: 'about' },
               { type: 'separator' },
@@ -422,7 +436,7 @@ async function offerMoveToApplications(s: AppServices): Promise<void> {
   if (process.platform !== 'darwin' || !app.isPackaged || app.isInApplicationsFolder()) return;
   const { response } = await dialog.showMessageBox({
     type: 'question',
-    message: 'Move Slack Archive to your Applications folder?',
+    message: 'Move sla-mem to your Applications folder?',
     detail: 'It needs to live in Applications to start at login and to update properly.',
     buttons: ['Move to Applications', 'Not now'],
     defaultId: 0,
@@ -465,9 +479,10 @@ async function start(): Promise<void> {
   });
   services = s;
   appLog = s.log;
-  s.log.info(
-    `Slack Archive ${app.getVersion()} starting (${process.platform} ${process.arch}), data in ${s.paths.dataDir}`,
-  );
+  s.log.info(`sla-mem ${app.getVersion()} starting (${process.platform} ${process.arch}), data in ${s.paths.dataDir}`);
+  if (legacyMove === 'moved') s.log.info('Moved the archive here from its folder under the old name (Slack Archive)');
+  if (legacyMove === 'failed')
+    s.log.warn('Couldn’t move the archive from its folder under the old name; using it there');
   const interrupted = s.runs.init();
   if (interrupted) s.log.info(`Marked ${interrupted} interrupted run(s) from the last session`);
   void refreshSearchTextIfOutdated(s.db, { log: (line) => s.log.info(line) }).catch((err: unknown) =>
@@ -484,7 +499,7 @@ async function start(): Promise<void> {
   wireServices(s, hooks);
   buildMenu(s);
   app.setAboutPanelOptions({
-    applicationName: 'Slack Archive',
+    applicationName: 'sla-mem',
     applicationVersion: app.getVersion(),
     copyright: '© 2026 Roman Bitca',
   });
@@ -533,16 +548,25 @@ if (!app.requestSingleInstanceLock()) {
     showMainWindow();
   });
 
-  void app.whenReady().then(() =>
-    start().catch((err: unknown) => {
+  void app.whenReady().then(() => {
+    if (legacyMove === 'in-use') {
+      dialog.showErrorBox(
+        'Quit Slack Archive first',
+        'sla-mem is the new name of Slack Archive. Quit the old app (its menu bar icon → Quit), then open ' +
+          'sla-mem again: your archive moves over by itself.',
+      );
+      app.exit(0);
+      return;
+    }
+    return start().catch((err: unknown) => {
       services?.log.error('Startup failed', err);
       dialog.showErrorBox(
-        'Slack Archive couldn’t start',
+        'sla-mem couldn’t start',
         `Something went wrong while opening the archive.\n\n${String(err)}`,
       );
       app.exit(1);
-    }),
-  );
+    });
+  });
 
   app.on('activate', () => {
     if (services) showMainWindow();

@@ -1,4 +1,4 @@
-# Slack Archive — Desktop App: Complete Build Plan
+# sla-mem — Desktop App: Complete Build Plan
 
 **Document version:** 1.1 · **Date:** 21 September 2026
 **Audience:** an AI coding agent (plus the human who commissioned it) building this from an empty repository.
@@ -55,7 +55,7 @@
 ### 0.1 Suggested repository layout
 
 ```
-slack-archive/                 github.com/romanbitca/sla-mem
+sla-mem/                 github.com/romanbitca/sla-mem
   PLAN.md                  ← this document
   README.md                what it is, how to build, test and release
   docs/INSTALL.md          the install guide for colleagues (Appendix E)
@@ -87,6 +87,12 @@ slack-archive/                 github.com/romanbitca/sla-mem
 ### 0.3 Changes made while building (as built)
 
 Each item is also corrected where it belongs in this document.
+
+- **Name:** the product is **sla-mem** (the draft called it "Slack Archive"): app, installers
+  (`sla-mem-<version>-<arch>.dmg`, `sla-mem-setup-<version>.exe`), app id `com.9h.sla-mem`, data
+  folder `sla-mem`. An archive in a folder under the old name moves to the new one on first
+  start; its saved Slack sign-in doesn't survive the move (the Keychain key belongs to the old
+  name), so Slack is connected once more.
 
 - **Toolchain (§3.1):** Electron 44, TypeScript 6.0 (typescript-eslint supports < 6.1), Vite 7
   (electron-vite 5 requires ≤ 7), Vitest 5 with jsdom 29, Playwright for the E2E run.
@@ -199,9 +205,9 @@ borrow freely from the projects below.
 | [slackclaw](https://github.com/pooriaarab/slackclaw) | Reads the **Slack Desktop app's local cache** (IndexedDB → Snappy → V8 deserialize) into SQLite + FTS5. No token at all | Genuinely clever, but CLI-only, 0★, no releases, no continuous sync, no Windows. Cache-only coverage |
 | [SlackBackup](https://github.com/jcolag/SlackBackup) | An **Electron** app: downloads Slack to Markdown, fuzzy search, some analytics | Closest in form factor. 6★, manual token paste, no automatic sync, effectively dormant |
 | [slack-history-archiver](https://github.com/ordigital/slack-history-archiver) | Scripts → SQLite, small Flask/Vue UI, cron'd daily, uses browser token+cookie | Same concept as ours, but 1★/8 commits — scripts, not a product |
-| [felixrieseberg/slack-archive](https://github.com/felixrieseberg/slack-archive) | Generates static HTML archives with basic search | One-shot snapshots, not a living archive |
+| [felixrieseberg/sla-mem](https://github.com/felixrieseberg/sla-mem) | Generates static HTML archives with basic search | One-shot snapshots, not a living archive |
 | [slack-export-viewer](https://github.com/hfaran/slack-export-viewer), [slack-vuesualizer](https://github.com/4350pChris/slack-vuesualizer) | Browse/search an existing Slack export | Viewers only — they fetch nothing |
-| [slack-archive-bot](https://github.com/docmarionum1/slack-archive-bot) | A bot that archives messages and makes them searchable | Requires a bot **installed by an admin** — blocked for us (§1.4) |
+| [sla-mem-bot](https://github.com/docmarionum1/sla-mem-bot) | A bot that archives messages and makes them searchable | Requires a bot **installed by an admin** — blocked for us (§1.4) |
 | Commercial (Backupery, Mimecast, Smarsh, compliance vendors) | Backup / retention / eDiscovery | Admin- or Enterprise-only, and/or paid. Nothing targets an individual on a Free plan |
 
 **Conclusion: the gap is real.** Nobody ships an installable, cross-platform desktop app that
@@ -505,8 +511,8 @@ Use Electron's `app.getPath('userData')`, which resolves per-OS:
 
 | OS | Path |
 |---|---|
-| macOS | `~/Library/Application Support/Slack Archive/` |
-| Windows | `C:\Users\<name>\AppData\Roaming\Slack Archive\` |
+| macOS | `~/Library/Application Support/sla-mem/` |
+| Windows | `C:\Users\<name>\AppData\Roaming\sla-mem\` |
 
 ```
 <userData>/
@@ -522,9 +528,9 @@ Use Electron's `app.getPath('userData')`, which resolves per-OS:
 
 Secrets are **not** stored here in plaintext — see §3.5.
 
-As built, `--data-dir=<path>` or `SLACK_ARCHIVE_DATA_DIR` points the app at another folder (demo
+As built, `--data-dir=<path>` or `SLA_MEM_DATA_DIR` points the app at another folder (demo
 data, tests, a second account's archive). Unpackaged development builds default to
-`Slack Archive (dev)` so they never touch a real archive.
+`sla-mem (dev)` so they never touch a real archive.
 
 Show this folder path in Settings with a **"Show in Finder / Show in Explorer"** button
 (`shell.showItemInFolder`), so users can back it up.
@@ -584,8 +590,8 @@ As built:
   can't be known in advance (Google, Okta, Microsoft…). It stays an ordinary browsing window:
   sandboxed, no Node, no preload, every permission request refused, no downloads, and other
   schemes (such as `slack://`) ignored.
-- The Slack endpoints can be pointed at the mock server (`SLACK_ARCHIVE_SLACK_API` /
-  `SLACK_ARCHIVE_SLACK_WEB`) only in unpackaged builds, so a stray environment variable can never
+- The Slack endpoints can be pointed at the mock server (`SLA_MEM_SLACK_API` /
+  `SLA_MEM_SLACK_WEB`) only in unpackaged builds, so a stray environment variable can never
   send a user's session anywhere else.
 
 ---
@@ -850,14 +856,14 @@ app notifications were effectively unreadable and unsearchable. Also render lega
 
 A short, friendly, 3-screen flow. No jargon. No settings required.
 
-1. **Welcome** — "Slack Archive keeps a private copy of your Slack history on this computer, so you
+1. **Welcome** — "sla-mem keeps a private copy of your Slack history on this computer, so you
    can still read and search it after Slack hides it. Your data never leaves your machine."
 2. **Connect Slack** — one big button. Explain in one line: "You'll sign in to Slack in a window,
    just like in your browser." Recommend the **email code** option (§2.4). Handle: multiple
    workspaces → picker; cancel; failure → plain-language retry with the alternative methods.
 3. **Getting your history** — the first sync runs with a real progress bar ("Fetching #general —
    1,240 messages so far"). Explain once: "Slack only lets us see the last 90 days. From now on,
-   everything we fetch is kept forever." Offer the "Start Slack Archive when I log in" checkbox
+   everything we fetch is kept forever." Offer the "Start sla-mem when I log in" checkbox
    (default **on**) and finish.
 
 ### 8.2 Main window
@@ -883,7 +889,7 @@ Familiar to anyone who has used Slack, but clearly a *reader*:
 
 ### 8.3 Tray / background
 
-- Tray icon with: Open Slack Archive, Sync now, Last synced <time>, Settings, Quit.
+- Tray icon with: Open sla-mem, Sync now, Last synced <time>, Settings, Quit.
 - Closing the window **hides** to the tray (it keeps syncing); Quit actually exits. On macOS follow
   the usual dock behaviour.
 - A subtle badge/indicator while syncing.
@@ -933,7 +939,7 @@ the target platform's binary. Verified by opening the database from the packaged
 
 ### 9.2 App identity
 
-- App name: **Slack Archive** · appId e.g. `com.9h.slack-archive` · a proper icon set
+- App name: **sla-mem** · appId e.g. `com.9h.sla-mem` · a proper icon set
   (`.icns`, `.ico`, tray icons @1x/@2x, and a light/dark-appropriate tray template image on macOS).
 - Keep the name/icon clearly distinct from Slack's own branding to avoid implying affiliation.
 - *As built:* `build/icon.icns` and `build/icon.png` (electron-builder makes the Windows `.ico`
@@ -1532,27 +1538,27 @@ search and rendering layers transfer essentially unchanged.
 
 ## Appendix E — Install guide for colleagues (ready to send)
 
-> **Installing Slack Archive**
+> **Installing sla-mem**
 >
-> Slack Archive keeps a private copy of your Slack history on your own computer, so you can still
+> sla-mem keeps a private copy of your Slack history on your own computer, so you can still
 > read and search it after Slack hides older messages. Nothing is uploaded anywhere.
 >
 > **1. Download**
 > Go to **<release page link>** and download:
-> - **Mac:** `Slack-Archive-<version>.dmg` (choose *Apple Silicon* for M1/M2/M3/M4 Macs, or *Intel*)
-> - **Windows:** `Slack-Archive-Setup-<version>.exe`
+> - **Mac:** `sla-mem-<version>.dmg` (choose *Apple Silicon* for M1/M2/M3/M4 Macs, or *Intel*)
+> - **Windows:** `sla-mem-setup-<version>.exe`
 >
 > **2. Install**
-> - **Mac:** open the `.dmg` and drag **Slack Archive** into your **Applications** folder.
+> - **Mac:** open the `.dmg` and drag **sla-mem** into your **Applications** folder.
 > - **Windows:** run the `.exe` and follow the installer.
 >
 > **3. The first time you open it, your computer will warn you.**
 > This is normal — it happens because the app isn't registered with Apple/Microsoft, which costs a
 > yearly fee we haven't paid. The app is safe and was built in-house.
 >
-> - **Mac:** double-click Slack Archive. You'll see *"Slack Archive cannot be opened because the
+> - **Mac:** double-click sla-mem. You'll see *"sla-mem cannot be opened because the
 >   developer cannot be verified."* Click **Done**. Then open
->   **System Settings → Privacy & Security**, scroll down to where it says *"Slack Archive was
+>   **System Settings → Privacy & Security**, scroll down to where it says *"sla-mem was
 >   blocked"*, and click **Open Anyway**. Confirm with **Open**. You only do this once.
 > - **Windows:** you'll see a blue *"Windows protected your PC"* box. Click **More info**, then
 >   **Run anyway**. You only do this once.

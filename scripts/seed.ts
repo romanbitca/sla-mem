@@ -34,7 +34,7 @@ import {
 } from '../test/synthetic/workspace';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const MARKER = '.slack-archive-demo';
+const MARKER = '.sla-mem-demo';
 
 interface Options {
   out: string;

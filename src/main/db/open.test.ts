@@ -8,7 +8,7 @@ import type { DB } from './types';
 
 const tmpDirs: string[] = [];
 function tmpFile(name = 'archive.db'): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'slack-archive-db-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sla-mem-db-'));
   tmpDirs.push(dir);
   return path.join(dir, 'nested', 'deeper', name);
 }

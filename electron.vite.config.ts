@@ -41,7 +41,7 @@ const DEV_CSP = [
 /** Injects the Content-Security-Policy meta tag (strict in builds, relaxed for the dev server). */
 function contentSecurityPolicy(): Plugin {
   return {
-    name: 'slack-archive:csp',
+    name: 'sla-mem:csp',
     transformIndexHtml: {
       order: 'pre',
       handler(html, ctx) {

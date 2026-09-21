@@ -72,7 +72,7 @@ describe('locks', () => {
   });
 
   it('works across two connections to the same file', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'slack-archive-lock-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sla-mem-lock-'));
     const a = openDb(path.join(dir, 'a.db'));
     const b = openDb(path.join(dir, 'a.db'));
     try {

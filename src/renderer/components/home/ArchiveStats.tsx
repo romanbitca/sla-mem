@@ -172,8 +172,8 @@ export function FreeWindowHero({ stats }: { stats: StatsDTO }) {
               Everything archived is still inside Slack’s {FREE_PLAN_WINDOW_DAYS}-day window
             </p>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
-              From day {FREE_PLAN_WINDOW_DAYS + 1}, messages disappear from Slack but stay here. Keep Slack Archive
-              syncing and nothing is lost.
+              From day {FREE_PLAN_WINDOW_DAYS + 1}, messages disappear from Slack but stay here. Keep sla-mem syncing
+              and nothing is lost.
             </p>
           </>
         )}

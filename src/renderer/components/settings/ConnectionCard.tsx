@@ -82,7 +82,7 @@ export function ConnectionCard({ connection }: { connection: SlackConnectionDTO 
         {justConnected && (
           <Callout tone="success" icon={<CheckIcon size={15} />} role="status">
             <p className="font-medium">Connected to {teamName}.</p>
-            <p className="text-ink-muted">Slack Archive is fetching your history in the background.</p>
+            <p className="text-ink-muted">sla-mem is fetching your history in the background.</p>
           </Callout>
         )}
         {connection.expired && !failed && (
@@ -152,8 +152,8 @@ export function ConnectionCard({ connection }: { connection: SlackConnectionDTO 
         ) : (
           <div className="flex flex-col gap-3">
             <p className="text-[13.5px] leading-relaxed text-ink-muted">
-              You’ll sign in to Slack in a window, just like in your browser. Slack Archive then keeps a copy of your
-              own conversations on this computer. Nothing is uploaded anywhere.
+              You’ll sign in to Slack in a window, just like in your browser. sla-mem then keeps a copy of your own
+              conversations on this computer. Nothing is uploaded anywhere.
             </p>
             <div>
               <Button

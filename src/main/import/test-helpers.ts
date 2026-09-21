@@ -120,7 +120,7 @@ export function zipInputsFromDir(dir: string, prefix = ''): ZipInput[] {
 }
 
 /** A fresh temp directory; register it with `cleanup` to delete it after the test. */
-export function tempDir(prefix = 'slack-archive-import-'): string {
+export function tempDir(prefix = 'sla-mem-import-'): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 

@@ -1,7 +1,7 @@
 # Packaging (PLAN §9): unsigned builds for macOS (dmg + zip, Apple Silicon and Intel) and Windows
 # (NSIS installer), published to GitHub Releases by .github/workflows/release.yml.
-appId: com.9h.slack-archive
-productName: Slack Archive
+appId: com.9h.sla-mem
+productName: sla-mem
 copyright: Copyright © 2026 Roman Bitca
 
 directories:
@@ -47,7 +47,7 @@ mac:
   identity: '-'
   hardenedRuntime: false
   # The zip (for update downloads); the dmg sets its own name below.
-  artifactName: Slack-Archive-${version}-${arch}-mac.${ext}
+  artifactName: sla-mem-${version}-${arch}-mac.${ext}
   gatekeeperAssess: false
   target:
     - target: dmg
@@ -63,8 +63,8 @@ mac:
     - '!node_modules/better-sqlite3/prebuilds/{linux-*,linuxmusl-*,win32-*}.node'
 
 dmg:
-  artifactName: Slack-Archive-${version}-${arch}.${ext}
-  title: Slack Archive ${version}
+  artifactName: sla-mem-${version}-${arch}.${ext}
+  title: sla-mem ${version}
 
 win:
   icon: build/icon.png
@@ -83,8 +83,8 @@ nsis:
   # One click, per user, no administrator rights: the simplest install for non-technical colleagues.
   oneClick: true
   perMachine: false
-  artifactName: Slack-Archive-Setup-${version}.${ext}
-  shortcutName: Slack Archive
+  artifactName: sla-mem-setup-${version}.${ext}
+  shortcutName: sla-mem
   createDesktopShortcut: true
   createStartMenuShortcut: true
   runAfterFinish: true

@@ -90,10 +90,10 @@ async function toConnectStep() {
 describe('Onboarding', () => {
   it('welcomes with the promise and the one-time note about using your Slack login', async () => {
     start();
-    expect(await screen.findByRole('heading', { name: 'Welcome to Slack Archive' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Welcome to sla-mem' })).toBeTruthy();
     expect(
       screen.getByText(
-        'Slack Archive keeps a private copy of your Slack history on this computer, so you can still read and search it after Slack hides it. Your data never leaves your machine.',
+        'sla-mem keeps a private copy of your Slack history on this computer, so you can still read and search it after Slack hides it. Your data never leaves your machine.',
       ),
     ).toBeTruthy();
     expect(screen.getByText(/uses your own Slack login to make a personal copy of your own history/)).toBeTruthy();
@@ -278,7 +278,7 @@ describe('Onboarding', () => {
     ).toBeTruthy();
     expect(screen.getByText(/You can finish now/)).toBeTruthy();
 
-    const checkbox = screen.getByRole('checkbox', { name: /Start Slack Archive when I log in/ }) as HTMLInputElement;
+    const checkbox = screen.getByRole('checkbox', { name: /Start sla-mem when I log in/ }) as HTMLInputElement;
     expect(checkbox.checked).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Finish' }));
     await waitFor(() => expect(bridge.call).toHaveBeenCalledWith('completeOnboarding', { launchAtLogin: true }));
@@ -290,7 +290,7 @@ describe('Onboarding', () => {
     settings = fresh;
     start({ getSettings: () => ({ ...settings, connection: makeConnection() }) });
     await screen.findByRole('heading', { name: 'Getting your history' });
-    fireEvent.click(screen.getByRole('checkbox', { name: /Start Slack Archive when I log in/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Start sla-mem when I log in/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Finish' }));
     await waitFor(() => expect(bridge.call).toHaveBeenCalledWith('completeOnboarding', { launchAtLogin: false }));
   });

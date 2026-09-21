@@ -109,7 +109,7 @@ function TeamPicker({
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 text-[13.5px] text-ink">
-          You’re signed in to more than one workspace. Which one should Slack Archive keep a copy of?
+          You’re signed in to more than one workspace. Which one should sla-mem keep a copy of?
         </legend>
         {teams.map((team) => (
           <label
@@ -172,7 +172,7 @@ export function SignInFailed({ status, onRetry, retrying, children }: SignInFail
           <span className="font-medium text-ink">“Sign in with email”</span> and type the 6-digit code Slack sends you.
           It works even when Google sign-in doesn’t.
         </li>
-        <li>Keep the Slack window open until Slack Archive says you’re connected.</li>
+        <li>Keep the Slack window open until sla-mem says you’re connected.</li>
       </ul>
       <div className="mt-3">
         <Button size="sm" variant="primary" loading={retrying} onClick={onRetry}>

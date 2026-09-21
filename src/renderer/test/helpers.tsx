@@ -276,7 +276,7 @@ export function makeStats(overrides: Partial<StatsDTO> = {}): StatsDTO {
 
 export function makeStorage(overrides: Partial<StorageDTO> = {}): StorageDTO {
   return {
-    dataDir: '/Users/me/Library/Application Support/Slack Archive',
+    dataDir: '/Users/me/Library/Application Support/sla-mem',
     databaseBytes: 340 * MB,
     attachmentsBytes: 880 * MB,
     logsBytes: 2 * MB,
@@ -294,8 +294,8 @@ export function makeAppInfo(overrides: Partial<AppInfoDTO> = {}): AppInfoDTO {
     platform: 'darwin',
     arch: 'arm64',
     isPackaged: true,
-    dataDir: '/Users/me/Library/Application Support/Slack Archive',
-    logsDir: '/Users/me/Library/Application Support/Slack Archive/logs',
+    dataDir: '/Users/me/Library/Application Support/sla-mem',
+    logsDir: '/Users/me/Library/Application Support/sla-mem/logs',
     installedProperly: true,
     ...overrides,
   };

@@ -26,7 +26,7 @@ const available = makeUpdateInfo({
   latestVersion: '1.3.0',
   available: true,
   notes: 'Fixes search sometimes missing recent messages.\n<b>Faster</b> start-up.',
-  downloadUrl: 'https://github.com/romanbitca/sla-mem/releases/download/v1.3.0/Slack-Archive-1.3.0-arm64.dmg',
+  downloadUrl: 'https://github.com/romanbitca/sla-mem/releases/download/v1.3.0/sla-mem-1.3.0-arm64.dmg',
 });
 
 describe('UpdateBanner', () => {
@@ -50,7 +50,7 @@ describe('UpdateBanner', () => {
     const banner = await screen.findByRole('region', { name: 'Update available' });
     expect(within(banner).getByText(/Version 1\.3\.0 is available/)).toBeTruthy();
     expect(
-      within(banner).getByText('Open the download and drag Slack Archive to Applications, replacing the old one.'),
+      within(banner).getByText('Open the download and drag sla-mem to Applications, replacing the old one.'),
     ).toBeTruthy();
     fireEvent.click(within(banner).getByRole('button', { name: 'Download' }));
     await waitFor(() => expect(download).toHaveBeenCalledTimes(1));

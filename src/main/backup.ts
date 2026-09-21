@@ -13,21 +13,21 @@ import type { DB } from './db';
 import { renameReplacing } from './fsx';
 import type { ArchivePaths } from './paths';
 
-export const RESTORE_README = `Slack Archive backup
+export const RESTORE_README = `sla-mem backup
 ====================
 
-This zip contains a complete copy of a Slack Archive:
+This zip contains a complete copy of a sla-mem:
 
   archive.db    all archived messages, people and conversations
   files/        downloaded attachments
   config.json   your settings
 
 To restore it:
-  1. Quit Slack Archive (tray icon → Quit).
+  1. Quit sla-mem (tray icon → Quit).
   2. Open the archive folder (Settings → Storage → Show folder).
   3. Move the existing archive.db, archive.db-wal, archive.db-shm, files and config.json somewhere safe.
   4. Unzip this backup into that folder.
-  5. Start Slack Archive and click Reconnect to keep archiving.
+  5. Start sla-mem and click Reconnect to keep archiving.
 `;
 
 export interface BackupOptions {
@@ -40,7 +40,7 @@ export interface BackupOptions {
 
 export async function backupArchive(opts: BackupOptions): Promise<BackupResultDTO> {
   const stamp = timestamp(opts.now ?? new Date());
-  const zipPath = uniquePath(path.join(opts.destDir, `Slack Archive backup ${stamp}.zip`));
+  const zipPath = uniquePath(path.join(opts.destDir, `sla-mem backup ${stamp}.zip`));
   const snapshot = path.join(opts.paths.tmpDir, `backup-${process.pid}-${Date.now()}.db`);
   const partial = `${zipPath}.part`;
   await fs.promises.mkdir(opts.paths.tmpDir, { recursive: true });

@@ -1,10 +1,10 @@
-# Slack Archive
+# sla-mem
 
 A desktop app for macOS and Windows that keeps a **permanent, private, searchable copy of your own
 Slack history on your own computer**.
 
 On Slack's Free plan only the most recent 90 days of messages are visible, in the Slack app and
-through its API. Everything older is hidden and eventually deleted. Slack Archive syncs your
+through its API. Everything older is hidden and eventually deleted. sla-mem syncs your
 channels, direct messages and group DMs in the background, and keeps **everything it has ever
 seen, forever**, even after Slack hides it.
 
@@ -20,7 +20,7 @@ seen, forever**, even after Slack hides it.
 
 ## How it signs in to Slack (please read once)
 
-Slack Archive opens Slack's normal sign-in page in its own window. You sign in exactly as you
+sla-mem opens Slack's normal sign-in page in its own window. You sign in exactly as you
 would in your browser (the easiest option is **"Sign in with email"**, which emails you a 6-digit
 code). The app then uses that signed-in web session, the same one the Slack website uses, to
 download **your own** messages to **your own** computer.
@@ -52,7 +52,7 @@ npm run dev
 
 | Script                                       | What it does                                                                           |
 | -------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `npm run dev`                                | Electron with hot reload (data in the per-user app data folder, "Slack Archive (dev)") |
+| `npm run dev`                                | Electron with hot reload (data in the per-user app data folder, "sla-mem (dev)")       |
 | `npm run seed:demo` then `npm run dev:demo`  | A synthetic 10k-message archive in `./.demo-data`, then the app on it                  |
 | `npm run mock:slack` then `npm run dev:mock` | A fake Slack workspace on port 4849, then the app signed in to it (`./.mock-data`)     |
 | `npm run check`                              | Typecheck, lint and all tests (what CI runs)                                           |
@@ -73,9 +73,9 @@ injection (429s, failures, a signed-out session) and a 90-day Free-plan window.
 
 ### Pointing a build at another folder
 
-`--data-dir=<path>` (or `SLACK_ARCHIVE_DATA_DIR`) opens the archive in another folder: demo data,
+`--data-dir=<path>` (or `SLA_MEM_DATA_DIR`) opens the archive in another folder: demo data,
 tests, or a second archive for a different account. Unpackaged builds default to
-`Slack Archive (dev)`, so development never touches a real archive.
+`sla-mem (dev)`, so development never touches a real archive.
 
 ## Releasing
 
@@ -99,7 +99,7 @@ builds as workflow artifacts without touching Releases.
 
 Proprietary. Copyright © 2026 Roman Bitca. All rights reserved. Internal use only.
 
-Third-party packages keep their own licences (see `node_modules/*/LICENSE`). Slack Archive does
+Third-party packages keep their own licences (see `node_modules/*/LICENSE`). sla-mem does
 not include or link slackdump (AGPLv3); it can import slackdump/Slack export folders and zips as
 data.
 

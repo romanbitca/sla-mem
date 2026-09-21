@@ -75,8 +75,8 @@ export default function HomePage() {
           )}
           {info.data && !info.data.installedProperly && (
             <Callout tone="warn" icon={<AlertIcon size={15} />}>
-              Slack Archive is running from the download. Drag it into your Applications folder so it can start by
-              itself and keep syncing.
+              sla-mem is running from the download. Drag it into your Applications folder so it can start by itself and
+              keep syncing.
             </Callout>
           )}
 
@@ -108,7 +108,7 @@ function StaleCallout({ status }: { status: SyncStatusDTO }) {
       <p className="font-medium">
         {days != null
           ? `Your last successful sync was ${pluralize(days, 'day')} ago.`
-          : 'Slack Archive hasn’t synced in a long time.'}
+          : 'sla-mem hasn’t synced in a long time.'}
       </p>
       <p className="text-ink-muted">
         Slack only keeps the last {FREE_PLAN_WINDOW_DAYS} days, so sync soon: anything older than that can’t be fetched

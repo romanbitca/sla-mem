@@ -65,7 +65,7 @@ export function SyncSettingsCard({ preferences, status, statusError }: SyncSetti
           </Select>
         </SettingRow>
         <SettingRow
-          label="Start Slack Archive when I log in"
+          label="Start sla-mem when I log in"
           labelId={ids.login}
           description="Recommended. Slack only keeps the last 90 days, so regular syncing is what keeps your history."
           descriptionId={ids.loginHint}

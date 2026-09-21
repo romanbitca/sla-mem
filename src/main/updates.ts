@@ -56,7 +56,7 @@ export async function checkForUpdate(opts: UpdateCheckOptions): Promise<UpdateIn
   let res: Response;
   try {
     res = await fetchImpl(`https://api.github.com/repos/${opts.repo}/releases/latest`, {
-      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Slack-Archive-update-check' },
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'sla-mem-update-check' },
       signal: AbortSignal.timeout(15_000),
     });
   } catch {

@@ -69,7 +69,7 @@ export default function Onboarding({ settings }: { settings: SettingsDTO }) {
         <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-accent-ink">
           <ArchiveIcon size={17} />
         </span>
-        <span className="text-[15px] font-semibold">Slack Archive</span>
+        <span className="text-[15px] font-semibold">sla-mem</span>
       </header>
       <main className="flex flex-1 items-start justify-center px-4 pt-4 pb-12 sm:items-center sm:pt-0">
         <div className="flex w-full max-w-xl flex-col gap-6">
@@ -141,10 +141,10 @@ function StepHeading({
 function WelcomeStep({ headingRef, onNext }: { headingRef: RefObject<HTMLHeadingElement | null>; onNext: () => void }) {
   return (
     <div className="flex flex-col gap-5">
-      <StepHeading headingRef={headingRef}>Welcome to Slack Archive</StepHeading>
+      <StepHeading headingRef={headingRef}>Welcome to sla-mem</StepHeading>
       <p className="text-[15px] leading-relaxed text-ink">
-        Slack Archive keeps a private copy of your Slack history on this computer, so you can still read and search it
-        after Slack hides it. Your data never leaves your machine.
+        sla-mem keeps a private copy of your Slack history on this computer, so you can still read and search it after
+        Slack hides it. Your data never leaves your machine.
       </p>
       {/* PLAN §2.9: said plainly, once. */}
       <p className="flex items-start gap-2.5 rounded-xl bg-inset px-4 py-3 text-[13.5px] leading-relaxed text-ink-muted">
@@ -375,7 +375,7 @@ function HistoryStep({
           className="mt-0.5 size-4 shrink-0 accent-accent"
         />
         <span className="min-w-0">
-          <span className="block text-[14px] font-medium text-ink">Start Slack Archive when I log in</span>
+          <span className="block text-[14px] font-medium text-ink">Start sla-mem when I log in</span>
           <span className="mt-0.5 block text-[13px] leading-relaxed text-ink-muted">
             Recommended: it then keeps your archive up to date in the background, without you having to remember.
           </span>

@@ -1,5 +1,5 @@
 /**
- * "Start Slack Archive when I log in" (PLAN §5.3: default on, because a user who doesn't open the
+ * "Start sla-mem when I log in" (PLAN §5.3: default on, because a user who doesn't open the
  * app for three months loses that period for good). The app then starts in the background: no
  * window, just the tray icon and the scheduled syncs.
  */

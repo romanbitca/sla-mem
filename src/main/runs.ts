@@ -351,7 +351,7 @@ export class RunManager {
   // ─── lifecycle ──────────────────────────────────────────────────────────────────────────────
 
   private launch(kind: RunKind, description: string, job: Job): number {
-    if (this.closed) throw blocked('Slack Archive is closing.');
+    if (this.closed) throw blocked('sla-mem is closing.');
     if (this.active) throw conflict(`${RUN_LABEL[this.active.kind]} is already running.`);
     this.acquireLock();
     let id: number;
@@ -378,7 +378,7 @@ export class RunManager {
       throw conflict('The archive is busy. Try again in a moment.');
     }
     if (!acquired || readLock(this.db, SYNC_LOCK)?.owner !== this.owner) {
-      throw conflict('Another copy of Slack Archive is updating this archive. Try again when it finishes.');
+      throw conflict('Another copy of sla-mem is updating this archive. Try again when it finishes.');
     }
   }
 
