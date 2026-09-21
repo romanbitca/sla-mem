@@ -77,6 +77,11 @@ export interface ArchiveApi {
   deleteAttachmentsOlderThan(req: { months: number }): CleanupResultDTO;
   /** Opens a folder picker, then writes a zip of the archive there. Null when cancelled. */
   backupNow(): BackupResultDTO | null;
+  /**
+   * Moving from another computer: opens a file picker for a backup zip and merges it into this
+   * archive as an import run. Null when cancelled.
+   */
+  importBackup(): { runId: number } | null;
   /** Opens a save dialog, then writes the conversation as Markdown there. Null when cancelled. */
   exportConversation(req: { conversationId: string }): ExportResultDTO | null;
   /** Fetches the people and conversation lists from Slack (no history) and returns the list. */
@@ -135,6 +140,7 @@ export const API_METHODS = [
   'getStorage',
   'deleteAttachmentsOlderThan',
   'backupNow',
+  'importBackup',
   'exportConversation',
   'refreshConversationList',
   'deleteConversationArchive',

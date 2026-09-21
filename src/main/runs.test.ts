@@ -273,6 +273,24 @@ describe('RunManager', () => {
     expect(calls).toEqual([dir]);
     expect(() => m.startImport(path.join(dir, 'nope'))).toThrow(/no longer exists/);
   });
+
+  it('restores a backup chosen for import (moving from another computer)', async () => {
+    const restored: { path: string; tmpDir: string }[] = [];
+    const m = manager({
+      isArchiveBackup: async () => true,
+      restoreBackup: async (opts) => {
+        restored.push({ path: opts.path, tmpDir: opts.tmpDir });
+        opts.onExcludedConversations?.(['D1']);
+        return { messagesInserted: 5 };
+      },
+      importSlackExport: async () => {
+        throw new Error('not a Slack export');
+      },
+    });
+    const id = m.startImport(dir);
+    expect(await m.wait(id)).toMatchObject({ kind: 'import', status: 'ok', stats: { messagesInserted: 5 } });
+    expect(restored).toEqual([{ path: dir, tmpDir: expect.any(String) }]);
+  });
 });
 
 describe('classifyFailure', () => {

@@ -347,6 +347,18 @@ export function useImportExport() {
   });
 }
 
+/**
+ * Moving from another computer: main opens a file picker for the backup zip and starts merging
+ * it as an import run. Null when the reader cancelled the picker.
+ */
+export function useImportBackup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.importBackup(),
+    onSettled: () => qc.invalidateQueries({ queryKey: qk.syncStatus }),
+  });
+}
+
 export function useRetryFile() {
   const qc = useQueryClient();
   return useMutation({

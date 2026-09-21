@@ -343,6 +343,30 @@ describe('Onboarding', () => {
     expect(await screen.findByRole('checkbox', { name: /general/ })).toBeTruthy();
   });
 
+  it('lets someone moving from another computer import a backup first, then connect', async () => {
+    start({ importBackup: { runId: 7 } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Import a backup' }));
+    await waitFor(() => expect(bridge.call).toHaveBeenCalledWith('importBackup'));
+    expect(await screen.findByRole('heading', { name: 'Connect Slack' })).toBeTruthy();
+  });
+
+  it('starts the choice from what a backup brought along', async () => {
+    start({
+      getSettings: () => ({
+        ...settings,
+        connection: makeConnection(),
+        preferences: { ...settings.preferences, excludedConversationIds: ['D1'] },
+      }),
+      startSync: { runId: 1 },
+    });
+    const priya = (await screen.findByRole('checkbox', { name: /Priya/ })) as HTMLInputElement;
+    expect(priya.checked).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Start archiving' }));
+    await waitFor(() => expect(bridge.call).toHaveBeenCalledWith('startSync'));
+    // Unchanged: nothing to save.
+    expect(bridge.call).not.toHaveBeenCalledWith('updatePreferences', expect.anything());
+  });
+
   it('respects unticking “start at login”', async () => {
     settings = fresh;
     start({ getSettings: () => ({ ...settings, connection: makeConnection() }), getSyncStatus: syncedOnce() });

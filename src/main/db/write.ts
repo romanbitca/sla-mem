@@ -280,7 +280,7 @@ function upsertBot(db: DB, msg: SlackMessage, now: number): void {
  * Two conversations can share a ts; the later one takes the next free microsecond (ordering is
  * then off by at most a few µs between those messages, which is harmless).
  */
-function allocateMessageId(db: DB, ts: string): number {
+export function allocateMessageId(db: DB, ts: string): number {
   let id = tsToMicros(ts);
   while (stmt(db, 'SELECT 1 FROM messages WHERE id = ?').get(id) !== undefined) id++;
   return id;

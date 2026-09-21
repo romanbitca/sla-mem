@@ -39,6 +39,7 @@ import { conflict, blocked, invalid, isDiskFullError } from './errors';
 import { redactSecrets } from './redact';
 import type { ApiSyncOptions } from './slack/sync';
 import type { ImportSlackExportOptions } from './import/slack-export';
+import type { RestoreBackupOptions } from './restore';
 
 // ─── problems ─────────────────────────────────────────────────────────────────────────────────
 
@@ -99,6 +100,9 @@ export interface RunJobs {
   runApiSync(opts: ApiSyncOptions): Promise<JobStats>;
   runFileDownloads(opts: Omit<ApiSyncOptions, 'conversationIds'>): Promise<JobStats>;
   importSlackExport(opts: ImportSlackExportOptions): Promise<JobStats>;
+  /** Whether a chosen zip or folder is an sla-mem backup (restored) rather than a Slack export. */
+  isArchiveBackup(path: string): Promise<boolean>;
+  restoreBackup(opts: RestoreBackupOptions): Promise<JobStats>;
 }
 
 /** Loaded lazily so the app window opens before the Slack client and zip reader are needed. */
@@ -106,6 +110,8 @@ export const defaultRunJobs: RunJobs = {
   runApiSync: async (opts) => (await import('./slack/sync')).runApiSync(opts),
   runFileDownloads: async (opts) => (await import('./slack/sync')).runFileDownloads(opts),
   importSlackExport: async (opts) => (await import('./import/slack-export')).importSlackExport(opts),
+  isArchiveBackup: async (p) => (await import('./restore')).isArchiveBackup(p),
+  restoreBackup: async (opts) => (await import('./restore')).restoreBackup(opts),
 };
 
 /** What RunManager needs from the Slack connection (ConnectionService satisfies it). */
@@ -121,6 +127,10 @@ export interface RunManagerOptions {
   filesDir: string;
   prefs: { get(): PreferencesDTO };
   connection: RunConnection;
+  /** Scratch space (a backup's database is unpacked here while it is merged). */
+  tmpDir?: string;
+  /** A restored backup's own "not archived" conversations, to add to this computer's list. */
+  onExcludedConversations?: (ids: string[]) => void;
   /** Default https://slack.com/api (the development mock Slack overrides it). */
   apiBaseUrl?: string;
   jobs?: Partial<RunJobs>;
@@ -233,11 +243,22 @@ export class RunManager {
     return this.launch('files', 'attachment download', (ctx) => this.runSlackJob(ctx, 'files'));
   }
 
+  /** Imports a Slack export, or restores an sla-mem backup (moving from another computer). */
   startImport(exportPath: string): number {
     const resolved = resolveImportPath(exportPath);
-    return this.launch('import', `import of ${path.basename(resolved)}`, (ctx) =>
-      this.jobs.importSlackExport({ ...ctx, db: this.db, path: resolved, filesDir: this.opts.filesDir }),
-    );
+    return this.launch('import', `import of ${path.basename(resolved)}`, async (ctx) => {
+      if (await this.jobs.isArchiveBackup(resolved)) {
+        return this.jobs.restoreBackup({
+          ...ctx,
+          db: this.db,
+          path: resolved,
+          filesDir: this.opts.filesDir,
+          tmpDir: this.opts.tmpDir ?? path.join(this.opts.filesDir, '..', 'tmp'),
+          onExcludedConversations: this.opts.onExcludedConversations,
+        });
+      }
+      return this.jobs.importSlackExport({ ...ctx, db: this.db, path: resolved, filesDir: this.opts.filesDir });
+    });
   }
 
   cancel(): boolean {

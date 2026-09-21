@@ -30,6 +30,8 @@ export interface PlatformHooks {
   chooseImportSource(): Promise<string | null>;
   /** Native folder picker for "Back up now"; null when cancelled. */
   chooseBackupFolder(): Promise<string | null>;
+  /** Native file picker for a backup zip ("Import a backup"); null when cancelled. */
+  chooseBackupFile(): Promise<string | null>;
   /** Native save dialog for "Export conversation", starting at `defaultName`; null when cancelled. */
   chooseExportFile(defaultName: string): Promise<string | null>;
   /** Opens a file with its default app (never used for runnable files). */
@@ -104,8 +106,14 @@ export function createServices(opts: ServicesOptions): AppServices {
   const runs = new RunManager({
     db: ctx.db,
     filesDir: ctx.paths.filesDir,
+    tmpDir: ctx.paths.tmpDir,
     prefs: ctx.prefs,
     connection,
+    // Moving computers keeps the choice of what not to archive.
+    onExcludedConversations: (ids) =>
+      ctx.prefs.update({
+        excludedConversationIds: [...new Set([...ctx.prefs.get().excludedConversationIds, ...ids])],
+      }),
     apiBaseUrl: opts.apiBaseUrl,
     jobs: opts.jobs,
     log: (line) => ctx.log.info(line),

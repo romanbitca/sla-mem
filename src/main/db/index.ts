@@ -33,6 +33,8 @@ export {
   deleteConversationData,
   reindexBatch,
   refreshSearchTextIfOutdated,
+  allocateMessageId,
+  SEARCH_TEXT_VERSION_KEY,
   SEARCH_TEXT_VERSION,
   conversationTypeOf,
 } from './write';

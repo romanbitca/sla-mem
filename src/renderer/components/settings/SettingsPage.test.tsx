@@ -226,6 +226,22 @@ describe('Settings — sync and attachments', () => {
   });
 });
 
+describe('Settings — moving computers', () => {
+  it('imports a backup made on another computer through main’s file picker', async () => {
+    const restore = vi.spyOn(api, 'importBackup').mockResolvedValueOnce(null).mockResolvedValueOnce({ runId: 4 });
+    setup();
+    const storage = await card('Storage');
+    const button = await within(storage).findByRole('button', { name: 'Import a backup…' });
+    fireEvent.click(button); // cancelled in the picker: nothing to say
+    await waitFor(() => expect(restore).toHaveBeenCalledTimes(1));
+    expect(within(storage).queryByText(/Importing the backup/)).toBeNull();
+    fireEvent.click(button);
+    expect(
+      await within(storage).findByText(/Importing the backup: you can follow it on the Archive page/),
+    ).toBeTruthy();
+  });
+});
+
 describe('Settings — what to archive', () => {
   const conversations = [
     makeConversation('C1', 'general', { messageCount: 30 }),

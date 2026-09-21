@@ -10,6 +10,7 @@ import {
   useCancelLogin,
   useChooseLoginTeam,
   useCompleteOnboarding,
+  useImportBackup,
   useLoginFollower,
   useLoginStatus,
   useSlackConversationList,
@@ -87,7 +88,13 @@ export default function Onboarding({ settings }: { settings: SettingsDTO }) {
                 onConnected={() => setStep('history')}
               />
             )}
-            {step === 'history' && <HistoryStep headingRef={headingRef} connection={settings.connection} />}
+            {step === 'history' && (
+              <HistoryStep
+                headingRef={headingRef}
+                connection={settings.connection}
+                excludedIds={settings.preferences.excludedConversationIds}
+              />
+            )}
           </div>
         </div>
       </main>
@@ -162,6 +169,36 @@ function WelcomeStep({ headingRef, onNext }: { headingRef: RefObject<HTMLHeading
           Get started
         </Button>
       </div>
+      <MovingComputers onStarted={onNext} />
+    </div>
+  );
+}
+
+/**
+ * Moving from another computer: the backup made there is imported first (it runs in the
+ * background), then Slack is connected as usual and syncing carries on from where it stopped.
+ */
+function MovingComputers({ onStarted }: { onStarted: () => void }) {
+  const restore = useImportBackup();
+  return (
+    <div className="flex flex-col gap-1.5 border-t border-line pt-4 text-[13px] text-ink-muted">
+      <p>
+        Moving from another computer?{' '}
+        <button
+          type="button"
+          disabled={restore.isPending}
+          onClick={() => restore.mutate(undefined, { onSuccess: (started) => started && onStarted() })}
+          className="focus-ring rounded font-medium text-accent-text hover:underline disabled:opacity-60"
+        >
+          Import a backup
+        </button>{' '}
+        made there, then connect Slack.
+      </p>
+      {restore.isError && (
+        <p role="alert" className="text-danger">
+          {describeError(restore.error)}
+        </p>
+      )}
     </div>
   );
 }
@@ -308,9 +345,12 @@ function OtherWays({
 function HistoryStep({
   headingRef,
   connection: saved,
+  excludedIds,
 }: {
   headingRef: RefObject<HTMLHeadingElement | null>;
   connection: SlackConnectionDTO;
+  /** Already chosen, e.g. by a backup imported from another computer. */
+  excludedIds: readonly string[];
 }) {
   const navigate = useNavigate();
   const sync = useSyncStatus();
@@ -328,7 +368,9 @@ function HistoryStep({
   const messages = stats.data?.messageCount ?? 0;
   // Before the first sync, the reader chooses what to archive (Settings has the same choice).
   const started = status != null && (status.running || status.recentRuns.some((r) => r.kind === 'sync'));
-  if (status != null && !started) return <ChooseWhatToArchive headingRef={headingRef} team={team} />;
+  if (status != null && !started) {
+    return <ChooseWhatToArchive headingRef={headingRef} team={team} initialExcluded={excludedIds} />;
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -419,20 +461,25 @@ function HistoryStep({
 function ChooseWhatToArchive({
   headingRef,
   team,
+  initialExcluded,
 }: {
   headingRef: RefObject<HTMLHeadingElement | null>;
   team: string | null;
+  initialExcluded: readonly string[];
 }) {
   const list = useSlackConversationList(true);
   const update = useUpdatePreferences();
   const startSync = useStartSync();
-  const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
+  const [excluded, setExcluded] = useState<Set<string>>(() => new Set(initialExcluded));
   const busy = update.isPending || startSync.isPending;
   const error = update.error ?? startSync.error;
 
   const start = async () => {
     try {
-      if (excluded.size) await update.mutateAsync({ excludedConversationIds: [...excluded].sort() });
+      const chosen = [...excluded].sort();
+      if (chosen.join() !== [...initialExcluded].sort().join()) {
+        await update.mutateAsync({ excludedConversationIds: chosen });
+      }
       await startSync.mutateAsync();
     } catch {
       // Shown below.

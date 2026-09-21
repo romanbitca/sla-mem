@@ -211,6 +211,7 @@ export const api = {
   deleteAttachmentsOlderThan: (req: { months: number }) => call('deleteAttachmentsOlderThan', req),
   /** Main shows a folder picker; null when it was cancelled. */
   backupNow: () => call('backupNow'),
+  importBackup: () => call('importBackup'),
   exportConversation: (req: { conversationId: string }) => call('exportConversation', req),
   refreshConversationList: () => call('refreshConversationList'),
   deleteConversationArchive: (req: { conversationId: string }) => call('deleteConversationArchive', req),

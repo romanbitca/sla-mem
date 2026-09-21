@@ -245,6 +245,17 @@ function platformHooks(s: AppServices): PlatformHooks {
       });
       return r.canceled ? null : (r.filePaths[0] ?? null);
     },
+    async chooseBackupFile() {
+      const r = await dialog.showOpenDialog(mainWindow!, {
+        title: 'Import a backup',
+        message: 'Choose the sla-mem backup (.zip) made on your other computer',
+        buttonLabel: 'Import',
+        properties: ['openFile'],
+        filters: [{ name: 'sla-mem backup', extensions: ['zip'] }],
+        defaultPath: app.getPath('documents'),
+      });
+      return r.canceled ? null : (r.filePaths[0] ?? null);
+    },
     async chooseExportFile(defaultName) {
       const r = await dialog.showSaveDialog(mainWindow!, {
         title: 'Export conversation',

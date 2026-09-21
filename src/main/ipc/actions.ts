@@ -103,6 +103,10 @@ export function actionHandlers(s: AppServices, hooks: PlatformHooks): ActionHand
       hooks.showItemInFolder(result.path);
       return result;
     },
+    importBackup: async () => {
+      const file = await hooks.chooseBackupFile();
+      return file ? { runId: s.runs.startImport(file) } : null;
+    },
     exportConversation: async (req) => {
       const id = slackId(record(req).conversationId, 'conversation');
       const conversation = getConversation(s.db, id);

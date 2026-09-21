@@ -2,7 +2,8 @@
  * "Back up now" (PLAN §8.4): a single .zip of the archive — a consistent database snapshot (taken
  * with SQLite's online backup, so syncing can continue), the downloaded attachments and the
  * preferences. The Slack sign-in is deliberately left out: it is encrypted for this computer's
- * account only, and a restored archive simply asks to reconnect.
+ * account only, and a restored archive simply asks to reconnect. "Import a backup" (restore.ts)
+ * merges such a zip into the archive on another computer.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,20 +15,22 @@ import { renameReplacing } from './fsx';
 import type { ArchivePaths } from './paths';
 
 export const RESTORE_README = `sla-mem backup
-====================
+==============
 
-This zip contains a complete copy of a sla-mem:
+This zip is a complete copy of an sla-mem archive:
 
-  archive.db    all archived messages, people and conversations
+  archive.db    all archived messages, edit history, people and conversations
   files/        downloaded attachments
   config.json   your settings
 
-To restore it:
-  1. Quit sla-mem (tray icon → Quit).
-  2. Open the archive folder (Settings → Storage → Show folder).
-  3. Move the existing archive.db, archive.db-wal, archive.db-shm, files and config.json somewhere safe.
-  4. Unzip this backup into that folder.
-  5. Start sla-mem and click Reconnect to keep archiving.
+To move your archive to another computer (or bring it back on this one):
+  1. Install sla-mem on that computer.
+  2. On its first screen click "Moving from another computer? Import a backup",
+     or later choose Settings → Storage → Import a backup.
+  3. Choose this zip. Nothing already archived there is lost or duplicated.
+  4. Connect Slack: syncing carries on from where this backup stopped.
+
+Keep this file somewhere safe: it contains your Slack messages.
 `;
 
 export interface BackupOptions {
