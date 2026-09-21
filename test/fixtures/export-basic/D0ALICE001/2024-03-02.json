@@ -1,0 +1,58 @@
+[
+  {
+    "type": "message",
+    "user": "U0ALICE001",
+    "text": "hey, got a sec? `kubectl get pods` shows CrashLoopBackOff",
+    "ts": "1709366400.000100",
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "a1",
+      "image_72": "https://avatars.example.com/alice_72.png",
+      "first_name": "Alice",
+      "real_name": "Alice Nguyen",
+      "display_name": "Alice",
+      "team": "T0EXAMPLE1",
+      "name": "alice",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  },
+  {
+    "type": "message",
+    "user": "U0SELF0001",
+    "text": "sure, sending the runbook",
+    "ts": "1709366700.000200",
+    "files": [
+      {
+        "id": "F0RUNBOOK1",
+        "created": 1709366690,
+        "timestamp": 1709366690,
+        "name": "runbook.md",
+        "title": "runbook.md",
+        "mimetype": "text/markdown",
+        "filetype": "markdown",
+        "pretty_type": "Markdown (raw)",
+        "user": "U0SELF0001",
+        "mode": "hosted",
+        "size": 1234,
+        "url_private": "https://files.slack.com/files-pri/T0EXAMPLE1-F0RUNBOOK1/runbook.md",
+        "url_private_download": "https://files.slack.com/files-pri/T0EXAMPLE1-F0RUNBOOK1/download/runbook.md",
+        "permalink": "https://example.slack.com/files/U0SELF0001/F0RUNBOOK1/runbook.md"
+      }
+    ],
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "s1",
+      "image_72": "https://avatars.example.com/sam_72.png",
+      "first_name": "Sam",
+      "real_name": "Sam Rivera",
+      "display_name": "sam",
+      "team": "T0EXAMPLE1",
+      "name": "sam",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  }
+]

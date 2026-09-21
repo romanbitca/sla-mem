@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     include: ['src/**/*.test.{ts,tsx}', 'test/**/*.test.{ts,tsx}', 'scripts/**/*.test.ts'],
+    exclude: ['**/node_modules/**', '.claude/**'],
     // Main-process code runs in node; renderer tests opt in with `// @vitest-environment jsdom`.
     environment: 'node',
     testTimeout: 20_000,

@@ -85,10 +85,11 @@ CREATE TABLE sync_state (
 );
 
 -- pid: lets a starting app tell its own stale runs (crash) apart from a live one.
+-- problem: what kind of failure the error describes (signed_out, offline, disk_full…), for the UI.
 CREATE TABLE runs (
   id INTEGER PRIMARY KEY, kind TEXT NOT NULL, status TEXT NOT NULL,
   started_at INTEGER NOT NULL, finished_at INTEGER, stats TEXT NOT NULL DEFAULT '{}',
-  error TEXT, log TEXT NOT NULL DEFAULT '[]', pid INTEGER
+  error TEXT, problem TEXT, log TEXT NOT NULL DEFAULT '[]', pid INTEGER
 );
 
 -- Aggregate maintained by triggers so the sidebar (message counts, date ranges) and stats stay

@@ -1,0 +1,8 @@
+[
+  {
+    "type": "message",
+    "user": "U0ALICE001",
+    "text": "This folder is neither listed nor named by an id, so the importer must skip it",
+    "ts": "1709373600.000200"
+  }
+]

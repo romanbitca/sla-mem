@@ -9,3 +9,5 @@ package-lock.json
 PLAN.md
 src/renderer/lib/emoji/emoji-map.json
 test/fixtures
+.claude
+src/main/auth/fixtures

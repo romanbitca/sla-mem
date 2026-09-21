@@ -1,0 +1,13 @@
+{
+  "logs": [
+    {
+      "service_id": "B0DEPLOY01",
+      "service_type": "Deploy Bot",
+      "user_id": "U0SELF0001",
+      "user_name": "sam",
+      "date": "1700000400",
+      "change_type": "added",
+      "scope": "incoming-webhook"
+    }
+  ]
+}

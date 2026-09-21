@@ -1,0 +1,40 @@
+[
+  {
+    "type": "message",
+    "user": "U0CAROL001",
+    "text": "Who's in for the offsite in April?",
+    "ts": "1709301600.000100",
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "c1",
+      "image_72": "https://avatars.example.com/carol_72.png",
+      "first_name": "Carol",
+      "real_name": "Carol Diaz",
+      "display_name": "carol.d",
+      "team": "T0EXAMPLE1",
+      "name": "carol",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  },
+  {
+    "type": "message",
+    "user": "U0ALICE001",
+    "text": "Me! <@U0CAROL001> can you book the venue?",
+    "ts": "1709301900.000200",
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "a1",
+      "image_72": "https://avatars.example.com/alice_72.png",
+      "first_name": "Alice",
+      "real_name": "Alice Nguyen",
+      "display_name": "Alice",
+      "team": "T0EXAMPLE1",
+      "name": "alice",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  }
+]

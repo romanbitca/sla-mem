@@ -37,7 +37,17 @@ export type { UpsertMessagesResult } from './write';
 export { tryAcquireLock, refreshLock, releaseLock, readLock, isPidAlive, DEFAULT_LOCK_STALE_MS } from './locks';
 export type { LockInfo } from './locks';
 
-export { createRun, updateRun, listRuns, getRun, getRunLog, markStaleRunsInterrupted, MAX_RUN_LOG_LINES } from './runs';
+export {
+  createRun,
+  updateRun,
+  listRuns,
+  getRun,
+  getRunLog,
+  markStaleRunsInterrupted,
+  lastFinishedRun,
+  lastSuccessfulRunAt,
+  MAX_RUN_LOG_LINES,
+} from './runs';
 export type { RunPatch } from './runs';
 
 export {

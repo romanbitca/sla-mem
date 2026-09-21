@@ -5,7 +5,17 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['node_modules', 'out', 'dist', 'release', 'coverage', '.demo-data', '.test-data', 'test/fixtures'],
+    ignores: [
+      'node_modules',
+      'out',
+      'dist',
+      'release',
+      'coverage',
+      '.demo-data',
+      '.test-data',
+      'test/fixtures',
+      '.claude',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

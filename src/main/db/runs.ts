@@ -14,6 +14,7 @@ interface RunRow {
   finished_at: number | null;
   stats: string;
   error: string | null;
+  problem: string | null;
   log: string;
   pid: number | null;
 }
@@ -31,6 +32,8 @@ export interface RunPatch {
   status?: RunStatus;
   stats?: Record<string, number>;
   error?: string | null;
+  /** Failure category for the UI (see ProblemDTO.kind). */
+  problem?: string | null;
   finishedAt?: number;
   log?: string[];
 }
@@ -45,6 +48,7 @@ export function updateRun(db: DB, id: number, patch: RunPatch): void {
   if (patch.status !== undefined) set('status', patch.status);
   if (patch.stats !== undefined) set('stats', JSON.stringify(patch.stats));
   if (patch.error !== undefined) set('error', patch.error);
+  if (patch.problem !== undefined) set('problem', patch.problem);
   if (patch.finishedAt !== undefined) set('finished_at', patch.finishedAt);
   if (patch.log !== undefined) set('log', JSON.stringify(patch.log.slice(-MAX_RUN_LOG_LINES)));
   if (!sets.length) return;
@@ -67,9 +71,27 @@ export function getRunLog(db: DB, id: number): string[] {
   return Array.isArray(lines) ? lines.filter((l): l is string => typeof l === 'string') : [];
 }
 
+/** The most recent finished run of the given kinds, with its failure category. */
+export function lastFinishedRun(db: DB, kinds: readonly RunKind[]): (SyncRunDTO & { problem: string | null }) | null {
+  const row = stmt<RunRow>(
+    db,
+    "SELECT * FROM runs WHERE status <> 'running' AND kind IN (SELECT value FROM json_each(?)) ORDER BY id DESC LIMIT 1",
+  ).get(JSON.stringify(kinds));
+  return row ? { ...runToDTO(row), problem: row.problem } : null;
+}
+
+/** finished_at of the most recent successful run of the given kinds (epoch ms), or null. */
+export function lastSuccessfulRunAt(db: DB, kinds: readonly RunKind[]): number | null {
+  const row = stmt<{ finished_at: number | null }>(
+    db,
+    "SELECT finished_at FROM runs WHERE status = 'ok' AND kind IN (SELECT value FROM json_each(?)) ORDER BY id DESC LIMIT 1",
+  ).get(JSON.stringify(kinds));
+  return row?.finished_at ?? null;
+}
+
 /**
  * Called on boot: runs still marked `running` whose process is gone (or was this pid in a previous
- * life) were interrupted. A run owned by another live process (e.g. a CLI sync) is left alone.
+ * life) were interrupted. A run owned by another live process is left alone.
  */
 export function markStaleRunsInterrupted(db: DB): number {
   const running = stmt<{ id: number; pid: number | null }>(

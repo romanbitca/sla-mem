@@ -1,0 +1,12 @@
+[
+  {
+    "id": "G0MPDM0001",
+    "name": "mpdm-sam--alice--carol-1",
+    "created": 1700000300,
+    "creator": "U0CAROL001",
+    "is_archived": false,
+    "members": ["U0SELF0001", "U0ALICE001", "U0CAROL001"],
+    "topic": { "value": "", "creator": "", "last_set": 0 },
+    "purpose": { "value": "Group messaging with: @sam @alice @carol", "creator": "U0CAROL001", "last_set": 1700000300 }
+  }
+]

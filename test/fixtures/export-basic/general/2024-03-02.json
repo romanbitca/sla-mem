@@ -1,0 +1,118 @@
+[
+  {
+    "type": "message",
+    "subtype": "thread_broadcast",
+    "user": "U0CAROL001",
+    "text": "Deployed to staging, see <https://staging.example.com>",
+    "ts": "1709370000.000100",
+    "thread_ts": "1709290800.000200",
+    "root": {
+      "type": "message",
+      "user": "U0SELF0001",
+      "text": "Deploy plan for *v2*:\n```npm run build\nnpm run deploy```\nObjections?",
+      "ts": "1709290800.000200",
+      "thread_ts": "1709290800.000200",
+      "reply_count": 2,
+      "latest_reply": "1709370000.000100"
+    },
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "c1",
+      "image_72": "https://avatars.example.com/carol_72.png",
+      "first_name": "Carol",
+      "real_name": "Carol Diaz",
+      "display_name": "carol.d",
+      "team": "T0EXAMPLE1",
+      "name": "carol",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  },
+  {
+    "type": "message",
+    "user": "U0ALICE001",
+    "text": "Prod too :rocket:",
+    "ts": "1709377200.000500",
+    "thread_ts": "1709290800.000200",
+    "parent_user_id": "U0SELF0001",
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "a1",
+      "image_72": "https://avatars.example.com/alice_72.png",
+      "first_name": "Alice",
+      "real_name": "Alice Nguyen",
+      "display_name": "Alice",
+      "team": "T0EXAMPLE1",
+      "name": "alice",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  },
+  {
+    "type": "message",
+    "subtype": "bot_message",
+    "bot_id": "B0DEPLOY01",
+    "username": "deploybot",
+    "text": "",
+    "ts": "1709380800.000600",
+    "icons": { "image_48": "https://avatars.example.com/deploy_48.png" },
+    "attachments": [
+      {
+        "id": 1,
+        "color": "36a64f",
+        "fallback": "Deploy succeeded: v2.0.1",
+        "title": "Deploy succeeded",
+        "title_link": "https://ci.example.com/runs/42",
+        "text": "Version v2.0.1 is live on production",
+        "footer": "CI"
+      }
+    ]
+  },
+  {
+    "type": "message",
+    "user": "U0SELF0001",
+    "text": "Architecture diagram for the new pipeline",
+    "ts": "1709384400.000700",
+    "upload": true,
+    "display_as_bot": false,
+    "files": [
+      {
+        "id": "F0DIAGRAM1",
+        "created": 1709384399,
+        "timestamp": 1709384399,
+        "name": "diagram.png",
+        "title": "diagram.png",
+        "mimetype": "image/png",
+        "filetype": "png",
+        "pretty_type": "PNG",
+        "user": "U0SELF0001",
+        "mode": "hosted",
+        "editable": false,
+        "is_external": false,
+        "external_type": "",
+        "size": 70,
+        "url_private": "https://files.slack.com/files-pri/T0EXAMPLE1-F0DIAGRAM1/diagram.png",
+        "url_private_download": "https://files.slack.com/files-pri/T0EXAMPLE1-F0DIAGRAM1/download/diagram.png",
+        "thumb_360": "https://files.slack.com/files-tmb/T0EXAMPLE1-F0DIAGRAM1-abc/diagram_360.png",
+        "original_w": 1,
+        "original_h": 1,
+        "permalink": "https://example.slack.com/files/U0SELF0001/F0DIAGRAM1/diagram.png"
+      }
+    ],
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "s1",
+      "image_72": "https://avatars.example.com/sam_72.png",
+      "first_name": "Sam",
+      "real_name": "Sam Rivera",
+      "display_name": "sam",
+      "team": "T0EXAMPLE1",
+      "name": "sam",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  }
+]

@@ -1,0 +1,4 @@
+[
+  { "id": "D0ALICE001", "created": 1700000100, "members": ["U0ALICE001", "U0SELF0001"] },
+  { "id": "D0CAROL001", "created": 1700000200, "members": ["U0CAROL001", "U0SELF0001"] }
+]

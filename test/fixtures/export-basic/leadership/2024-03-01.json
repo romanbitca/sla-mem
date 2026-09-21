@@ -1,0 +1,61 @@
+[
+  {
+    "type": "message",
+    "user": "U0SELF0001",
+    "text": "Budget draft attached, numbers are *confidential*",
+    "ts": "1709298000.000100",
+    "upload": true,
+    "files": [
+      {
+        "id": "F0BUDGET01",
+        "created": 1709297990,
+        "timestamp": 1709297990,
+        "name": "budget 2024.pdf",
+        "title": "Budget 2024",
+        "mimetype": "application/pdf",
+        "filetype": "pdf",
+        "pretty_type": "PDF",
+        "user": "U0SELF0001",
+        "mode": "hosted",
+        "size": 119,
+        "url_private": "https://files.slack.com/files-pri/T0EXAMPLE1-F0BUDGET01/budget_2024.pdf",
+        "url_private_download": "https://files.slack.com/files-pri/T0EXAMPLE1-F0BUDGET01/download/budget_2024.pdf",
+        "thumb_pdf": "https://files.slack.com/files-tmb/T0EXAMPLE1-F0BUDGET01-def/budget_2024_thumb_pdf.png",
+        "permalink": "https://example.slack.com/files/U0SELF0001/F0BUDGET01/budget_2024.pdf"
+      }
+    ],
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "s1",
+      "image_72": "https://avatars.example.com/sam_72.png",
+      "first_name": "Sam",
+      "real_name": "Sam Rivera",
+      "display_name": "sam",
+      "team": "T0EXAMPLE1",
+      "name": "sam",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  },
+  {
+    "type": "message",
+    "user": "U0ALICE001",
+    "text": "Thanks, reviewing now",
+    "ts": "1709299800.000200",
+    "reactions": [{ "name": "+1", "users": ["U0SELF0001"], "count": 1 }],
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "a1",
+      "image_72": "https://avatars.example.com/alice_72.png",
+      "first_name": "Alice",
+      "real_name": "Alice Nguyen",
+      "display_name": "Alice",
+      "team": "T0EXAMPLE1",
+      "name": "alice",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  }
+]

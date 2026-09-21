@@ -1,0 +1,14 @@
+[
+  {
+    "id": "C0GENERAL1",
+    "name": "general",
+    "created": 1700000000,
+    "creator": "U0SELF0001",
+    "is_archived": false,
+    "is_general": true,
+    "members": ["U0SELF0001", "U0ALICE001", "U0BOB00001", "U0CAROL001"],
+    "pins": [],
+    "topic": { "value": "Company-wide announcements", "creator": "U0SELF0001", "last_set": 1700000000 },
+    "purpose": { "value": "Everyone, everything", "creator": "U0SELF0001", "last_set": 1700000000 }
+  }
+]

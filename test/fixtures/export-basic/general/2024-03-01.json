@@ -1,0 +1,115 @@
+[
+  {
+    "type": "message",
+    "user": "U0ALICE001",
+    "text": "Welcome <@U0SELF0001>! Please read <#C0LEADERS1|leadership> and <https://example.com/handbook|the handbook> :tada:",
+    "ts": "1709287200.000100",
+    "client_msg_id": "0a4f6e0e-0001-4c1e-9d1a-000000000001",
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "source_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "a1",
+      "image_72": "https://avatars.example.com/alice_72.png",
+      "first_name": "Alice",
+      "real_name": "Alice Nguyen",
+      "display_name": "Alice",
+      "team": "T0EXAMPLE1",
+      "name": "alice",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    },
+    "reactions": [{ "name": "tada", "users": ["U0SELF0001", "U0CAROL001"], "count": 2 }]
+  },
+  {
+    "type": "message",
+    "user": "U0BOB00001",
+    "text": "Last day today, it was a pleasure &amp; an honour. Bye all :wave:",
+    "ts": "1709289000.000150",
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "b1",
+      "image_72": "https://avatars.example.com/bob_72.png",
+      "first_name": "Bob",
+      "real_name": "Bob Martins",
+      "display_name": "",
+      "team": "T0EXAMPLE1",
+      "name": "bob",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  },
+  {
+    "type": "message",
+    "user": "U0SELF0001",
+    "text": "Deploy plan for *v2*:\n```npm run build\nnpm run deploy```\nObjections?",
+    "ts": "1709290800.000200",
+    "thread_ts": "1709290800.000200",
+    "reply_count": 3,
+    "reply_users_count": 2,
+    "latest_reply": "1709377200.000500",
+    "reply_users": ["U0ALICE001", "U0CAROL001"],
+    "replies": [
+      { "user": "U0ALICE001", "ts": "1709291400.000300" },
+      { "user": "U0CAROL001", "ts": "1709370000.000100" },
+      { "user": "U0ALICE001", "ts": "1709377200.000500" }
+    ],
+    "is_locked": false,
+    "subscribed": true,
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "s1",
+      "image_72": "https://avatars.example.com/sam_72.png",
+      "first_name": "Sam",
+      "real_name": "Sam Rivera",
+      "display_name": "sam",
+      "team": "T0EXAMPLE1",
+      "name": "sam",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  },
+  {
+    "type": "message",
+    "user": "U0ALICE001",
+    "text": "Looks good, ship it _today_",
+    "ts": "1709291400.000300",
+    "thread_ts": "1709290800.000200",
+    "parent_user_id": "U0SELF0001",
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "a1",
+      "image_72": "https://avatars.example.com/alice_72.png",
+      "first_name": "Alice",
+      "real_name": "Alice Nguyen",
+      "display_name": "Alice",
+      "team": "T0EXAMPLE1",
+      "name": "alice",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  },
+  {
+    "type": "message",
+    "user": "U0CAROL001",
+    "text": "Standup moved to 10:30 tomorrow",
+    "ts": "1709294400.000400",
+    "edited": { "user": "U0CAROL001", "ts": "1709294460.000000" },
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "c1",
+      "image_72": "https://avatars.example.com/carol_72.png",
+      "first_name": "Carol",
+      "real_name": "Carol Diaz",
+      "display_name": "carol.d",
+      "team": "T0EXAMPLE1",
+      "name": "carol",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  }
+]

@@ -1,0 +1,21 @@
+[
+  {
+    "type": "message",
+    "user": "U0CAROL001",
+    "text": "lunch? :pizza:",
+    "ts": "1709467200.000100",
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "c1",
+      "image_72": "https://avatars.example.com/carol_72.png",
+      "first_name": "Carol",
+      "real_name": "Carol Diaz",
+      "display_name": "carol.d",
+      "team": "T0EXAMPLE1",
+      "name": "carol",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  }
+]

@@ -1,0 +1,86 @@
+[
+  {
+    "id": "U0SELF0001",
+    "team_id": "T0EXAMPLE1",
+    "name": "sam",
+    "deleted": false,
+    "real_name": "Sam Rivera",
+    "tz": "Europe/Chisinau",
+    "is_admin": false,
+    "is_bot": false,
+    "is_app_user": false,
+    "updated": 1709000000,
+    "profile": {
+      "real_name": "Sam Rivera",
+      "display_name": "sam",
+      "image_48": "https://avatars.example.com/sam_48.png",
+      "image_72": "https://avatars.example.com/sam_72.png",
+      "team": "T0EXAMPLE1"
+    }
+  },
+  {
+    "id": "U0ALICE001",
+    "team_id": "T0EXAMPLE1",
+    "name": "alice",
+    "deleted": false,
+    "real_name": "Alice Nguyen",
+    "is_bot": false,
+    "is_app_user": false,
+    "updated": 1709000000,
+    "profile": {
+      "real_name": "Alice Nguyen",
+      "display_name": "Alice",
+      "image_72": "https://avatars.example.com/alice_72.png",
+      "team": "T0EXAMPLE1"
+    }
+  },
+  {
+    "id": "U0BOB00001",
+    "team_id": "T0EXAMPLE1",
+    "name": "bob",
+    "deleted": true,
+    "real_name": "Bob Martins",
+    "is_bot": false,
+    "is_app_user": false,
+    "updated": 1709300000,
+    "profile": {
+      "real_name": "Bob Martins",
+      "display_name": "",
+      "image_72": "https://avatars.example.com/bob_72.png",
+      "team": "T0EXAMPLE1"
+    }
+  },
+  {
+    "id": "U0CAROL001",
+    "team_id": "T0EXAMPLE1",
+    "name": "carol",
+    "deleted": false,
+    "real_name": "Carol Diaz",
+    "is_bot": false,
+    "is_app_user": false,
+    "updated": 1709000000,
+    "profile": {
+      "real_name": "Carol Diaz",
+      "display_name": "carol.d",
+      "image_72": "https://avatars.example.com/carol_72.png",
+      "team": "T0EXAMPLE1"
+    }
+  },
+  {
+    "id": "U0DEPLOY01",
+    "team_id": "T0EXAMPLE1",
+    "name": "deploybot",
+    "deleted": false,
+    "real_name": "Deploy Bot",
+    "is_bot": true,
+    "is_app_user": false,
+    "updated": 1709000000,
+    "profile": {
+      "real_name": "Deploy Bot",
+      "display_name": "",
+      "bot_id": "B0DEPLOY01",
+      "image_72": "https://avatars.example.com/deploy_72.png",
+      "team": "T0EXAMPLE1"
+    }
+  }
+]

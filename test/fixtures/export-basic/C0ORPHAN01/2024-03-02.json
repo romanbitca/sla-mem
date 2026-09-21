@@ -1,0 +1,8 @@
+[
+  {
+    "type": "message",
+    "user": "U0ALICE001",
+    "text": "Message in a channel that is missing from channels.json",
+    "ts": "1709373600.000100"
+  }
+]

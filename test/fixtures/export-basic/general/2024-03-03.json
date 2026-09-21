@@ -1,0 +1,77 @@
+[
+  {
+    "type": "message",
+    "subtype": "bot_message",
+    "bot_id": "B0DEPLOY01",
+    "username": "deploybot",
+    "text": "",
+    "ts": "1709456400.000100",
+    "bot_profile": {
+      "id": "B0DEPLOY01",
+      "name": "deploybot",
+      "icons": { "image_48": "https://avatars.example.com/deploy_48.png" }
+    },
+    "blocks": [
+      { "type": "header", "block_id": "h1", "text": { "type": "plain_text", "text": "Nightly build", "emoji": true } },
+      {
+        "type": "section",
+        "block_id": "s1",
+        "text": { "type": "mrkdwn", "text": "*Nightly build* passed in 4m 12s", "verbatim": false }
+      }
+    ]
+  },
+  {
+    "type": "message",
+    "subtype": "tombstone",
+    "user": "USLACKBOT",
+    "text": "This message was deleted.",
+    "hidden": true,
+    "ts": "1709460000.000200",
+    "thread_ts": "1709460000.000200",
+    "reply_count": 1,
+    "reply_users_count": 1,
+    "latest_reply": "1709460600.000300",
+    "reply_users": ["U0ALICE001"]
+  },
+  {
+    "type": "message",
+    "user": "U0ALICE001",
+    "text": "Replying to a message that no longer exists",
+    "ts": "1709460600.000300",
+    "thread_ts": "1709460000.000200",
+    "parent_user_id": "USLACKBOT",
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "a1",
+      "image_72": "https://avatars.example.com/alice_72.png",
+      "first_name": "Alice",
+      "real_name": "Alice Nguyen",
+      "display_name": "Alice",
+      "team": "T0EXAMPLE1",
+      "name": "alice",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  },
+  {
+    "type": "message",
+    "user": "U0SELF0001",
+    "text": "Old quarterly report attached",
+    "ts": "1709463600.000400",
+    "files": [{ "id": "F0OLDFILE1", "mode": "hidden_by_limit" }],
+    "team": "T0EXAMPLE1",
+    "user_team": "T0EXAMPLE1",
+    "user_profile": {
+      "avatar_hash": "s1",
+      "image_72": "https://avatars.example.com/sam_72.png",
+      "first_name": "Sam",
+      "real_name": "Sam Rivera",
+      "display_name": "sam",
+      "team": "T0EXAMPLE1",
+      "name": "sam",
+      "is_restricted": false,
+      "is_ultra_restricted": false
+    }
+  }
+]
