@@ -48,31 +48,74 @@
   already done and should be ported rather than rewritten.
 - §1.6 records the **prior-art survey** (other tools that do parts of this). It is already done —
   don't repeat it.
+- **As built:** where the implementation had to differ from this document, the document was
+  corrected in place and the change is listed in **§0.3**. `docs/STATUS.md` maps every acceptance
+  criterion (§11) and pitfall (§12) to the test or check that covers it.
 
 ### 0.1 Suggested repository layout
 
 ```
-slack-archive/
+slack-archive/                 github.com/romanbitca/sla-mem
   PLAN.md                  ← this document
-  README.md                what it is, how to install (links Appendix E), how to build
+  README.md                what it is, how to build, test and release
+  docs/INSTALL.md          the install guide for colleagues (Appendix E)
+  docs/STATUS.md           acceptance criteria and pitfalls → evidence
   package.json
-  electron.vite.config.ts
-  electron-builder.yml
+  electron.vite.config.ts  main / preload / renderer builds, and the renderer's CSP
+  electron-builder.yml     packaging (§9)
   src/
     main/                  Electron main process
-      index.ts             app lifecycle, windows, tray
-      ipc/                 typed IPC handlers (one file per domain)
+      index.ts             app lifecycle, windows, tray, menu
+      context.ts           creates and wires the services
+      ipc/                 IPC registration + handlers (archive reads, actions)
       db/                  schema, migrations, repositories, search, normalisation
-      slack/               API client, sync engine, file downloader
-      auth/                sign-in window, session capture, safeStorage
-      settings.ts, scheduler.ts, logger.ts
-    preload/index.ts       contextBridge API surface
+      slack/               API client, sync engine, file downloader, attachment policy
+      auth/                sign-in window, session capture, safeStorage, connection
+      import/              Slack / slackdump export importer (folder or .zip)
+      runs.ts              one job at a time (sync, downloads, import), progress, problems
+      scheduler.ts, preferences.ts, logger.ts, redact.ts, protocol.ts (archive://),
+      backup.ts, storage.ts, tray.ts, updates.ts, security.ts, …
+    preload/index.ts       contextBridge API surface (window.archive)
     renderer/              React app (components, pages, hooks, mrkdwn renderer)
-    shared/types.ts        types shared across main ↔ renderer (the IPC contract)
-  test/                    mock Slack server, fixtures, seed/demo data generator
-  build/                   icons (icns/ico/png), entitlements
-  .github/workflows/       release.yml (tagged builds → GitHub Release)
+    shared/                types.ts (DTOs) + ipc.ts (the IPC contract)
+  test/                    mock Slack server, synthetic workspace generator, import fixtures
+  scripts/                 seed, bench, e2e, screenshots, icon generation
+  build/, resources/tray/  app and tray icons
+  .github/workflows/       ci.yml (checks on every push), release.yml (tagged builds → Release)
 ```
+
+### 0.3 Changes made while building (as built)
+
+Each item is also corrected where it belongs in this document.
+
+- **Toolchain (§3.1):** Electron 44, TypeScript 6.0 (typescript-eslint supports < 6.1), Vite 7
+  (electron-vite 5 requires ≤ 7), Vitest 5 with jsdom 29, Playwright for the E2E run.
+- **IPC shape (§3.3):** one whitelisted `call(method, arg)` / `on(event, cb)` bridge on
+  `window.archive`, typed by `src/shared/ipc.ts`, with a result envelope carrying error codes.
+- **Schema (§4, Appendix B):** added `bots`, `conversation_stats`, `files.skip_reason`,
+  `files.next_attempt_at`, `runs.problem`, `runs.pid`, and a different index set, measured at 300k
+  and 500k messages.
+- **Attachments are served over `archive://` (§3.6),** never `file://`, and only for types that
+  are safe to show inline.
+- **Search (§6):** exclusions are prefix-matched like bare words; Chinese and Japanese text is
+  segmented so words inside sentences are found; the search text carries a version and is rebuilt
+  in the background after an upgrade that changes it.
+- **Packaging (§9):** no native rebuild (better-sqlite3 13 ships Node-API prebuilds); ad-hoc signing
+  on macOS (Apple Silicon refuses unsigned code); Electron fuses; Windows icon generated from a PNG.
+- **Updates (§9.5):** the repository is private, so the update check finds no releases until the
+  releases are published from a public repository.
+- **Start at login (§5.3):** Electron 44 removed `openAsHidden`; a launch at login is detected
+  with `wasOpenedAtLogin` and starts in the tray.
+- **UI (§7, §8):** the theme choice (system, light, dark) lives in Settings → About; there is no
+  separate "Test connection" button (the connection is checked on every sync and shown on the
+  home page); a failed sign-in during onboarding also offers Advanced → paste session cookie;
+  file actions say "Show in Finder" / "Show in Explorer"; sync history is folded by default and
+  the archive numbers appear after the first sync. Block Kit is drawn read-only: buttons and
+  inputs are inert, `markdown` blocks show as text, and images on Slack's private file URLs are
+  not shown. A thread panel draws 200 replies at a time.
+- **Export conversation (Stage 8 nicety):** built as Markdown only (day headings, threads as
+  quotes, edits, deletions, attachments and reactions noted). Markdown opens in any editor and
+  renders in most viewers, so the HTML variant was left out.
 
 ### 0.2 First commits (before Stage 1 features)
 
@@ -384,16 +427,16 @@ their own history.
 
 | Concern | Choice | Notes |
 |---|---|---|
-| Shell | **Electron** (latest stable) | Bundles Chromium + Node; lets us own the Slack sign-in window (§2.3) |
-| Language | **TypeScript**, strict | Everywhere: main, preload, renderer |
-| Build/dev | **electron-vite** (recommended) or electron-forge + Vite | Fast HMR for the renderer, sane main/preload builds |
+| Shell | **Electron** (latest stable; 44 as built) | Bundles Chromium + Node; lets us own the Slack sign-in window (§2.3) |
+| Language | **TypeScript**, strict (6.0 as built) | Everywhere: main, preload, renderer. typescript-eslint supports < 6.1 |
+| Build/dev | **electron-vite** (recommended) or electron-forge + Vite | As built: electron-vite 5, which requires Vite ≤ 7 |
 | UI | **React 19** + **Tailwind CSS v4** | Same stack as the existing implementation |
 | Router | `react-router` (memory or hash router — see §3.3) | |
 | Data fetching/cache | **TanStack Query v5** | |
 | Database | **SQLite via `better-sqlite3`** with **FTS5** | Synchronous API, ideal for the main process |
 | Packaging | **electron-builder** | dmg/zip (macOS arm64 + x64), NSIS (Windows x64) |
 | Updates | **GitHub Releases** + update check (§9.5) | Free |
-| Tests | **Vitest** (+ jsdom for components); Playwright optional for E2E | |
+| Tests | **Vitest** (+ jsdom for components); Playwright optional for E2E | As built: `scripts/e2e.ts` drives the built app with Playwright against the mock Slack |
 
 ### 3.2 Process layout
 
@@ -435,6 +478,15 @@ contextBridge.exposeInMainWorld('api', {
 })
 ```
 
+> **As built:** the bridge is `window.archive` with two functions instead of one per method:
+> `call(method, arg)` and `on(event, callback)`. Method and event names are whitelisted in
+> `src/shared/ipc.ts` (`ArchiveApi`, `ArchiveEvents`), where a compile-time check keeps the list
+> and the interface in step; the renderer wraps `call` in a typed client. Each method uses the
+> channel `archive:<method>` and returns `{ ok: true, value }` or
+> `{ ok: false, error: { code, message } }`, so errors cross IPC as a code (`invalid`, `not_found`,
+> `conflict`, `blocked`, `signed_out`, `internal`) plus a plain-language message, never a stack.
+> Handlers refuse calls from any frame other than the app's own page.
+
 Why not a local HTTP server: it opens a port any process (or any web page, via DNS rebinding and
 CSRF tricks) on the machine can reach, and it forces you to reinvent CSRF/origin/Host defences. IPC
 has no port, no origin, no CSRF surface. Keep the app closed.
@@ -464,9 +516,15 @@ Use Electron's `app.getPath('userData')`, which resolves per-OS:
   files/<fileId>/thumb.<ext>
   logs/main.log         rotating app log (NEVER contains credentials)
   config.json           non-secret preferences
+  credentials.bin       the Slack session, encrypted with safeStorage (§3.5)
+  tmp/                  partial downloads before their atomic rename
 ```
 
 Secrets are **not** stored here in plaintext — see §3.5.
+
+As built, `--data-dir=<path>` or `SLACK_ARCHIVE_DATA_DIR` points the app at another folder (demo
+data, tests, a second account's archive). Unpackaged development builds default to
+`Slack Archive (dev)` so they never touch a real archive.
 
 Show this folder path in Settings with a **"Show in Finder / Show in Explorer"** button
 (`shell.showItemInFolder`), so users can back it up.
@@ -512,6 +570,24 @@ Rules (**MUST**):
 - Message text is untrusted: render it through a parser into React nodes. **Never**
   `dangerouslySetInnerHTML`.
 
+As built:
+- Archived attachments reach the renderer through a privileged `archive://file/<id>` /
+  `archive://thumb/<id>` protocol, not `file://`. It serves only raster images, video and audio,
+  with `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox`, supports Range
+  requests, and refuses any path that resolves outside the files folder. Everything else (PDFs
+  included) opens in the system app; runnable files are only revealed in the folder.
+- The CSP is a `<meta>` tag injected at build time: scripts from the app only; images from the
+  app, `archive:`, `data:`/`blob:` and Slack's avatar/emoji CDNs.
+- The packaged app sets Electron fuses: cookie encryption on; `RunAsNode`, `NODE_OPTIONS` and
+  `--inspect` off; asar integrity checked; the app only loads from its asar.
+- The sign-in window accepts any `https` page, because the SSO provider a workspace redirects to
+  can't be known in advance (Google, Okta, Microsoft…). It stays an ordinary browsing window:
+  sandboxed, no Node, no preload, every permission request refused, no downloads, and other
+  schemes (such as `slack://`) ignored.
+- The Slack endpoints can be pointed at the mock server (`SLACK_ARCHIVE_SLACK_API` /
+  `SLACK_ARCHIVE_SLACK_WEB`) only in unpackaged builds, so a stray environment variable can never
+  send a user's session anywhere else.
+
 ---
 
 ## 4. Data model
@@ -531,7 +607,9 @@ Versioned migrations via `PRAGMA user_version`. Full DDL in **Appendix B**. Summ
 | `message_files` | join table (conversation_id, ts, file_id) |
 | `custom_emoji` | workspace emoji name → URL |
 | `sync_state` | per conversation: latest_ts, oldest_ts, backfill_complete, last_synced_at, last_error |
-| `runs` | sync run history: kind, status, timings, stats JSON, log |
+| `runs` | sync run history: kind, status, timings, stats JSON, log, problem kind, pid |
+| `bots` | *(as built)* apps and integrations that post with only a `bot_id`, so `from:<app>` works |
+| `conversation_stats` | *(as built)* per conversation: message count and date range, kept by triggers |
 
 `messages` key columns: `conversation_id`, `ts` (unique together), `time` (unix seconds),
 `thread_ts`, `is_reply`, `user_id`, `bot_id`, `username`, `subtype`, `text` (raw mrkdwn),
@@ -548,6 +626,12 @@ Design notes worth keeping:
 - Keep an FTS5 **external-content** table with triggers on insert/update/delete so the index never
   drifts.
 - `message_revisions` gives you "(edited)" history — a genuinely nice archive feature.
+- *(As built)* `messages.id` is the message's `ts` in microseconds, bumped by one on the rare
+  cross-conversation collision. Row order is therefore chronological, which lets date filters
+  become FTS rowid ranges and makes `id` a free tie-breaker in every time-ordered index.
+- *(As built)* `meta.search_text_version` records which normalisation built `plain_text`. When an
+  upgrade changes it, the app rebuilds the search text in the background, in batches, resuming
+  after a quit.
 
 ---
 
@@ -601,6 +685,9 @@ Everything honours an `AbortSignal` so "Cancel" is instant and keeps what is alr
 - **Because the Free plan window is 90 days, a user who doesn't open the app for 3 months loses
   that period permanently.** Therefore: launch at login (opt-in during onboarding, default **on**),
   run in the tray, and warn in the UI when the last sync is more than 30 days old.
+- *(As built)* A launch at login starts hidden in the tray. Electron 44 removed `openAsHidden`,
+  so the app registers a plain login item and checks `wasOpenedAtLogin` on macOS (and a
+  `--hidden` argument on Windows).
 
 ### 5.4 Incremental correctness
 
@@ -652,6 +739,15 @@ Upsert is keyed by `(conversation_id, ts)` and runs inside a transaction per bat
   trailing dots/spaces, reject reserved names (`CON`, `PRN`, `AUX`, `NUL`, `COM1-9`, `LPT1-9`), cap
   length (~150 chars), and never allow `..` or path separators.
 
+As built:
+- Retry backoff after the n-th failure is `min(2^(n−1) hours, 7 days)`. A file that still fails
+  definitively more than 90 days after upload is marked `unavailable` (Slack Free has hidden it).
+- A download whose size differs from the size Slack reported, or that is empty, is refused
+  (pitfall 5). Reserved Windows names are kept readable with a `_` prefix.
+- `skip_reason` records why a file was skipped (`policy`, `too_large`, `removed`). Skipped files
+  are weighed against the current attachment setting on every run, and raising the setting starts
+  a download run straight away. A skipped file still gets its thumbnail unless attachments are off.
+
 ### 5.7 One archive = one Slack identity
 
 Bind the archive to a single `team_id` + `self_user_id` (stored in `meta`). If a sign-in produces a
@@ -679,6 +775,13 @@ has:file  has:link  has:image  has:reaction  is:thread
 Combined filters are ANDed. Dates are interpreted in **local time**; `after` inclusive, `before`
 exclusive, `on:D` = `[D, D+1)`.
 
+*As built:* an exclusion is prefix-matched exactly like a bare word (`-stag` excludes "staging"),
+and a quoted exclusion (`-"exact phrase"`) excludes that phrase (pitfall 13). Chinese and Japanese
+have no spaces between words and the `unicode61` tokenizer can't split them, so runs of Han,
+Hiragana and Katakana are indexed and queried one character per token: a search for 会议 finds it
+inside a sentence (as a phrase), and snippets are shown without the inserted spaces. Korean is
+space-separated and needs nothing special.
+
 ### 6.2 Implementation requirements
 
 - **FTS injection safety (MUST):** never interpolate raw user input into `MATCH`. Every word becomes
@@ -701,6 +804,12 @@ exclusive, `on:D` = `[D, D+1)`.
 Measured on the previous implementation at 300k messages: typical searches 1–25 ms; pathological
 2-letter prefixes matching 177k rows ~180 ms. Targets: **< 50 ms typical, < 300 ms worst case** at
 500k messages. Add partial indexes for `has:` filters and for the top-level message listing.
+
+*As built,* measured with `npm run bench -- --messages 500000` (488k messages, Apple M-series):
+typical searches 0.2–31 ms median (the slowest is `is:thread design`); worst-case one- and
+two-letter prefixes 55–234 ms median. Two things made the difference: combined filters are served
+by covering indexes, and a text query with filters evaluates the filters once (a materialised CTE
+gives both the page and the total) instead of once for the count and again for the page.
 
 ---
 
@@ -818,16 +927,26 @@ Build with **electron-builder**. Rebuild native modules for Electron's ABI (`bet
 electron-builder does this automatically via `npmRebuild`; verify the binary loads in a packaged
 build, not just in dev — this is a classic late-stage failure.
 
+*As built:* `better-sqlite3` 13 is a Node-API module that ships prebuilt binaries for every
+platform, so there is nothing to rebuild (`npmRebuild: false`); the packaging config keeps only
+the target platform's binary. Verified by opening the database from the packaged macOS app.
+
 ### 9.2 App identity
 
 - App name: **Slack Archive** · appId e.g. `com.9h.slack-archive` · a proper icon set
   (`.icns`, `.ico`, tray icons @1x/@2x, and a light/dark-appropriate tray template image on macOS).
 - Keep the name/icon clearly distinct from Slack's own branding to avoid implying affiliation.
+- *As built:* `build/icon.icns` and `build/icon.png` (electron-builder makes the Windows `.ico`
+  from the PNG), plus tray icons in `resources/tray/`. All are drawn by `npm run icons`.
 
 ### 9.3 CI (recommended)
 
 GitHub Actions: build on `macos-latest` (arm64 + x64) and `windows-latest` on tag push, attach the
 artefacts to a **GitHub Release**. This avoids needing a Windows machine to ship Windows builds.
+
+*As built:* `ci.yml` runs typecheck, lint and tests on Ubuntu and Windows for every push;
+`release.yml` builds on a `v*` tag (or by hand) and uploads to a **draft** release, so the owner
+can write the notes before publishing.
 
 ### 9.4 Unsigned distribution (the accepted trade-off)
 
@@ -838,6 +957,11 @@ The app ships **unsigned**. Consequences, which colleagues must be walked throug
   and click **Open Anyway**, then confirm. (Right-click → Open also works on some versions.)
 - **Windows**: SmartScreen shows "Windows protected your PC" → **More info → Run anyway**. Some
   antivirus may also flag an unsigned Electron binary.
+
+*As built:* macOS builds are **ad-hoc signed** (`identity: '-'`). That is not a Developer ID, so
+Gatekeeper still blocks the first launch, but Apple Silicon refuses to run code with no signature
+at all. The first time the app reads its saved sign-in, macOS may ask whether it can use the
+keychain; the guide tells users to click **Always Allow**.
 
 Write these as a short illustrated guide — **Appendix E is a ready-to-send draft**. Put it in the
 repo README and link it from the release notes. Recommendation: revisit signing (Apple Developer
@@ -868,6 +992,12 @@ Therefore:
 
 Versioning: semver, `tag_name` = `v<version>`, and always publish release notes written for
 non-technical readers ("Fixes search sometimes missing recent messages").
+
+*As built:* the baseline checker is implemented (30 s after launch, then daily, and on demand from
+Settings → About). It reads `romanbitca/sla-mem`, which is **private**, so the API answers
+404 and the app reports "no published releases". Before the first release, either make the
+repository public or publish releases from a public repository and point `UPDATE_REPO`
+(`src/main/context.ts`) and `publish` (`electron-builder.yml`) at it.
 
 ---
 
@@ -1245,6 +1375,9 @@ bot_profile, user_profile`.
 
 ## Appendix B — Database DDL
 
+As built: this is migration v1 in `src/main/db/schema.ts`, which is authoritative. Additions to
+the original draft are marked `-- added`.
+
 ```sql
 PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
 PRAGMA busy_timeout=5000; PRAGMA synchronous=NORMAL;
@@ -1256,6 +1389,11 @@ CREATE TABLE users (
   avatar_url TEXT, is_bot INTEGER NOT NULL DEFAULT 0, deleted INTEGER NOT NULL DEFAULT 0,
   raw TEXT NOT NULL, updated_at INTEGER NOT NULL);
 
+-- added: apps/integrations that post with only a bot_id (from:<app>, pitfall 11)
+CREATE TABLE bots (
+  id TEXT PRIMARY KEY, name TEXT, icon_url TEXT, app_id TEXT, user_id TEXT,
+  updated_at INTEGER NOT NULL);
+
 CREATE TABLE conversations (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL CHECK (type IN ('channel','private_channel','im','mpim')),
@@ -1264,7 +1402,7 @@ CREATE TABLE conversations (
   member_ids TEXT NOT NULL DEFAULT '[]', raw TEXT NOT NULL, updated_at INTEGER NOT NULL);
 
 CREATE TABLE messages (
-  id INTEGER PRIMARY KEY,
+  id INTEGER PRIMARY KEY,            -- ts in microseconds (chronological)
   conversation_id TEXT NOT NULL, ts TEXT NOT NULL, time INTEGER NOT NULL,
   thread_ts TEXT, is_reply INTEGER NOT NULL DEFAULT 0,
   user_id TEXT, bot_id TEXT, username TEXT, subtype TEXT,
@@ -1281,7 +1419,8 @@ CREATE TABLE messages (
 CREATE VIRTUAL TABLE messages_fts USING fts5(
   plain_text, content='messages', content_rowid='id',
   tokenize='unicode61 remove_diacritics 2');
--- + AFTER INSERT / AFTER DELETE / AFTER UPDATE OF plain_text triggers mirroring rows into FTS.
+-- + AFTER INSERT / AFTER DELETE / AFTER UPDATE OF plain_text triggers mirroring rows into FTS
+--   (the update trigger only fires when the text actually changed).
 
 CREATE TABLE message_revisions (
   id INTEGER PRIMARY KEY, conversation_id TEXT NOT NULL, ts TEXT NOT NULL,
@@ -1294,6 +1433,8 @@ CREATE TABLE files (
   download_status TEXT NOT NULL DEFAULT 'pending'
     CHECK (download_status IN ('pending','done','failed','skipped','unavailable')),
   download_error TEXT, download_attempts INTEGER NOT NULL DEFAULT 0,
+  skip_reason TEXT,                  -- added: 'policy' | 'too_large' | 'removed'
+  next_attempt_at INTEGER,           -- added: epoch ms; retry backoff for failed downloads
   created INTEGER, user_id TEXT, raw TEXT NOT NULL, updated_at INTEGER NOT NULL);
 
 CREATE TABLE message_files (
@@ -1310,22 +1451,38 @@ CREATE TABLE sync_state (
 CREATE TABLE runs (
   id INTEGER PRIMARY KEY, kind TEXT NOT NULL, status TEXT NOT NULL,
   started_at INTEGER NOT NULL, finished_at INTEGER,
-  stats TEXT NOT NULL DEFAULT '{}', error TEXT, log TEXT NOT NULL DEFAULT '[]');
+  stats TEXT NOT NULL DEFAULT '{}', error TEXT,
+  problem TEXT,                      -- added: signed_out | offline | disk_full | … (for §8.5)
+  log TEXT NOT NULL DEFAULT '[]',
+  pid INTEGER);                      -- added: tells a crashed run from a live one
 
--- Indexes
-CREATE INDEX idx_msg_conv_time     ON messages(conversation_id, time);
-CREATE INDEX idx_msg_conv_thread   ON messages(conversation_id, thread_ts, ts);
-CREATE INDEX idx_msg_user_time     ON messages(user_id, time);
-CREATE INDEX idx_msg_time          ON messages(time);
-CREATE INDEX idx_msg_conv_top      ON messages(conversation_id, ts)
+-- added: sidebar counts and date ranges without scanning messages; kept by triggers
+CREATE TABLE conversation_stats (
+  conversation_id TEXT PRIMARY KEY, message_count INTEGER NOT NULL DEFAULT 0,
+  oldest_ts TEXT, latest_ts TEXT);
+
+-- Indexes (as built; measured at 300k and 500k messages)
+CREATE INDEX messages_conv_reply_ts  ON messages (conversation_id, is_reply, ts);
+CREATE INDEX messages_conv_thread_ts ON messages (conversation_id, thread_ts, ts);
+-- Covering: combined filters (from:me has:link, in:#x is:thread) never touch the table.
+CREATE INDEX messages_user_time ON messages
+  (user_id, time, has_links, has_files, has_images, reply_count, thread_ts);
+CREATE INDEX messages_conv_time ON messages
+  (conversation_id, time, has_links, has_files, has_images, reply_count, thread_ts);
+CREATE INDEX messages_bot_time  ON messages (bot_id, time) WHERE bot_id IS NOT NULL;
+CREATE INDEX messages_time      ON messages (time);
+CREATE INDEX messages_conv_top_ts ON messages (conversation_id, ts)
        WHERE is_reply = 0 OR subtype = 'thread_broadcast';
-CREATE INDEX idx_msg_has_files     ON messages(conversation_id, ts) WHERE has_files = 1;
-CREATE INDEX idx_msg_has_links     ON messages(conversation_id, ts) WHERE has_links = 1;
-CREATE INDEX idx_msg_has_images    ON messages(conversation_id, ts) WHERE has_images = 1;
-CREATE INDEX idx_msg_thread_parent ON messages(conversation_id, ts) WHERE reply_count > 0;
-CREATE INDEX idx_files_status      ON files(download_status, created);
-CREATE INDEX idx_message_files_fid ON message_files(file_id);
-CREATE INDEX idx_revisions_msg     ON message_revisions(conversation_id, ts);
+CREATE INDEX messages_has_files     ON messages (time) WHERE has_files = 1;
+CREATE INDEX messages_has_links     ON messages (time) WHERE has_links = 1;
+CREATE INDEX messages_has_images    ON messages (time) WHERE has_images = 1;
+CREATE INDEX messages_has_reactions ON messages (time) WHERE reactions <> '[]';
+CREATE INDEX messages_has_thread    ON messages (time) WHERE reply_count > 0;
+CREATE INDEX messages_in_thread     ON messages (time) WHERE thread_ts IS NOT NULL;
+CREATE INDEX message_files_file        ON message_files (file_id);
+CREATE INDEX message_revisions_conv_ts ON message_revisions (conversation_id, ts);
+CREATE INDEX files_status_created      ON files (download_status, created);
+CREATE INDEX runs_status               ON runs (status);
 ```
 
 ---

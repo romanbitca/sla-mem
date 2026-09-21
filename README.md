@@ -14,8 +14,9 @@ seen, forever**, even after Slack hides it.
   Nobody else's DMs or private channels, no workspace admin needed.
 - **Read-only against Slack.** It never posts, edits, reacts or deletes anything in Slack.
 
-> **Status:** under construction. See [PLAN.md](PLAN.md) for the complete build plan and the
-> staged roadmap.
+> **Status:** Stages 1–8 of [PLAN.md](PLAN.md) are built and tested against a mock Slack. What is
+> verified, and what still needs a person (a real sign-in, clean-machine installs), is in
+> [docs/STATUS.md](docs/STATUS.md).
 
 ## How it signs in to Slack (please read once)
 
@@ -49,18 +50,50 @@ npm install
 npm run dev
 ```
 
-| Script                                      | What it does                                                                           |
-| ------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `npm run dev`                               | Electron with hot reload (data in the per-user app data folder, "Slack Archive (dev)") |
-| `npm run seed:demo` then `npm run dev:demo` | A synthetic 10k-message archive in `./.demo-data`, then the app on it                  |
-| `npm test`                                  | Unit, integration (mock Slack server) and component tests                              |
-| `npm run typecheck` / `npm run lint`        | TypeScript (strict) and ESLint                                                         |
-| `npm run build`                             | Production bundles in `out/`                                                           |
-| `npm run dist:mac` / `npm run dist:win`     | Installers in `release/` (unsigned)                                                    |
+| Script                                       | What it does                                                                           |
+| -------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `npm run dev`                                | Electron with hot reload (data in the per-user app data folder, "Slack Archive (dev)") |
+| `npm run seed:demo` then `npm run dev:demo`  | A synthetic 10k-message archive in `./.demo-data`, then the app on it                  |
+| `npm run mock:slack` then `npm run dev:mock` | A fake Slack workspace on port 4849, then the app signed in to it (`./.mock-data`)     |
+| `npm run check`                              | Typecheck, lint and all tests (what CI runs)                                           |
+| `npm test`                                   | Unit, integration (mock Slack server) and component tests                              |
+| `npm run build` then `npm run e2e`           | The built app driven end to end against the mock Slack (sign-in, sync, restart, crash) |
+| `npm run bench -- --messages 500000`         | Seeds a large archive in `.test-data/` and times the hot paths against PLAN §6.3       |
+| `npm run icons`                              | Redraws the app and tray icons in `build/` and `resources/tray/`                       |
+| `npm run gen:emoji`                          | Rebuilds the emoji table from `emoji-datasource` (after upgrading it)                  |
+| `npm run dist:mac` / `npm run dist:win`      | Installers in `release/<version>/` (unsigned)                                          |
 
 Layout: `src/main` (Electron main process: database, Slack sync, sign-in window, tray, IPC),
 `src/preload` (the IPC bridge), `src/renderer` (React UI), `src/shared` (the IPC contract),
-`test/` (mock Slack server, fixtures).
+`test/` (mock Slack server, synthetic workspace, fixtures), `scripts/` (seed, bench, e2e).
+
+Automated tests never talk to real Slack. The mock (`test/mock-slack/`) serves the Web API,
+authenticated file downloads and the sign-in pages from a synthetic workspace, with fault
+injection (429s, failures, a signed-out session) and a 90-day Free-plan window.
+
+### Pointing a build at another folder
+
+`--data-dir=<path>` (or `SLACK_ARCHIVE_DATA_DIR`) opens the archive in another folder: demo data,
+tests, or a second archive for a different account. Unpackaged builds default to
+`Slack Archive (dev)`, so development never touches a real archive.
+
+## Releasing
+
+1. Bump `version` in `package.json` and commit.
+2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
+3. The **Release** workflow builds the macOS dmg + zip (Apple Silicon and Intel) and the Windows
+   installer, and attaches them to a **draft** GitHub Release.
+4. Write the release notes for non-technical readers, link [docs/INSTALL.md](docs/INSTALL.md), and
+   publish.
+
+The workflow can also be started by hand (Actions → Release → Run workflow). It then leaves the
+builds as workflow artifacts without touching Releases.
+
+> **Before the first release:** this repository is private. Colleagues can't open its Releases
+> page and the in-app update check can't see its releases. Either make the repository public, or
+> publish releases from a public repository: point `UPDATE_REPO` in `src/main/context.ts` and
+> `publish` in `electron-builder.yml` at it, add a `RELEASES_TOKEN` secret that can write there, and
+> update the links in [docs/INSTALL.md](docs/INSTALL.md).
 
 ## Licence
 
