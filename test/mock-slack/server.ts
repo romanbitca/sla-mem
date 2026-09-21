@@ -34,6 +34,8 @@ export interface MockSlackOptions {
   messages?: number;
   /** Slack Free hides history older than this many days (default 90; null = paid plan). */
   historyWindowDays?: number | null;
+  /** Answer every Web API call this much later (to interrupt a sync midway in tests). */
+  delayMs?: number;
 }
 
 export interface MockSlack {
@@ -42,6 +44,8 @@ export interface MockSlack {
   apiBaseUrl: string;
   session: { cookie: string; token: string };
   fake: FakeSlack;
+  /** Changes the per-call delay while running. */
+  setDelay(ms: number): void;
   close(): Promise<void>;
 }
 
@@ -53,6 +57,7 @@ export async function startMockSlack(opts: MockSlackOptions = {}): Promise<MockS
     token: `xoxc-${randomBytes(6).toString('hex')}-${randomBytes(6).toString('hex')}-${randomBytes(16).toString('hex')}`,
   };
   const fake = new FakeSlack();
+  let delayMs = opts.delayMs ?? 0;
   const server = http.createServer((req, res) => void handle(req, res).catch((err) => fail(res, err)));
   await new Promise<void>((resolve) => server.listen(opts.port ?? 0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -67,6 +72,7 @@ export async function startMockSlack(opts: MockSlackOptions = {}): Promise<MockS
     const body = await readBody(req);
 
     if (u.pathname.startsWith('/api/')) {
+      if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
       // Like Slack: a session token is useless without its `d` cookie.
       const headers = { ...req.headers } as Record<string, string>;
       if (cookies.d !== session.cookie) headers.authorization = 'Bearer invalid-without-cookie';
@@ -124,7 +130,14 @@ export async function startMockSlack(opts: MockSlackOptions = {}): Promise<MockS
     apiBaseUrl: fake.baseUrl,
     session,
     fake,
-    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+    setDelay: (ms) => {
+      delayMs = ms;
+    },
+    close: () =>
+      new Promise<void>((resolve) => {
+        server.closeAllConnections();
+        server.close(() => resolve());
+      }),
   };
 }
 

@@ -25,6 +25,7 @@ import { eventChannel } from '../shared/ipc';
 import type { AppInfoDTO } from '../shared/types';
 import { clearSlackSession, createElectronSignInSurface } from './auth/electron-signin';
 import { closeServices, createServices, wireServices, type AppServices, type PlatformHooks } from './context';
+import { refreshSearchTextIfOutdated } from './db';
 import { createHandlers } from './ipc';
 import { settingsDTO } from './ipc/actions';
 import { registerIpc } from './ipc/register';
@@ -64,6 +65,8 @@ let mainWindow: BrowserWindow | null = null;
 let tray: TrayController | null = null;
 let quitting = false;
 let syncBlocker: number | null = null;
+let stopStatus: (() => void) | null = null;
+let appLog: AppServices['log'] | null = null;
 
 function isAppUrl(url: string): boolean {
   if (rendererDevUrl) return url.startsWith(rendererDevUrl);
@@ -225,10 +228,10 @@ function platformHooks(s: AppServices): PlatformHooks {
 
 // ─── status → UI, tray, OS ──────────────────────────────────────────────────────────────────────
 
-function throttle(fn: () => void, ms: number): () => void {
+function throttle(fn: () => void, ms: number): { (): void; cancel(): void } {
   let timer: NodeJS.Timeout | null = null;
   let last = 0;
-  return () => {
+  const run = () => {
     const wait = last + ms - Date.now();
     if (wait <= 0) {
       last = Date.now();
@@ -241,10 +244,19 @@ function throttle(fn: () => void, ms: number): () => void {
       }, wait);
     }
   };
+  return Object.assign(run, {
+    cancel: () => {
+      if (timer) clearTimeout(timer);
+      timer = null;
+    },
+  });
 }
 
-function wireStatus(s: AppServices): void {
+/** Returns a function that stops the updates, which read the database, before it is closed. */
+function wireStatus(s: AppServices): () => void {
+  let stopped = false;
   const pushStatus = throttle(() => {
+    if (stopped) return;
     const status = s.runs.status();
     send('sync-status', status);
     const connection = s.connection.status();
@@ -257,7 +269,7 @@ function wireStatus(s: AppServices): void {
   }, 400);
 
   s.runs.subscribe((event) => {
-    if (event.type === 'log') return;
+    if (stopped || event.type === 'log') return;
     pushStatus();
     if (event.type === 'started' && syncBlocker == null) syncBlocker = powerSaveBlocker.start('prevent-app-suspension');
     if (event.type === 'finished') {
@@ -278,6 +290,10 @@ function wireStatus(s: AppServices): void {
   });
   s.updates.on('changed', (info) => send('update', info));
   pushStatus();
+  return () => {
+    stopped = true;
+    pushStatus.cancel();
+  };
 }
 
 function shortProblem(kind: string): string {
@@ -413,11 +429,15 @@ async function start(): Promise<void> {
     version: app.getVersion(),
   });
   services = s;
+  appLog = s.log;
   s.log.info(
     `Slack Archive ${app.getVersion()} starting (${process.platform} ${process.arch}), data in ${s.paths.dataDir}`,
   );
   const interrupted = s.runs.init();
   if (interrupted) s.log.info(`Marked ${interrupted} interrupted run(s) from the last session`);
+  void refreshSearchTextIfOutdated(s.db, { log: (line) => s.log.info(line) }).catch((err: unknown) =>
+    s.log.error('Updating search text failed', err),
+  );
 
   nativeTheme.themeSource = s.prefs.get().theme;
   denyPermissions(session.defaultSession);
@@ -443,7 +463,7 @@ async function start(): Promise<void> {
       app.quit();
     },
   });
-  wireStatus(s);
+  stopStatus = wireStatus(s);
 
   // Keep the login item in step with the preference (it may have been changed by the OS or a reinstall).
   const prefs = s.prefs.get();
@@ -463,6 +483,13 @@ async function start(): Promise<void> {
 }
 
 // One running copy per archive: two would fight over the database.
+// Logged rather than shown: Electron's default is a technical dialog that blocks the app, and
+// quitting, until someone clicks it.
+process.on('uncaughtException', (err) => {
+  if (appLog) appLog.error('Unexpected error', err);
+  else console.error(err);
+});
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -498,6 +525,8 @@ if (!app.requestSingleInstanceLock()) {
     if (!s) return;
     services = null;
     event.preventDefault();
+    stopStatus?.();
+    stopStatus = null;
     tray?.destroy();
     s.log.info('Quitting');
     void closeServices(s).finally(() => app.exit(0));

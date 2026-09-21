@@ -18,6 +18,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright-core';
+import { openDb } from '../src/main/db';
 import type { ArchiveBridge } from '../src/shared/ipc';
 import { startMockSlack, type MockSlack } from '../test/mock-slack/server';
 
@@ -52,6 +53,20 @@ async function launch(mock: MockSlack): Promise<{ app: ElectronApplication; page
   const page = await app.firstWindow();
   await page.waitForLoadState('domcontentloaded');
   return { app, page };
+}
+
+/** Quits like the user would. It must exit promptly: a quit that hangs is a bug (e.g. a dialog). */
+async function quit(app: ElectronApplication): Promise<void> {
+  let timer: NodeJS.Timeout | undefined;
+  const timedOut = new Promise<'timeout'>((resolve) => {
+    timer = setTimeout(() => resolve('timeout'), 20_000);
+  });
+  const result = await Promise.race([app.close().then(() => 'closed' as const), timedOut]);
+  clearTimeout(timer);
+  if (result === 'timeout') {
+    app.process().kill('SIGKILL');
+    throw new Error('The app did not quit within 20 s');
+  }
 }
 
 /** Calls the app's IPC bridge from its own page, like the UI does. */
@@ -147,7 +162,7 @@ async function main(): Promise<void> {
     log('Credentials file is encrypted (no token or cookie in it)');
 
     await page.screenshot({ path: path.join(shots, 'after-first-sync.png') });
-    await app.close();
+    await quit(app);
     app = null;
 
     ({ app, page } = await launch(mock));
@@ -172,6 +187,44 @@ async function main(): Promise<void> {
     await waitForSync(page);
     log('Reconnected and synced again');
 
+    // Killed mid-sync: nothing committed is lost and the next run picks up the rest (Stage 3).
+    const full = (await call<{ messageCount: number }>(page, 'getStats')).messageCount;
+    await quit(app);
+    app = null;
+    // Start over from an empty archive (the connection stays): the next sync is a first sync.
+    const db = openDb(path.join(dataDir, 'archive.db'));
+    db.exec('DELETE FROM message_files; DELETE FROM files; DELETE FROM messages; DELETE FROM sync_state;');
+    db.close();
+    ({ app, page } = await launch(mock));
+    mock.setDelay(120);
+    await call(page, 'startSync');
+    const partial = await waitFor('some messages to be committed', async () => {
+      const n = (await call<{ messageCount: number }>(page, 'getStats')).messageCount;
+      return n > 50 && n < full ? n : null;
+    });
+    app.process().kill('SIGKILL');
+    app = null;
+    mock.setDelay(0);
+    ({ app, page } = await launch(mock));
+    const afterCrash = (await call<{ messageCount: number }>(page, 'getStats')).messageCount;
+    const status = await call<{ recentRuns: { status: string; error: string | null }[] }>(page, 'getSyncStatus');
+    assert(afterCrash >= partial, `committed messages survive a crash (${afterCrash} >= ${partial})`);
+    assert(
+      status.recentRuns[0]?.status === 'error' && status.recentRuns[0]?.error === 'interrupted',
+      'the killed run is marked interrupted',
+    );
+    await call(page, 'startSync');
+    await waitForSync(page);
+    const resumed = (await call<{ messageCount: number }>(page, 'getStats')).messageCount;
+    assert(resumed === full, `the next sync completes the archive (${resumed} of ${full})`);
+    log(`Killed mid-sync at ${partial} messages; kept ${afterCrash}; the next sync completed all ${resumed}`);
+    // Quitting right as a run finishes must not leave anything reading the closed database.
+    await call(page, 'startSync');
+    await waitForSync(page);
+    await quit(app);
+    app = null;
+    log('Quit right after a sync: the app exited promptly');
+
     const logs = fs
       .readdirSync(path.join(dataDir, 'logs'))
       .map((f) => fs.readFileSync(path.join(dataDir, 'logs', f), 'utf8'))
@@ -181,7 +234,7 @@ async function main(): Promise<void> {
     log('Logs contain no tokens or cookies');
     console.log('\nE2E passed');
   } finally {
-    await app?.close().catch(() => undefined);
+    if (app) await quit(app).catch(() => undefined);
     await mock.close();
     if (!process.env.KEEP_E2E_DATA) fs.rmSync(dataDir, { recursive: true, force: true });
   }
