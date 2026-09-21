@@ -3,18 +3,9 @@
  * never opens windows, and hands links to the system browser after checking the scheme.
  */
 import { shell, type Session, type WebContents } from 'electron';
+import { isSafeExternalUrl } from './security-urls';
 
-const EXTERNAL_SCHEMES = new Set(['http:', 'https:', 'mailto:']);
-
-/** Only http(s) and mailto links may leave the app; everything else is ignored. */
-export function isSafeExternalUrl(raw: string): boolean {
-  try {
-    const url = new URL(raw);
-    return EXTERNAL_SCHEMES.has(url.protocol) && (url.protocol === 'mailto:' || url.hostname !== '');
-  } catch {
-    return false;
-  }
-}
+export { isSafeExternalUrl };
 
 export async function openExternalSafe(raw: string): Promise<boolean> {
   if (!isSafeExternalUrl(raw)) return false;

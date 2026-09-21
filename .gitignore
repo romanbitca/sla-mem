@@ -10,3 +10,5 @@ coverage/
 .env
 .eslintcache
 .claude/
+.mock-data/
+.e2e-data/

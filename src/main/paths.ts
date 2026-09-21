@@ -48,10 +48,11 @@ export function explicitDataDir(argv: readonly string[], env: NodeJS.ProcessEnv,
  * Used for every path derived from data the archive didn't create itself (pitfall 23).
  */
 export function isInside(parent: string, child: string, platform: NodeJS.Platform = process.platform): boolean {
-  const norm = (p: string) => {
-    const resolved = path.resolve(p);
+  const p = platform === 'win32' ? path.win32 : path.posix;
+  const norm = (value: string) => {
+    const resolved = p.resolve(value);
     return platform === 'win32' || platform === 'darwin' ? resolved.toLowerCase() : resolved;
   };
-  const rel = path.relative(norm(parent), norm(child));
-  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+  const rel = p.relative(norm(parent), norm(child));
+  return rel !== '' && !rel.startsWith('..') && !p.isAbsolute(rel);
 }
