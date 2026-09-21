@@ -312,15 +312,16 @@
   }
 
   /* Sizes of emoji come from the renderer (inline styles); only text-flow tweaks here. Color
-     emoji fill their whole box, so a hair of side margin keeps the next word from touching. */
+     emoji glyphs draw slightly wider than their advance, which swallows the space after them;
+     a little side margin keeps "⚠️ Deploy" from reading as one word. */
   span.md-emoji {
     font-size: 1.15em;
     line-height: 1;
     vertical-align: -0.06em;
-    margin-inline: 0.04em;
+    margin-inline: 0.1em;
   }
   img.md-emoji-custom {
-    margin-inline: 0.04em;
+    margin-inline: 0.1em;
   }
   .md-emoji-missing {
     color: var(--c-ink-faint);

@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import type { SettingsDTO, SlackConnectionDTO } from '../../../shared/types';
 import { describeError } from '../../lib/api';
 import { FREE_PLAN_WINDOW_DAYS } from '../../lib/format';
+import { useStableCallback } from '../../lib/hooks';
 import {
   isLoginActive,
   useCancelLogin,
@@ -75,7 +76,12 @@ export default function Onboarding({ settings }: { settings: SettingsDTO }) {
           <div className="rounded-2xl border border-line bg-raised px-6 py-7 shadow-pop sm:px-8">
             {step === 'welcome' && <WelcomeStep headingRef={headingRef} onNext={() => setStep('connect')} />}
             {step === 'connect' && (
-              <ConnectStep headingRef={headingRef} connection={settings.connection} onBack={() => setStep('welcome')} />
+              <ConnectStep
+                headingRef={headingRef}
+                connection={settings.connection}
+                onBack={() => setStep('welcome')}
+                onConnected={() => setStep('history')}
+              />
             )}
             {step === 'history' && (
               <HistoryStep headingRef={headingRef} connection={settings.connection} />
@@ -163,10 +169,12 @@ function ConnectStep({
   headingRef,
   connection,
   onBack,
+  onConnected,
 }: {
   headingRef: RefObject<HTMLHeadingElement | null>;
   connection: SlackConnectionDTO;
   onBack: () => void;
+  onConnected: () => void;
 }) {
   const login = useLoginStatus();
   const status = login.data;
@@ -181,6 +189,13 @@ function ConnectStep({
   const failed = follower.followed && (status?.state === 'error' || status?.state === 'cancelled');
   const signIn = () =>
     start.mutate(connection.teamDomain ? { workspace: connection.teamDomain } : {}, { onSuccess: follower.follow });
+
+  // The sign-in this screen started finished: move on (the saved connection follows).
+  const connectedHere = follower.followed && status?.state === 'connected';
+  const advance = useStableCallback(onConnected);
+  useEffect(() => {
+    if (connectedHere) advance();
+  }, [connectedHere, advance]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -282,7 +297,7 @@ function OtherWays({
 
 function HistoryStep({
   headingRef,
-  connection,
+  connection: saved,
 }: {
   headingRef: RefObject<HTMLHeadingElement | null>;
   connection: SlackConnectionDTO;
@@ -291,6 +306,9 @@ function HistoryStep({
   const sync = useSyncStatus();
   const stats = useStats();
   const complete = useCompleteOnboarding();
+  // Right after signing in, the sign-in's own result may arrive before the saved settings do.
+  const justSignedIn = useLoginStatus().data?.connection;
+  const connection = saved.teamName || saved.teamDomain || !justSignedIn ? saved : justSignedIn;
   // Default on (PLAN §5.3): a sync that only runs when someone remembers leaves holes.
   const [launchAtLogin, setLaunchAtLogin] = useState(true);
   const checkboxId = useId();

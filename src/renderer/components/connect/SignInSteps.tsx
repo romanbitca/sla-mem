@@ -33,11 +33,25 @@ export interface SignInStepsProps {
 
 /** A sign-in in progress: what's happening in the Slack window, the workspace picker, Cancel. */
 export function SignInSteps({ status, onCancel, cancelling, onChoose, choosing, error }: SignInStepsProps) {
+  const cancel = (
+    <Button icon={<CloseIcon size={14} />} loading={cancelling} onClick={onCancel}>
+      Cancel
+    </Button>
+  );
   let body: ReactNode;
   switch (status.state) {
     case 'choose_team':
-      body = <TeamPicker teams={status.teams} onChoose={onChoose} choosing={choosing} />;
-      break;
+      // The picker's own row holds Continue and Cancel side by side.
+      return (
+        <div className="flex flex-col gap-4" aria-live="polite">
+          <TeamPicker teams={status.teams} onChoose={onChoose} choosing={choosing} cancel={cancel} />
+          {error != null && (
+            <p role="alert" className="text-[13px] text-danger">
+              {describeError(error)}
+            </p>
+          )}
+        </div>
+      );
     case 'verifying':
       body = <Working>Checking your sign-in with Slack…</Working>;
       break;
@@ -60,11 +74,7 @@ export function SignInSteps({ status, onCancel, cancelling, onChoose, choosing, 
           {describeError(error)}
         </p>
       )}
-      <div>
-        <Button icon={<CloseIcon size={14} />} loading={cancelling} onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
+      <div>{cancel}</div>
     </div>
   );
 }
@@ -82,10 +92,12 @@ function TeamPicker({
   teams,
   onChoose,
   choosing,
+  cancel,
 }: {
   teams: LoginStatusDTO['teams'];
   onChoose: (teamId: string) => void;
   choosing: boolean;
+  cancel: ReactNode;
 }) {
   const [selected, setSelected] = useState<string | null>(teams.length === 1 ? teams[0].id : null);
   const name = useId();
@@ -125,10 +137,11 @@ function TeamPicker({
           </label>
         ))}
       </fieldset>
-      <div>
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" variant="primary" disabled={!selected} loading={choosing}>
           Continue
         </Button>
+        {cancel}
       </div>
     </form>
   );

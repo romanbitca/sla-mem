@@ -182,7 +182,7 @@ describe('SearchPage', () => {
     const { location } = renderAt('/search?q=deploy+from%3A%40nobody');
     const alert = await screen.findByRole('alert');
     expect(within(alert).getByText('from:@nobody')).toBeTruthy();
-    expect(within(alert).getByText(/No one in the archive matches/)).toBeTruthy();
+    expect(within(alert).getByText('No one (and no app) in the archive matches this name.')).toBeTruthy();
     expect(screen.queryByText('No messages match')).toBeNull();
     fireEvent.click(within(alert).getByRole('button', { name: 'Remove from:@nobody' }));
     await waitFor(() => expect(query(location).get('q')).toBe('deploy'));

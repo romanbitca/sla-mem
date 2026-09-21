@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import type { ReactNode } from 'react';
+import { currentPlatform } from '../../lib/bridge';
 
 export function Kbd({ children, className }: { children: ReactNode; className?: string }) {
   return (
@@ -15,8 +16,7 @@ export function Kbd({ children, className }: { children: ReactNode; className?: 
   );
 }
 
-/** "⌘" on Apple platforms, "Ctrl" elsewhere. */
+/** "⌘" on macOS, "Ctrl" on Windows and Linux (the platform comes from the app itself). */
 export function modKeyLabel(): string {
-  if (typeof navigator === 'undefined') return 'Ctrl';
-  return /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘' : 'Ctrl';
+  return currentPlatform() === 'darwin' ? '⌘' : 'Ctrl';
 }

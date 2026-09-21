@@ -93,6 +93,8 @@ export default function HomePage() {
 function StaleCallout({ status }: { status: SyncStatusDTO }) {
   const startSync = useStartSync();
   const days = status.lastSuccessAt != null ? differenceInCalendarDays(Date.now(), status.lastSuccessAt) : null;
+  // When Slack signed the session out, Reconnect (in the problem above) is the fix, not a sync.
+  const canSync = status.blockedReason == null && status.problem?.action !== 'reconnect';
   return (
     <Callout tone="warn" icon={<ClockIcon size={15} />} role="alert">
       <p className="font-medium">
@@ -104,18 +106,19 @@ function StaleCallout({ status }: { status: SyncStatusDTO }) {
         Slack only keeps the last {FREE_PLAN_WINDOW_DAYS} days, so sync soon: anything older than that can’t be fetched
         any more.
       </p>
-      <div className="mt-2">
-        <Button
-          size="sm"
-          variant="primary"
-          icon={<SyncIcon size={14} />}
-          loading={startSync.isPending}
-          disabled={status.blockedReason != null}
-          onClick={() => startSync.mutate()}
-        >
-          Sync now
-        </Button>
-      </div>
+      {canSync && (
+        <div className="mt-2">
+          <Button
+            size="sm"
+            variant="primary"
+            icon={<SyncIcon size={14} />}
+            loading={startSync.isPending}
+            onClick={() => startSync.mutate()}
+          >
+            Sync now
+          </Button>
+        </div>
+      )}
       {startSync.isError && <p className="mt-1.5 text-ink-muted">{describeError(startSync.error)}</p>}
     </Callout>
   );

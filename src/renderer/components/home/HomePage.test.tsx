@@ -229,6 +229,19 @@ describe('HomePage', () => {
     await waitFor(() => expect(startSync).toHaveBeenCalledTimes(1));
   });
 
+  it('doesn’t offer a sync that can’t work while Slack needs reconnecting', async () => {
+    setup(
+      makeSyncStatus({
+        stale: true,
+        lastSuccessAt: NOW - 40 * DAY,
+        problem: { kind: 'signed_out', message: 'Slack signed you out. Reconnect to keep archiving.', action: 'reconnect' },
+      }),
+    );
+    const stale = (await screen.findByText('Your last successful sync was 40 days ago.')).closest('[role="alert"]') as HTMLElement;
+    expect(within(stale).queryByRole('button', { name: 'Sync now' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Reconnect' })).toBeTruthy();
+  });
+
   it('first run: makes Connect Slack the obvious next step, with the import alternative', async () => {
     const startLogin = vi.spyOn(api, 'startLogin').mockResolvedValue(makeLoginStatus({ state: 'opening' }));
     setup(makeSyncStatus({ recentRuns: [], lastSuccessAt: null, blockedReason: 'Connect Slack to start syncing.' }), {

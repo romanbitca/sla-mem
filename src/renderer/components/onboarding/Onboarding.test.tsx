@@ -123,6 +123,18 @@ describe('Onboarding', () => {
     expect(screen.getByText(/Connected to 9H as roman/)).toBeTruthy();
   });
 
+  it('moves on from the sign-in’s own result even before the saved settings arrive', async () => {
+    start();
+    await toConnectStep();
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Slack' }));
+    await screen.findByText('Opening the Slack sign-in window…');
+    const connection = makeConnection({ teamName: '9H', userName: 'roman' });
+    login = makeLoginStatus({ state: 'connected', startedAt: STARTED, connection });
+    bridge.emit('login-status', login);
+    expect(await screen.findByRole('heading', { name: 'Getting your history' })).toBeTruthy();
+    expect(screen.getByText(/Connected to 9H as roman/)).toBeTruthy();
+  });
+
   it('lets people pick the workspace when they’re signed in to several', async () => {
     start();
     await toConnectStep();

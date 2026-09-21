@@ -2,7 +2,7 @@ import { AlertIcon } from '../icons';
 import { Button } from '../ui/Button';
 import { tokenizeQuery } from './queryText';
 
-/** Why the server couldn't use a modifier, in words the reader can act on. */
+/** Why search couldn't use a modifier, in words the reader can act on. */
 export function unresolvedReason(raw: string): string {
   const token = tokenizeQuery(raw)[0];
   if (!token?.key) return 'This filter wasn’t understood.';
@@ -10,7 +10,7 @@ export function unresolvedReason(raw: string): string {
   if (!token.value.trim()) return 'This filter is missing a value.';
   switch (token.key) {
     case 'from':
-      return 'No one in the archive matches this name.';
+      return 'No one (and no app) in the archive matches this name.';
     case 'in':
       return 'No channel or conversation in the archive matches this.';
     case 'has':
