@@ -1,0 +1,11 @@
+node_modules
+out
+dist
+release
+coverage
+.demo-data
+.test-data
+package-lock.json
+PLAN.md
+src/renderer/lib/emoji/emoji-map.json
+test/fixtures
