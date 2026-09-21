@@ -12,6 +12,8 @@ export default tseslint.config(
   {
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      // Control characters are handled on purpose (search highlight markers, NUL stripping).
+      'no-control-regex': 'off',
       // Strings from Slack are untrusted; rendering goes through React nodes only (PLAN §3.6).
       'no-restricted-syntax': [
         'error',

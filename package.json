@@ -34,7 +34,8 @@
     "icons": "electron scripts/make-icons.cjs",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
-    "dist:win": "npm run build && electron-builder --win"
+    "dist:win": "npm run build && electron-builder --win",
+    "bench": "tsx scripts/bench.ts"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
