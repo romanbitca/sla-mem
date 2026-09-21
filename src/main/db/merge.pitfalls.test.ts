@@ -168,6 +168,33 @@ describe('data-safety findings (PLAN §12)', () => {
     expect(res).toMatchObject({ inserted: 2, skipped: 3 });
   });
 
+  it('4b. malformed edit, thread and reply timestamps are dropped, never stored', () => {
+    const db = seededDb();
+    const bad = {
+      edited: { user: 'U1', ts: 'yesterday' },
+      thread_ts: 'x',
+      latest_reply: 17 as never,
+      reply_count: 'many' as never,
+    };
+    expect(upsertMessages(db, 'C1', [msg(tsAt(1), 'first', bad)], 'import')).toMatchObject({ inserted: 1 });
+    expect(row(db, tsAt(1))).toMatchObject({
+      edited_ts: null,
+      thread_ts: null,
+      is_reply: 0,
+      latest_reply: null,
+      reply_count: 0,
+    });
+    // A good copy later fills them in; a bad one after that changes nothing it shouldn't.
+    upsertMessages(
+      db,
+      'C1',
+      [msg(tsAt(1), 'first', { thread_ts: tsAt(1), reply_count: 2, latest_reply: tsAt(3) })],
+      'api',
+    );
+    upsertMessages(db, 'C1', [msg(tsAt(1), 'first', bad)], 'import');
+    expect(row(db, tsAt(1))).toMatchObject({ thread_ts: tsAt(1), latest_reply: tsAt(3), reply_count: 2 });
+  });
+
   it('records the writer only when something changed (an identical import is a no-op)', () => {
     const db = seededDb();
     upsertMessages(db, 'C1', [msg(tsAt(1), 'same')], 'api');

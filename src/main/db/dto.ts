@@ -197,15 +197,30 @@ export function fileStatusReason(
     case 'done':
       return null;
     case 'pending':
-      return 'Waiting to be downloaded';
+      return 'It will be downloaded with the next sync';
     case 'failed':
-      return 'Couldn’t download';
+      return failedReason(f.download_error);
     case 'skipped':
       if (f.skip_reason === 'removed') return 'Removed to save space';
       return f.download_error || 'Not downloaded (attachment setting)';
     case 'unavailable':
       return f.download_error || 'No longer available from Slack';
   }
+}
+
+/** A failed download's stored error (technical, for the logs) as a reason the reader can use. */
+function failedReason(error: string | null): string {
+  const e = (error ?? '').toLowerCase();
+  if (e.includes('html page')) {
+    return 'Slack showed a sign-in page instead of the file. If this keeps happening, reconnect Slack in Settings';
+  }
+  if (/http 40[13]\b/.test(e)) return 'Slack refused to send it. It will be tried again later';
+  if (/http 429\b/.test(e)) return 'Slack asked the app to slow down. It will be tried again automatically';
+  if (/http 5\d\d\b/.test(e)) return 'Slack couldn’t send it just now. It will be tried again automatically';
+  if (/timed out|stalled|network error|incomplete download|empty download/.test(e)) {
+    return 'The download was interrupted. It will be tried again automatically';
+  }
+  return 'It will be tried again automatically';
 }
 
 const s = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);

@@ -138,7 +138,31 @@ function createMainWindow(s: AppServices): BrowserWindow {
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null;
   });
+  watchRenderer(s, win);
   return win;
+}
+
+/**
+ * Window failures reach the log, so "Show logs" can explain a crash screen (PLAN §8.5): console
+ * errors (React reports what its error boundary caught there), each logged once and at most 100
+ * per window; and a renderer process that died, after which the window reloads (up to 3 times).
+ */
+function watchRenderer(s: AppServices, win: BrowserWindow): void {
+  const seen = new Set<string>();
+  let reloads = 0;
+  win.webContents.on('console-message', (details) => {
+    if (details.level !== 'error' || seen.size >= 100) return;
+    const text = details.message.slice(0, 2_000);
+    if (seen.has(text)) return;
+    seen.add(text);
+    s.log.warn(`Window error: ${text}`);
+  });
+  win.webContents.on('render-process-gone', (_event, details) => {
+    s.log.error(`The window stopped (${details.reason}, exit code ${details.exitCode})`);
+    if (details.reason === 'clean-exit' || win.isDestroyed() || reloads >= 3) return;
+    reloads += 1;
+    win.webContents.reload();
+  });
 }
 
 function rememberBounds(s: AppServices, win: BrowserWindow): void {

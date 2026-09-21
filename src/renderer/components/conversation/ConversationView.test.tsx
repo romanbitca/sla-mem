@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { MessageDTO, ThreadDTO } from '../../../shared/types';
-import { api } from '../../lib/api';
+import { api, ApiError } from '../../lib/api';
 import ConversationPage from '../../pages/ConversationPage';
 import { MESSAGE_MAX_PAGES, MESSAGE_PAGE_SIZE } from '../../lib/queries';
 import { toLocalDateInput, tsJustBefore, tsToDate } from '../../lib/ts';
@@ -214,6 +214,31 @@ describe('ConversationView', () => {
     fireEvent.click(within(panel).getByRole('button', { name: 'Close thread' }));
     await waitFor(() => expect(screen.queryByRole('complementary', { name: 'Thread' })).toBeNull());
     expect(location.current?.search).toBe('');
+  });
+
+  it('exports the conversation through main and says where it went', async () => {
+    const exportConversation = vi
+      .spyOn(api, 'exportConversation')
+      .mockResolvedValueOnce(null) // the save dialog was cancelled: nothing to say
+      .mockResolvedValueOnce({ path: '/Users/me/Documents/#general (Slack).md', messages: 1234 })
+      .mockRejectedValueOnce(new ApiError('internal', 'Your disk is full.'));
+    renderAt('/c/C1');
+    await screen.findByText('msg-999');
+    const button = screen.getByRole('button', { name: 'Export as a Markdown file' });
+
+    fireEvent.click(button);
+    await waitFor(() => expect(exportConversation).toHaveBeenCalledWith({ conversationId: 'C1' }));
+    await waitFor(() => expect(button).toHaveProperty('disabled', false));
+    expect(screen.queryByRole('status')).toBeNull();
+
+    fireEvent.click(button);
+    const done = await screen.findByRole('status');
+    expect(done.textContent).toContain('Exported 1,234 messages to #general (Slack).md.');
+    fireEvent.click(within(done).getByRole('button', { name: 'Dismiss' }));
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+
+    fireEvent.click(button);
+    expect((await screen.findByRole('alert')).textContent).toContain('Couldn’t export: Your disk is full.');
   });
 
   it('shows an error state with retry when messages fail to load', async () => {

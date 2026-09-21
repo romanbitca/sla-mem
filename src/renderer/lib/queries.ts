@@ -533,6 +533,14 @@ export function useBackupNow() {
   return useMutation({ mutationFn: () => api.backupNow() });
 }
 
+/**
+ * Main opens a save dialog, writes the conversation as Markdown and shows the file in
+ * Finder/Explorer. The result is null when the reader cancelled the dialog.
+ */
+export function useExportConversation() {
+  return useMutation({ mutationFn: (conversationId: string) => api.exportConversation({ conversationId }) });
+}
+
 export function useShowDataFolder() {
   return useMutation({ mutationFn: () => api.showDataFolder() });
 }

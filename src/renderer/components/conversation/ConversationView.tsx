@@ -2,14 +2,14 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ConversationDTO, MessageDTO } from '../../../shared/types';
-import { isApiError } from '../../lib/api';
+import { describeError, isApiError } from '../../lib/api';
 import { Mrkdwn } from '../../lib/mrkdwn';
-import { formatCount, formatTsRange } from '../../lib/format';
+import { formatCount, formatTsRange, pluralize } from '../../lib/format';
 import { guessThreadParent } from '../../lib/grouping';
 import { useStableCallback } from '../../lib/hooks';
-import { qk, useConversation, useMessages } from '../../lib/queries';
+import { qk, useConversation, useExportConversation, useMessages } from '../../lib/queries';
 import { compareTs, parseTsParam } from '../../lib/ts';
-import { AlertIcon, ArchiveIcon, CloseIcon, HashIcon } from '../icons';
+import { AlertIcon, ArchiveIcon, CheckIcon, CloseIcon, DownloadIcon, HashIcon } from '../icons';
 import { SidebarToggle } from '../layout/shell';
 import { EmptyState, ErrorState } from '../ui/EmptyState';
 import { IconButton } from '../ui/IconButton';
@@ -58,6 +58,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
     target: initialTarget(tsParam, threadParam),
   }));
   const [missingTs, setMissingTs] = useState<string | null>(null);
+  const exporter = useExportConversation();
 
   const query = useMessages(conversationId, anchor);
   const { messages } = query;
@@ -216,7 +217,13 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
 
   return (
     <Pane>
-      <ConversationHeader conversationId={conversationId} conversation={conv} onJump={onJumpToDate} />
+      <ConversationHeader
+        conversationId={conversationId}
+        conversation={conv}
+        onJump={onJumpToDate}
+        exporter={exporter}
+      />
+      <ExportNotice conversationId={conversationId} exporter={exporter} />
       {missingTs && (
         <div
           role="status"
@@ -236,14 +243,18 @@ function Pane({ children }: { children: ReactNode }) {
   return <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-canvas">{children}</section>;
 }
 
+type Exporter = ReturnType<typeof useExportConversation>;
+
 function ConversationHeader({
   conversationId,
   conversation,
   onJump,
+  exporter,
 }: {
   conversationId: string;
   conversation: ConversationDTO | undefined;
   onJump: (ts: string) => void;
+  exporter: Exporter;
 }) {
   const range = conversation ? formatTsRange(conversation.oldestTs, conversation.latestTs) : null;
   const about = conversation?.topic || conversation?.purpose;
@@ -288,8 +299,47 @@ function ConversationHeader({
         latestTs={conversation?.latestTs ?? null}
         onJump={onJump}
       />
+      <IconButton
+        label="Export as a Markdown file"
+        icon={<DownloadIcon size={16} />}
+        disabled={!conversation || exporter.isPending}
+        onClick={() => exporter.mutate(conversationId)}
+      />
     </header>
   );
+}
+
+/**
+ * The outcome of "Export" (PLAN Stage 8: main asks where to save, writes Markdown and shows the
+ * file in Finder/Explorer), until dismissed. Nothing when the save dialog was cancelled.
+ */
+function ExportNotice({ conversationId, exporter }: { conversationId: string; exporter: Exporter }) {
+  const [dismissed, setDismissed] = useState<unknown>(null);
+  const outcome = exporter.isError ? exporter.error : exporter.data;
+  if (!outcome || outcome === dismissed || exporter.variables !== conversationId) return null;
+  const failed = exporter.isError;
+  return (
+    <div
+      role={failed ? 'alert' : 'status'}
+      className={
+        failed
+          ? 'flex items-center gap-2 border-b border-line bg-danger-soft px-5 py-2 text-[13px] text-danger'
+          : 'flex items-center gap-2 border-b border-line bg-inset px-5 py-2 text-[13px] text-ink-muted'
+      }
+    >
+      {failed ? <AlertIcon size={15} className="shrink-0" /> : <CheckIcon size={15} className="shrink-0" />}
+      <span className="flex-1">
+        {failed
+          ? `Couldn’t export: ${describeError(exporter.error)}`
+          : `Exported ${pluralize(exporter.data!.messages, 'message', 'messages')} to ${fileName(exporter.data!.path)}.`}
+      </span>
+      <IconButton size="sm" label="Dismiss" icon={<CloseIcon size={14} />} onClick={() => setDismissed(outcome)} />
+    </div>
+  );
+}
+
+function fileName(p: string): string {
+  return p.split(/[\\/]/).pop() || p;
 }
 
 function ConversationIntro({ conversation }: { conversation: ConversationDTO }) {

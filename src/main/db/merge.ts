@@ -26,6 +26,20 @@ export function isValidTs(ts: unknown): ts is string {
   return typeof ts === 'string' && /^\d+(\.\d+)?$/.test(ts);
 }
 
+/**
+ * The secondary timestamps (edited, thread, latest reply) are data like any other: a malformed
+ * one in an export or API reply is dropped rather than stored, where it would break thread
+ * lookups, edit ordering and the dates the UI draws.
+ */
+function tsOrNull(ts: unknown): string | null {
+  return isValidTs(ts) ? ts : null;
+}
+
+/** reply_count as stored: a non-negative integer, whatever arrived. */
+function replyCountOf(n: unknown): number {
+  return typeof n === 'number' && Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
 /** `time` column: whole unix seconds of a Slack ts. */
 export function tsToSeconds(ts: string): number {
   return Math.floor(Number(ts));
@@ -110,7 +124,7 @@ function contentOf(msg: SlackMessage, r: NormalizeResolvers): ContentColumns {
     username: msg.username ?? null,
     text: msg.text ?? '',
     plain_text: plainTextFor(msg, r),
-    edited_ts: msg.edited?.ts ?? null,
+    edited_ts: tsOrNull(msg.edited?.ts),
     has_files: files.length > 0 ? 1 : 0,
     has_links: hasLinks(msg) ? 1 : 0,
     has_images: files.some((f) => isImageMime(f.mimetype)) ? 1 : 0,
@@ -144,7 +158,7 @@ export function newMessageRow(
   now: number,
   r: NormalizeResolvers,
 ): MessageColumns {
-  const threadTs = msg.thread_ts ?? null;
+  const threadTs = tsOrNull(msg.thread_ts);
   return {
     conversation_id: conversationId,
     ts: msg.ts,
@@ -152,8 +166,8 @@ export function newMessageRow(
     thread_ts: threadTs,
     is_reply: isReplyTs(msg.ts, threadTs) ? 1 : 0,
     ...contentOf(msg, r),
-    reply_count: Math.max(0, msg.reply_count ?? 0),
-    latest_reply: msg.latest_reply ?? null,
+    reply_count: replyCountOf(msg.reply_count),
+    latest_reply: tsOrNull(msg.latest_reply),
     reply_users: JSON.stringify(uniqueStrings(msg.reply_users ?? [])),
     is_deleted: isTombstone(msg) ? 1 : 0,
     source,
@@ -169,7 +183,7 @@ export function newMessageRow(
  */
 export function isStaleContent(stored: MessageRow, msg: SlackMessage): boolean {
   if (msg.is_locked === true) return true;
-  const incomingEdit = msg.edited?.ts ?? null;
+  const incomingEdit = tsOrNull(msg.edited?.ts);
   const storedEdit = stored.edited_ts;
   if (incomingEdit && (!storedEdit || compareTs(incomingEdit, storedEdit) > 0)) return false;
   if (storedEdit && incomingEdit !== storedEdit) return true;
@@ -193,7 +207,7 @@ export function mergeMessageRow(
   const storedTombstone = isTombstone(stored);
   const keepStored = incomingTombstone || (!storedTombstone && isStaleContent(stored, msg));
   const content = keepStored ? storedContent(stored) : mergeFreshContent(stored, contentOf(msg, r), source);
-  const threadTs = msg.thread_ts ?? stored.thread_ts;
+  const threadTs = tsOrNull(msg.thread_ts) ?? stored.thread_ts;
 
   const row: MessageColumns = {
     conversation_id: stored.conversation_id,
@@ -203,8 +217,8 @@ export function mergeMessageRow(
     is_reply: isReplyTs(stored.ts, threadTs) ? 1 : 0,
     ...content,
     // Reply metadata only grows: a stale source (old export, partial page) must not shrink it.
-    reply_count: Math.max(stored.reply_count, msg.reply_count ?? 0),
-    latest_reply: laterTs(stored.latest_reply, msg.latest_reply ?? null),
+    reply_count: Math.max(stored.reply_count, replyCountOf(msg.reply_count)),
+    latest_reply: laterTs(stored.latest_reply, tsOrNull(msg.latest_reply)),
     reply_users: JSON.stringify(uniqueStrings([...parseStringArray(stored.reply_users), ...(msg.reply_users ?? [])])),
     // Slack never un-deletes; once we saw a tombstone the flag sticks.
     is_deleted: stored.is_deleted || incomingTombstone ? 1 : 0,
