@@ -428,7 +428,8 @@ async function offerMoveToApplications(s: AppServices): Promise<void> {
     defaultId: 0,
     cancelId: 1,
   });
-  if (response !== 0) return;
+  // Quitting while the question is open ends it with the default answer: that is not a "yes".
+  if (response !== 0 || quitting) return;
   try {
     app.moveToApplicationsFolder();
   } catch (err) {

@@ -3,9 +3,11 @@
  * possible; the real-workspace sign-in stays a manual check):
  *
  *   1. start the mock Slack and the built app with a fresh archive folder;
- *   2. connect: the app opens its Slack window, we click "Sign in with email" there, the app
- *      captures the session, verifies it and starts the first sync;
- *   3. the first sync finishes and the archive has messages and files;
+ *   2. onboarding through the app's own screens: Connect Slack opens the Slack window, we click
+ *      "Sign in with email" there, the app captures the session, verifies it and starts the
+ *      first sync;
+ *   3. the first sync finishes and the archive has messages and files; the UI shows the home
+ *      page, a channel, a thread, and search results that click through to the message;
  *   4. secrets: the saved session is encrypted and no log line contains a token or cookie;
  *   5. restart the app: still connected (persistent session + stored credentials), a second
  *      sync adds nothing; with the window closed the app keeps running and syncing;
@@ -117,6 +119,23 @@ async function signIn(app: ElectronApplication, page: Page): Promise<void> {
   log(`Signed in: ${status.message}`);
 }
 
+/** First run through the real onboarding screens: Welcome → Connect Slack → Getting your history. */
+async function onboardThroughUi(app: ElectronApplication, page: Page): Promise<void> {
+  await page.getByRole('heading', { name: 'Welcome to Slack Archive' }).waitFor();
+  await page.screenshot({ path: path.join(shots, 'onboarding-welcome.png') });
+  await page.getByRole('button', { name: 'Get started' }).click();
+  await page.getByRole('heading', { name: 'Connect Slack' }).waitFor();
+  const windowPromise = app.waitForEvent('window');
+  await page.getByRole('button', { name: 'Connect Slack' }).click();
+  const slackWindow = await windowPromise;
+  await slackWindow.waitForLoadState('domcontentloaded');
+  await slackWindow.click('#signin');
+  // The app captures the session, closes the Slack window and moves on by itself.
+  await page.getByRole('heading', { name: 'Getting your history' }).waitFor({ timeout: 60_000 });
+  await page.getByText('Connected to Brightwave').waitFor();
+  log('Onboarding: connected through the app’s own screens');
+}
+
 async function waitForSync(page: Page): Promise<Record<string, unknown>> {
   return waitFor(
     'the sync to finish',
@@ -144,8 +163,10 @@ async function main(): Promise<void> {
     const before = await call<{ connection: { connected: boolean } }>(page, 'getSettings');
     assert(!before.connection.connected, 'starts disconnected');
 
-    await signIn(app, page);
+    await onboardThroughUi(app, page);
     const first = await waitForSync(page);
+    await page.screenshot({ path: path.join(shots, 'onboarding-first-sync.png') });
+    await page.getByRole('button', { name: 'Finish' }).click();
     const stats = await call<{ messageCount: number; filesDownloaded: number; conversationCount: number }>(
       page,
       'getStats',
@@ -164,7 +185,34 @@ async function main(): Promise<void> {
     );
     log('Credentials file is encrypted (no token or cookie in it)');
 
-    await page.screenshot({ path: path.join(shots, 'after-first-sync.png') });
+    // The archive through the UI: home, a channel, search with click-through, a thread.
+    await page.getByRole('heading', { name: 'Brightwave archive' }).waitFor();
+    await page.screenshot({ path: path.join(shots, 'home.png') });
+    await page.getByRole('navigation', { name: 'Conversations' }).getByText('engineering', { exact: true }).click();
+    await page.getByRole('heading', { name: '#engineering' }).waitFor();
+    await page.locator('[data-msg-ts]').first().waitFor();
+    await page.screenshot({ path: path.join(shots, 'conversation.png') });
+    const threadButton = page.getByRole('button', { name: /^View thread, \d+ repl/ }).last();
+    await threadButton.click();
+    const panel = page.getByRole('complementary', { name: 'Thread' });
+    await panel.locator('[data-msg-ts]').first().waitFor();
+    await page.screenshot({ path: path.join(shots, 'thread.png') });
+    await panel.getByRole('button', { name: 'Close thread' }).click();
+
+    const box = page.getByRole('searchbox', { name: 'Search archive' });
+    await box.fill('deploy');
+    await box.press('Enter');
+    const results = page.getByRole('list', { name: 'Search results' });
+    const firstHit = results.getByRole('link').first();
+    await firstHit.waitFor();
+    const hitCount = await results.getByRole('link').count();
+    await page.screenshot({ path: path.join(shots, 'search.png') });
+    await firstHit.click();
+    await page.locator('[data-highlighted="true"]').first().waitFor();
+    assert(page.url().includes('#/c/'), 'a search result opens its conversation');
+    await page.screenshot({ path: path.join(shots, 'search-click-through.png') });
+    log(`UI: home, #engineering, a thread, and search (${hitCount} hits on the first page) click through`);
+
     await quit(app);
     app = null;
 
