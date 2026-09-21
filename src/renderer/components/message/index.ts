@@ -1,0 +1,12 @@
+export { MessageItem, type MessageItemProps } from './MessageItem';
+export { Avatar, initialsFor, type AvatarProps } from './Avatar';
+export { Reactions, reactionSummary } from './Reactions';
+export { FileList, FileCard, fileIconFor, fileStatusNote } from './FileList';
+export { Lightbox, type LightboxProps } from './Lightbox';
+export { Attachments, AttachmentCard } from './Attachments';
+export { ThreadSummary } from './ThreadSummary';
+export { RevisionsPopover } from './RevisionsPopover';
+export { DeletedBadge } from './DeletedBadge';
+export { CopyLinkButton } from './CopyLinkButton';
+export { MessageTime } from './MessageTime';
+export { resolveAuthor, type Author } from './author';
