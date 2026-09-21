@@ -80,7 +80,14 @@ export {
 } from './search';
 export type { ParsedSearchQuery, SearchResolvers, SearchUser, SearchConversation, SearchBot } from './search';
 
-export { normalizeForSearch, displayTextFromMessage, displayBlocks, mrkdwnToPlain, blocksToMrkdwn } from './normalize';
+export {
+  normalizeForSearch,
+  displayTextFromMessage,
+  displayBlocks,
+  mrkdwnToPlain,
+  blocksToMrkdwn,
+  unescapeEntities,
+} from './normalize';
 export { fileToDTO, fileStatusReason, isInlineSafeMime, FILE_URL_PREFIX, THUMB_URL_PREFIX } from './dto';
 export type { NormalizeResolvers } from './normalize';
 export { isTombstone } from './merge';

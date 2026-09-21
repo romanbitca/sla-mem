@@ -8,8 +8,11 @@
  *   3. the first sync finishes and the archive has messages and files;
  *   4. secrets: the saved session is encrypted and no log line contains a token or cookie;
  *   5. restart the app: still connected (persistent session + stored credentials), a second
- *      sync adds nothing;
- *   6. disconnect clears the credentials and the Slack session; connecting again works.
+ *      sync adds nothing; with the window closed the app keeps running and syncing;
+ *   6. disconnect clears the credentials and the Slack session; connecting again works;
+ *   7. a conversation exports to Markdown with every message;
+ *   8. killed mid-sync (SIGKILL): committed messages survive and the next sync completes;
+ *   9. quitting right after a sync exits promptly.
  *
  * Usage: npm run build && npm run e2e   (screenshots go to .e2e-data/shots)
  */
@@ -174,6 +177,19 @@ async function main(): Promise<void> {
     assert(second.messagesInserted === 0, `second sync adds nothing (${second.messagesInserted})`);
     log(`Second sync: ${JSON.stringify(second)}`);
 
+    // Closing the window keeps the app, and syncing, alive in the tray (PLAN §8.3, Stage 6).
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach((w) => w.close()));
+    const visibleWindows = await app.evaluate(
+      ({ BrowserWindow }) => BrowserWindow.getAllWindows().filter((w) => w.isVisible()).length,
+    );
+    assert(visibleWindows === 0 && !app.process().killed, 'closing the window hides it; the app keeps running');
+    await fetch(`${mock.url}/_mock/mutate`, { method: 'POST' }); // an edit, a late thread reply, a new DM
+    await call(page, 'startSync');
+    const hidden = (await waitForSync(page)) as Record<string, number>;
+    assert(hidden.messagesInserted >= 1 && hidden.revisions >= 1, `a sync with the window closed archives changes`);
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.show());
+    log(`Window closed: the app kept running and a sync archived ${hidden.messagesInserted} new message(s)`);
+
     const disconnected = await call<{ connected: boolean }>(page, 'disconnect');
     assert(
       !disconnected.connected && !fs.existsSync(path.join(dataDir, 'credentials.bin')),
@@ -187,12 +203,33 @@ async function main(): Promise<void> {
     await waitForSync(page);
     log('Reconnected and synced again');
 
+    // Export a conversation (the test answers the save dialog; nothing opens in Finder).
+    const exportFile = path.join(dataDir, 'exported', 'general.md');
+    fs.mkdirSync(path.dirname(exportFile), { recursive: true });
+    await app.evaluate(({ dialog, shell }, file) => {
+      dialog.showSaveDialog = (async () => ({ canceled: false, filePath: file })) as typeof dialog.showSaveDialog;
+      shell.showItemInFolder = () => undefined;
+    }, exportFile);
+    const conversations = await call<{ id: string; label: string; messageCount: number }[]>(page, 'getConversations');
+    const general = conversations.find((c) => c.label === 'general');
+    assert(general, 'the mock workspace has #general');
+    const exported = await call<{ messages: number }>(page, 'exportConversation', { conversationId: general.id });
+    const markdown = fs.readFileSync(exportFile, 'utf8');
+    assert(
+      exported.messages === general.messageCount && markdown.startsWith('# #general'),
+      `export writes every message (${exported.messages} of ${general.messageCount})`,
+    );
+    log(`Exported #general: ${exported.messages} messages, ${Math.round(markdown.length / 1024)} KB of Markdown`);
+
     // Killed mid-sync: nothing committed is lost and the next run picks up the rest (Stage 3).
     const full = (await call<{ messageCount: number }>(page, 'getStats')).messageCount;
     await quit(app);
     app = null;
     // Start over from an empty archive (the connection stays): the next sync is a first sync.
     const db = openDb(path.join(dataDir, 'archive.db'));
+    // Messages this close to the Free plan's 90-day edge may age out before the next sync.
+    const edge = Math.floor(Date.now() / 1000) - 90 * 86_400 + 3_600;
+    const nearEdge = (db.prepare('SELECT count(*) AS n FROM messages WHERE time < ?').get(edge) as { n: number }).n;
     db.exec('DELETE FROM message_files; DELETE FROM files; DELETE FROM messages; DELETE FROM sync_state;');
     db.close();
     ({ app, page } = await launch(mock));
@@ -216,7 +253,10 @@ async function main(): Promise<void> {
     await call(page, 'startSync');
     await waitForSync(page);
     const resumed = (await call<{ messageCount: number }>(page, 'getStats')).messageCount;
-    assert(resumed === full, `the next sync completes the archive (${resumed} of ${full})`);
+    assert(
+      resumed <= full && resumed >= full - nearEdge,
+      `the next sync completes the archive (${resumed} of ${full}, ${nearEdge} near the 90-day edge)`,
+    );
     log(`Killed mid-sync at ${partial} messages; kept ${afterCrash}; the next sync completed all ${resumed}`);
     // Quitting right as a run finishes must not leave anything reading the closed database.
     await call(page, 'startSync');

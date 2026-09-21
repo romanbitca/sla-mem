@@ -204,6 +204,16 @@ function platformHooks(s: AppServices): PlatformHooks {
       });
       return r.canceled ? null : (r.filePaths[0] ?? null);
     },
+    async chooseExportFile(defaultName) {
+      const r = await dialog.showSaveDialog(mainWindow!, {
+        title: 'Export conversation',
+        buttonLabel: 'Export',
+        defaultPath: path.join(app.getPath('documents'), defaultName),
+        filters: [{ name: 'Markdown', extensions: ['md'] }],
+        properties: ['createDirectory', 'showOverwriteConfirmation'],
+      });
+      return r.canceled || !r.filePath ? null : r.filePath;
+    },
     async openPath(p) {
       const error = await shell.openPath(p);
       if (error) s.log.warn(`Could not open a path: ${error}`);

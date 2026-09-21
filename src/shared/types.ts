@@ -443,6 +443,13 @@ export interface BackupResultDTO {
   bytes: number;
 }
 
+export interface ExportResultDTO {
+  /** Where the Markdown file was saved (the user chose it). */
+  path: string;
+  /** Messages written, thread replies included. */
+  messages: number;
+}
+
 export interface AppInfoDTO {
   version: string;
   platform: 'darwin' | 'win32' | 'linux';

@@ -30,6 +30,8 @@ export interface PlatformHooks {
   chooseImportSource(): Promise<string | null>;
   /** Native folder picker for "Back up now"; null when cancelled. */
   chooseBackupFolder(): Promise<string | null>;
+  /** Native save dialog for "Export conversation", starting at `defaultName`; null when cancelled. */
+  chooseExportFile(defaultName: string): Promise<string | null>;
   /** Opens a file with its default app (never used for runnable files). */
   openPath(p: string): Promise<void>;
   showItemInFolder(p: string): void;

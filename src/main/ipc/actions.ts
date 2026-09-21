@@ -5,7 +5,8 @@
 import type { SettingsDTO } from '../../shared/types';
 import { backupArchive } from '../backup';
 import type { AppServices, PlatformHooks } from '../context';
-import { requeueFile } from '../db';
+import { getConversation, requeueFile } from '../db';
+import { exportConversationMarkdown, exportFileName } from '../export';
 import { blocked, invalid, notFound } from '../errors';
 import { isRunnableFile, localAttachmentPath } from '../file-actions';
 import { isSafeExternalUrl } from '../security-urls';
@@ -97,6 +98,17 @@ export function actionHandlers(s: AppServices, hooks: PlatformHooks): ActionHand
       if (!dest) return null;
       const result = await backupArchive({ db: s.db, paths: s.paths, destDir: dest });
       s.log.info(`Backup written (${result.bytes} bytes)`);
+      hooks.showItemInFolder(result.path);
+      return result;
+    },
+    exportConversation: async (req) => {
+      const id = slackId(record(req).conversationId, 'conversation');
+      const conversation = getConversation(s.db, id);
+      if (!conversation) throw notFound('That conversation isn’t in the archive');
+      const file = await hooks.chooseExportFile(exportFileName(conversation));
+      if (!file) return null;
+      const result = await exportConversationMarkdown(s.db, id, file);
+      s.log.info(`Exported a conversation (${result.messages} messages)`);
       hooks.showItemInFolder(result.path);
       return result;
     },

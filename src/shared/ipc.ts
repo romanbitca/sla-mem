@@ -9,6 +9,7 @@
 import type {
   AppInfoDTO,
   BackupResultDTO,
+  ExportResultDTO,
   CleanupResultDTO,
   ConversationDTO,
   CookieLoginRequest,
@@ -75,6 +76,8 @@ export interface ArchiveApi {
   deleteAttachmentsOlderThan(req: { months: number }): CleanupResultDTO;
   /** Opens a folder picker, then writes a zip of the archive there. Null when cancelled. */
   backupNow(): BackupResultDTO | null;
+  /** Opens a save dialog, then writes the conversation as Markdown there. Null when cancelled. */
+  exportConversation(req: { conversationId: string }): ExportResultDTO | null;
   showDataFolder(): OkDTO;
   showLogs(): OkDTO;
 
@@ -124,6 +127,7 @@ export const API_METHODS = [
   'getStorage',
   'deleteAttachmentsOlderThan',
   'backupNow',
+  'exportConversation',
   'showDataFolder',
   'showLogs',
   'openFile',
