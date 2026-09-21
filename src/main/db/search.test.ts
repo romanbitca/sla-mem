@@ -446,6 +446,12 @@ describe('search', () => {
     }
   });
 
+  it('reports the total for a filtered page past the end', () => {
+    const all = run(db, 'deploy from:bob');
+    expect(all.total).toBeGreaterThan(0);
+    expect(run(db, 'deploy from:bob', { offset: all.total + 5 })).toMatchObject({ total: all.total, hits: [] });
+  });
+
   it('sorts chronologically even when older messages were inserted last', () => {
     const late = seededDb();
     upsertMessages(late, 'C2', [msg(localTs(2024, 5, 3), 'zulu three'), msg(localTs(2024, 5, 2), 'zulu two')], 'api');

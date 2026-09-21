@@ -30,6 +30,9 @@ export {
   getFileRow,
   isUsableFile,
   reindexAll,
+  reindexBatch,
+  refreshSearchTextIfOutdated,
+  SEARCH_TEXT_VERSION,
   conversationTypeOf,
 } from './write';
 export type { UpsertMessagesResult } from './write';

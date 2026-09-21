@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { SlackFile } from '../slack/types';
+import { openDb } from './open';
 import { getMessageRevisions, getThread, listConversations } from './read';
 import { assertFtsIntegrity, ftsRowids, msg, seededDb, tsAt } from './test-helpers';
 import type { DB, MessageRow } from './types';
@@ -21,6 +22,7 @@ import {
   requeueFile,
   listDownloadedFilesBefore,
   reindexAll,
+  refreshSearchTextIfOutdated,
   setSyncState,
   upsertConversations,
   upsertCustomEmoji,
@@ -569,5 +571,49 @@ describe('custom emoji', () => {
       pp: 'https://emoji/parrot.gif',
       thumbsup_alias: 'alias:thumbsup',
     });
+  });
+});
+
+describe('search text versioning', () => {
+  it('reindexes an archive written by an older version once, in batches', async () => {
+    const db = seededDb();
+    upsertMessages(
+      db,
+      'C1',
+      Array.from({ length: 1200 }, (_, i) => msg(tsAt(i), `message ${i} <@U9>`)),
+      'api',
+    );
+    upsertUsers(db, [{ id: 'U9', name: 'zed' }]);
+    db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('search_text_version', '1')").run();
+    let pauses = 0;
+    const changed = await refreshSearchTextIfOutdated(db, { yieldEvery: async () => void pauses++ });
+    expect(changed).toBe(1200);
+    expect(pauses).toBeGreaterThan(1);
+    expect(await refreshSearchTextIfOutdated(db)).toBe(0);
+  });
+
+  it('stops quietly when the database closes mid-way (the app quit), and resumes next time', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sa-reindex-'));
+    const file = path.join(dir, 'archive.db');
+    try {
+      const db = openDb(file);
+      upsertMessages(
+        db,
+        'C1',
+        Array.from({ length: 1200 }, (_, i) => msg(tsAt(i), `message ${i} <@U9>`)),
+        'api',
+      );
+      upsertUsers(db, [{ id: 'U9', name: 'zed' }]);
+      db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('search_text_version', '1')").run();
+      const first = await refreshSearchTextIfOutdated(db, { yieldEvery: async () => void db.close() });
+      expect(first).toBeGreaterThan(0);
+      expect(first).toBeLessThan(1200);
+      const reopened = openDb(file);
+      expect(await refreshSearchTextIfOutdated(reopened)).toBe(1200 - first);
+      expect(await refreshSearchTextIfOutdated(reopened)).toBe(0);
+      reopened.close();
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

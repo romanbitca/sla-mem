@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { SlackConversation, SlackFile, SlackMessage, SlackUser } from '../slack/types';
 import type { ConversationType } from '../../shared/types';
 import { dbResolvers, nonEmpty, preloadedResolvers } from './labels';
+import type { NormalizeResolvers } from './normalize';
 import {
   compareTs,
   isTombstone,
@@ -14,7 +15,7 @@ import {
   type MessageColumns,
   type RevisionToStore,
 } from './merge';
-import { getMeta } from './meta';
+import { getMeta, setMeta } from './meta';
 import { stmt } from './stmt';
 import type { DB, FileRow, FileSkipReason, MessageRow, MessageSource, SyncStatePatch, SyncStateRow } from './types';
 
@@ -618,23 +619,73 @@ export function reindexAll(db: DB): number {
   let lastId = -1;
   let changed = 0;
   for (;;) {
-    const batch = stmt<{ id: number; raw: string; plain_text: string }>(
-      db,
-      'SELECT id, raw, plain_text FROM messages WHERE id > ? ORDER BY id LIMIT ?',
-    ).all(lastId, REINDEX_BATCH);
-    if (!batch.length) break;
-    db.transaction(() => {
-      for (const row of batch) {
-        const msg = parseMessage(row.raw);
-        if (!msg) continue;
-        const next = plainTextFor(msg, resolvers);
-        if (next === row.plain_text) continue;
-        stmt(db, 'UPDATE messages SET plain_text = ? WHERE id = ?').run(next, row.id);
-        changed++;
-      }
-    })();
-    lastId = batch[batch.length - 1].id;
+    const step = reindexBatch(db, lastId, REINDEX_BATCH, resolvers);
+    changed += step.changed;
+    if (step.done) break;
+    lastId = step.lastId;
   }
+  return changed;
+}
+
+/** One batch of reindexAll, for callers that yield to the event loop between batches. */
+export function reindexBatch(
+  db: DB,
+  afterId: number,
+  limit: number = REINDEX_BATCH,
+  resolvers: NormalizeResolvers = preloadedResolvers(db),
+): { lastId: number; changed: number; done: boolean } {
+  const batch = stmt<{ id: number; raw: string; plain_text: string }>(
+    db,
+    'SELECT id, raw, plain_text FROM messages WHERE id > ? ORDER BY id LIMIT ?',
+  ).all(afterId, limit);
+  if (!batch.length) return { lastId: afterId, changed: 0, done: true };
+  let changed = 0;
+  db.transaction(() => {
+    for (const row of batch) {
+      const msg = parseMessage(row.raw);
+      if (!msg) continue;
+      const next = plainTextFor(msg, resolvers);
+      if (next === row.plain_text) continue;
+      stmt(db, 'UPDATE messages SET plain_text = ? WHERE id = ?').run(next, row.id);
+      changed++;
+    }
+  })();
+  return { lastId: batch[batch.length - 1].id, changed, done: batch.length < limit };
+}
+
+/**
+ * Bump when the way search text is built changes (normalize.ts, cjk.ts): archives written by an
+ * older version are then reindexed once, in the background, at the next start.
+ */
+export const SEARCH_TEXT_VERSION = 2;
+export const SEARCH_TEXT_VERSION_KEY = 'search_text_version';
+
+/** Reindexes in small batches, yielding between them so the app stays responsive. */
+export async function refreshSearchTextIfOutdated(
+  db: DB,
+  opts: { yieldEvery?: () => Promise<void>; log?: (line: string) => void } = {},
+): Promise<number> {
+  const current = Number(getMeta(db, SEARCH_TEXT_VERSION_KEY) ?? 0);
+  const hasMessages = stmt(db, 'SELECT 1 FROM messages LIMIT 1').get() !== undefined;
+  if (current === SEARCH_TEXT_VERSION || !hasMessages) {
+    if (current !== SEARCH_TEXT_VERSION) setMeta(db, SEARCH_TEXT_VERSION_KEY, String(SEARCH_TEXT_VERSION));
+    return 0;
+  }
+  opts.log?.(`Updating search for this version (search text v${current} → v${SEARCH_TEXT_VERSION})`);
+  const pause = opts.yieldEvery ?? (() => new Promise<void>((resolve) => setImmediate(resolve)));
+  const resolvers = preloadedResolvers(db);
+  let lastId = -1;
+  let changed = 0;
+  for (;;) {
+    const step = reindexBatch(db, lastId, 500, resolvers);
+    changed += step.changed;
+    if (step.done) break;
+    lastId = step.lastId;
+    await pause();
+    if (!db.open) return changed; // the app quit: finish on the next launch
+  }
+  setMeta(db, SEARCH_TEXT_VERSION_KEY, String(SEARCH_TEXT_VERSION));
+  opts.log?.(`Search updated (${changed} messages)`);
   return changed;
 }
 

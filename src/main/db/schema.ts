@@ -3,9 +3,10 @@
  * migration runs once, inside a transaction, in ascending order. Never edit a shipped migration:
  * append a new one instead.
  *
- * v1 is PLAN.md Appendix B plus: `conversation_stats` (sidebar counts without scanning messages),
- * `bots` (so `from:<app>` finds bot messages), `runs.pid`, and the file retry columns
- * `skip_reason` / `next_attempt_at` (PLAN §5.6: failed and skipped files must stay retryable).
+ * v1 is PLAN.md Appendix B (which now reproduces it): the original draft plus `conversation_stats`
+ * (sidebar counts without scanning messages), `bots` (so `from:<app>` finds bot messages),
+ * `runs.pid` / `runs.problem`, and the file retry columns `skip_reason` / `next_attempt_at`
+ * (PLAN §5.6: failed and skipped files must stay retryable).
  */
 export interface Migration {
   version: number;

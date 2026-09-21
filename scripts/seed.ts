@@ -19,6 +19,7 @@ import {
   upsertCustomEmoji,
   upsertMessages,
   upsertUsers,
+  SEARCH_TEXT_VERSION,
   type DB,
 } from '../src/main/db';
 import {
@@ -114,6 +115,7 @@ async function main(): Promise<void> {
   // A later "sync": edits become revisions, deletions keep their text with a badge.
   let revisions = 0;
   for (const u of updates) revisions += upsertMessages(db, u.convId, [u.message], 'api', { filesDir }).revisions;
+  setMeta(db, 'search_text_version', String(SEARCH_TEXT_VERSION));
   db.pragma('optimize');
   db.close();
 

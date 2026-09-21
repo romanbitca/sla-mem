@@ -212,7 +212,7 @@ export interface SearchParams {
 export interface SearchHit {
   message: MessageDTO;
   /**
-   * Plain-text excerpt with highlight markers: '' starts a match, '' ends it.
+   * Plain-text excerpt with highlight markers: '\u0002' starts a match, '\u0003' ends it.
    * Everything else is literal text (render as text, never as HTML).
    */
   snippet: string;

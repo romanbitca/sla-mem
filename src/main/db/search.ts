@@ -6,6 +6,7 @@ import type {
   SearchResponse,
   SearchSort,
 } from '../../shared/types';
+import { desegmentCjk, segmentCjk } from './cjk';
 import { hydrateMessages } from './dto';
 import { getMeta } from './meta';
 import { inList, stmt } from './stmt';
@@ -425,13 +426,13 @@ export function buildMatchExpression(
   negative: string | null;
 } {
   const positives = [
-    ...p.terms.filter(isSearchable).map((t) => `${ftsLiteral(t)}*`),
-    ...p.phrases.filter(isSearchable).map(ftsLiteral),
+    ...p.terms.filter(isSearchable).map((t) => `${ftsLiteral(segmentCjk(t))}*`),
+    ...p.phrases.filter(isSearchable).map((t) => ftsLiteral(segmentCjk(t))),
   ];
   // Same semantics as inclusions: `-stag` excludes "staging" the way `stag` would find it.
   const negatives = [
-    ...p.excluded.filter(isSearchable).map((t) => `${ftsLiteral(t)}*`),
-    ...(p.excludedPhrases ?? []).filter(isSearchable).map(ftsLiteral),
+    ...p.excluded.filter(isSearchable).map((t) => `${ftsLiteral(segmentCjk(t))}*`),
+    ...(p.excludedPhrases ?? []).filter(isSearchable).map((t) => ftsLiteral(segmentCjk(t))),
   ];
   const negative = negatives.length ? negatives.join(' OR ') : null;
   if (!positives.length) return { positive: null, negative };
@@ -581,11 +582,20 @@ interface PageResult {
 
 // Message ids are ts-derived microseconds (write.ts allocateMessageId), so the FTS rowid is the
 // chronological order: sorting and the recency tie-break never need the messages table.
+// bm25 is negative (lower = better); one point per ~1000 days of age is a gentle recency nudge.
+const RELEVANCE = 'bm25(messages_fts) + (? - messages_fts.rowid) / 86400000000000.0';
+
 const FTS_ORDER: Record<SearchSort, string> = {
-  // bm25 is negative (lower = better); one point per ~1000 days of age is a gentle recency nudge.
-  relevance: 'bm25(messages_fts) + (? - messages_fts.rowid) / 86400000000000.0, messages_fts.rowid DESC',
+  relevance: `${RELEVANCE}, messages_fts.rowid DESC`,
   newest: 'messages_fts.rowid DESC',
   oldest: 'messages_fts.rowid ASC',
+};
+
+/** The same orders over the `id`/`score` columns of a materialized match list. */
+const PAGE_ORDER: Record<SearchSort, string> = {
+  relevance: 'score, id DESC',
+  newest: 'id DESC',
+  oldest: 'id ASC',
 };
 
 /**
@@ -621,17 +631,32 @@ function ftsSearch(db: DB, q: FtsQuery): PageResult {
   };
   const matches = countOf(db, matchOnly);
   if (matches === 0) return { total: 0, ids: [], snippets: [] };
-  const source = q.where.sql.length ? filteredSource(q, matches) : matchOnly;
-  const total = source === matchOnly ? matches : countOf(db, source);
-  if (total === 0 || q.offset >= total) return { total, ids: [], snippets: [] };
   const orderParams = q.sort === 'relevance' ? [q.now.getTime() * 1000] : [];
-  const ids = stmt<{ id: number }>(
+  if (!q.where.sql.length) {
+    if (q.offset >= matches) return { total: matches, ids: [], snippets: [] };
+    const ids = stmt<{ id: number }>(
+      db,
+      `SELECT messages_fts.rowid AS id ${matchOnly.from} WHERE ${matchOnly.conditions}
+       ORDER BY ${FTS_ORDER[q.sort]} LIMIT ? OFFSET ?`,
+    )
+      .all(...matchOnly.params, ...orderParams, q.limit, q.offset)
+      .map((r) => r.id);
+    return { total: matches, ids, snippets: snippetsFor(db, q.expr, ids) };
+  }
+  // Filters cost as much as the rest of the query together, so they are evaluated once: the
+  // filtered matches are materialized with their total, then sorted for the page.
+  const source = filteredSource(q, matches);
+  const score = q.sort === 'relevance' ? RELEVANCE : 'NULL';
+  const rows = stmt<{ id: number; total: number }>(
     db,
-    `SELECT messages_fts.rowid AS id ${source.from} WHERE ${source.conditions}
-     ORDER BY ${FTS_ORDER[q.sort]} LIMIT ? OFFSET ?`,
-  )
-    .all(...source.params, ...orderParams, q.limit, q.offset)
-    .map((r) => r.id);
+    `WITH hits AS MATERIALIZED (
+       SELECT messages_fts.rowid AS id, ${score} AS score ${source.from} WHERE ${source.conditions}
+     )
+     SELECT id, (SELECT count(*) FROM hits) AS total FROM hits ORDER BY ${PAGE_ORDER[q.sort]} LIMIT ? OFFSET ?`,
+  ).all(...orderParams, ...source.params, q.limit, q.offset);
+  // A page past the end has no rows to carry the total.
+  const total = rows[0]?.total ?? (q.offset > 0 ? countOf(db, source) : 0);
+  const ids = rows.map((r) => r.id);
   return { total, ids, snippets: snippetsFor(db, q.expr, ids) };
 }
 
@@ -698,7 +723,7 @@ function snippetsFor(db: DB, expr: string, ids: number[]): string[] {
     `SELECT rowid AS id, snippet(messages_fts, 0, char(2), char(3), '…', 24) AS s FROM messages_fts
      WHERE messages_fts MATCH ? AND rowid >= ? AND rowid <= ? AND +rowid IN (SELECT value FROM json_each(?))`,
   ).all(expr, Math.min(...ids), Math.max(...ids), JSON.stringify(ids));
-  const byId = new Map(rows.map((r) => [r.id, clampSnippet(flatten(r.s ?? ''))]));
+  const byId = new Map(rows.map((r) => [r.id, clampSnippet(desegmentCjk(flatten(r.s ?? '')))]));
   return ids.map((id) => byId.get(id) ?? '');
 }
 
@@ -715,7 +740,7 @@ function listingSearch(db: DB, where: Where, sort: SearchSort, limit: number, of
     `SELECT m.id AS id, substr(m.plain_text, 1, ${LEAD_SNIPPET_CHARS * 2}) AS plain_text FROM messages m
      WHERE ${conditions} ORDER BY ${order} LIMIT ? OFFSET ?`,
   ).all(...where.params, limit, offset);
-  return { total, ids: rows.map((r) => r.id), snippets: rows.map((r) => leadSnippet(r.plain_text)) };
+  return { total, ids: rows.map((r) => r.id), snippets: rows.map((r) => leadSnippet(desegmentCjk(r.plain_text))) };
 }
 
 function flatten(s: string): string {

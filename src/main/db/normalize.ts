@@ -1,4 +1,5 @@
 import type { SlackAttachment, SlackBlock, SlackMessage } from '../slack/types';
+import { segmentCjk } from './cjk';
 
 /** Lookups used to turn `<@U…>` / `<#C…>` references into words people search for. */
 export interface NormalizeResolvers {
@@ -200,7 +201,7 @@ export function normalizeForSearch(msg: SlackMessage, r: NormalizeResolvers): st
     plain.push(f.name ?? '');
     if (f.title && f.title !== f.name) plain.push(f.title);
   }
-  return dedupe(plain.map(tidy).filter(Boolean)).join('\n');
+  return segmentCjk(dedupe(plain.map(tidy).filter(Boolean)).join('\n'));
 }
 
 function attachmentTexts(a: SlackAttachment): string[] {
