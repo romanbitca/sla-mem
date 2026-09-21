@@ -8,7 +8,7 @@ const [outDir = '.shots', ...routes] = process.argv.slice(2);
 fs.mkdirSync(outDir, { recursive: true });
 const app = await electron.launch({
   args: ['.'],
-  env: { ...process.env, SLACK_ARCHIVE_E2E: '1' },
+  env: { ...process.env },
 });
 const page = await app.firstWindow();
 page.on('console', (m) => console.log(`[renderer:${m.type()}] ${m.text()}`));
