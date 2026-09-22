@@ -54,6 +54,7 @@ export {
   markStaleRunsInterrupted,
   lastFinishedRun,
   lastSuccessfulRunAt,
+  lastSuccessfulRun,
   MAX_RUN_LOG_LINES,
 } from './runs';
 export type { RunPatch } from './runs';

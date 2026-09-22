@@ -63,6 +63,12 @@ const COUNTERS: [key: string, singular: string, plural: string][] = [
   ['filesFailed', 'attachment couldn’t be downloaded', 'attachments couldn’t be downloaded'],
 ];
 
+/** What the last successful sync brought in, next to when: "13 new messages", "no new messages". */
+export function newMessagesLabel(count: number): string {
+  if (count <= 0) return 'no new messages';
+  return `${count.toLocaleString()} ${count === 1 ? 'new message' : 'new messages'}`;
+}
+
 export function counterLabel(key: string, count: number): string | null {
   const known = COUNTERS.find(([k]) => k === key);
   return known ? (count === 1 ? known[1] : known[2]) : null;

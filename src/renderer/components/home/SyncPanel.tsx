@@ -10,7 +10,7 @@ import { Callout } from '../ui/Callout';
 import { Card } from '../ui/Card';
 import { ErrorState } from '../ui/EmptyState';
 import { LoadingState } from '../ui/Spinner';
-import { Fact, TimeAgo } from './parts';
+import { Fact, LastSyncFact, TimeAgo } from './parts';
 import { RunProgress } from './RunProgress';
 
 export interface SyncPanelProps {
@@ -56,9 +56,7 @@ export function SyncPanel({ status, error, onRetry, className }: SyncPanelProps)
           <RunProgress run={status.currentRun} progress={status.progress} />
         ) : (
           <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-[13px] sm:grid-cols-3">
-            <Fact label="Last successful sync">
-              {status.lastSuccessAt ? <TimeAgo ms={status.lastSuccessAt} now={now} past /> : 'Not yet'}
-            </Fact>
+            <LastSyncFact status={status} now={now} />
             <Fact label="Next sync">
               {status.intervalMinutes === 0 ? (
                 'When you press Sync now'

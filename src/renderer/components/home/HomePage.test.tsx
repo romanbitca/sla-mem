@@ -4,6 +4,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import type { AppInfoDTO, SettingsDTO, StatsDTO, SyncStatusDTO, WorkspaceDTO } from '../../../shared/types';
 import { api, ApiError } from '../../lib/api';
 import HomePage from '../../pages/HomePage';
+import { LastSyncFact } from './parts';
 import {
   makeAppInfo,
   makeConnection,
@@ -20,6 +21,7 @@ import {
 import {
   connectPrompt,
   formatDuration,
+  newMessagesLabel,
   phaseLabel,
   progressFraction,
   relativeTime,
@@ -141,6 +143,31 @@ describe('run helpers', () => {
     );
     expect(phaseLabel('auth')).toBe('Checking your Slack connection');
     expect(phaseLabel('something_new')).toBe('Working…');
+  });
+
+  it('says what the last successful sync brought in, next to when it ran', () => {
+    expect([0, 1, 13, 1234].map(newMessagesLabel)).toEqual([
+      'no new messages',
+      '1 new message',
+      '13 new messages',
+      '1,234 new messages',
+    ]);
+    const fact = (status: Partial<SyncStatusDTO>) => {
+      const { container, unmount } = renderWithProviders(
+        <dl>
+          <LastSyncFact status={makeSyncStatus(status)} now={NOW} />
+        </dl>,
+      );
+      const text = container.querySelector('dd')?.textContent;
+      unmount();
+      return text;
+    };
+    expect(fact({ lastSuccessAt: NOW - 10_000, lastSuccessNewMessages: 13 })).toBe('just now · 13 new messages');
+    expect(fact({ lastSuccessAt: NOW - 5 * 60_000, lastSuccessNewMessages: 0 })).toBe(
+      '5 minutes ago · no new messages',
+    );
+    expect(fact({ lastSuccessAt: NOW - 10_000, lastSuccessNewMessages: null })).toBe('just now');
+    expect(fact({ lastSuccessAt: null, lastSuccessNewMessages: null })).toBe('Not yet');
   });
 
   it('decides which Connect Slack prompt the home page shows', () => {

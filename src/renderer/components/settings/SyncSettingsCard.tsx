@@ -5,7 +5,7 @@ import { reopenHint, trayPlaceName } from '../../lib/bridge';
 import { useFlag, useNow } from '../../lib/hooks';
 import { useCancelSync, useStartSync, useUpdatePreferences } from '../../lib/queries';
 import { SCHEDULE_OPTIONS } from '../connect/connection';
-import { Fact, TimeAgo } from '../home/parts';
+import { Fact, LastSyncFact, TimeAgo } from '../home/parts';
 import { RunProgress } from '../home/RunProgress';
 import { CheckIcon, CloseIcon, SyncIcon } from '../icons';
 import { Button } from '../ui/Button';
@@ -130,9 +130,7 @@ function SyncNow({ status, error, manual }: { status: SyncStatusDTO | undefined;
         <RunProgress run={status.currentRun} progress={status.progress} />
       ) : (
         <dl className="grid grid-cols-1 gap-3 text-[13px] sm:grid-cols-2">
-          <Fact label="Last successful sync">
-            {status.lastSuccessAt ? <TimeAgo ms={status.lastSuccessAt} now={now} past /> : 'Not yet'}
-          </Fact>
+          <LastSyncFact status={status} now={now} />
           <Fact label="Next sync">
             {manual ? 'When you press Sync now' : status.nextRunAt ? <TimeAgo ms={status.nextRunAt} now={now} /> : '—'}
           </Fact>

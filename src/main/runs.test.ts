@@ -105,6 +105,7 @@ describe('RunManager', () => {
       attachmentPolicy: 'everything',
       overlapDays: 7,
     });
+    expect(m.status()).toMatchObject({ lastSuccessAt: null, lastSuccessNewMessages: null });
     const id = m.startSync();
     expect(m.isRunning()).toBe(true);
     expect(() => m.startSync()).toThrow('A sync is already running.');
@@ -115,7 +116,13 @@ describe('RunManager', () => {
     sync.release({ messagesInserted: 3 });
     const run = await m.wait(id);
     expect(run).toMatchObject({ id, kind: 'sync', status: 'ok', stats: { messagesInserted: 3 }, error: null });
-    expect(m.status()).toMatchObject({ running: false, lastSuccessAt: now, problem: null, stale: false });
+    expect(m.status()).toMatchObject({
+      running: false,
+      lastSuccessAt: now,
+      lastSuccessNewMessages: 3, // shown as "just now · 3 new messages"
+      problem: null,
+      stale: false,
+    });
     expect(events.map((e) => e.type)).toContain('finished');
     expect(readLock(db, 'sync')).toBeNull();
   });

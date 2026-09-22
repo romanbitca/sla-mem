@@ -25,6 +25,7 @@ import {
   getRun,
   getRunLog,
   lastFinishedRun,
+  lastSuccessfulRun,
   lastSuccessfulRunAt,
   listRuns,
   markStaleRunsInterrupted,
@@ -294,12 +295,14 @@ export class RunManager {
   status(): SyncStatusDTO {
     const recentRuns = listRuns(this.db, 10);
     const blockedReason = this.blockedReason();
-    const lastSuccessAt = this.lastSuccessfulSyncAt();
+    const lastSuccess = lastSuccessfulRun(this.db, SYNC_KINDS);
+    const lastSuccessAt = lastSuccess?.finishedAt ?? null;
     const common = {
       recentRuns,
       intervalMinutes: this.opts.prefs.get().syncIntervalMinutes,
       nextRunAt: blockedReason ? null : this.nextRunAt,
       lastSuccessAt,
+      lastSuccessNewMessages: lastSuccess ? (lastSuccess.stats.messagesInserted ?? 0) : null,
       blockedReason,
       problem: this.currentProblem(),
       stale: lastSuccessAt != null && this.now() - lastSuccessAt > STALE_AFTER_MS,

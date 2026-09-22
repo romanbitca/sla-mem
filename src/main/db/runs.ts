@@ -82,11 +82,19 @@ export function lastFinishedRun(db: DB, kinds: readonly RunKind[]): (SyncRunDTO 
 
 /** finished_at of the most recent successful run of the given kinds (epoch ms), or null. */
 export function lastSuccessfulRunAt(db: DB, kinds: readonly RunKind[]): number | null {
-  const row = stmt<{ finished_at: number | null }>(
+  return lastSuccessfulRun(db, kinds)?.finishedAt ?? null;
+}
+
+/** The most recent successful run of the given kinds: when it finished and what it counted. */
+export function lastSuccessfulRun(
+  db: DB,
+  kinds: readonly RunKind[],
+): { finishedAt: number | null; stats: Record<string, number> } | null {
+  const row = stmt<{ finished_at: number | null; stats: string }>(
     db,
-    "SELECT finished_at FROM runs WHERE status = 'ok' AND kind IN (SELECT value FROM json_each(?)) ORDER BY id DESC LIMIT 1",
+    "SELECT finished_at, stats FROM runs WHERE status = 'ok' AND kind IN (SELECT value FROM json_each(?)) ORDER BY id DESC LIMIT 1",
   ).get(JSON.stringify(kinds));
-  return row?.finished_at ?? null;
+  return row ? { finishedAt: row.finished_at, stats: numericRecord(parseJson(row.stats, {})) } : null;
 }
 
 /**

@@ -1,9 +1,9 @@
 /** Small building blocks shared by the archive-home and settings panels. */
 import type { ReactNode } from 'react';
 import clsx from 'clsx';
-import type { RunStatus } from '../../../shared/types';
+import type { RunStatus, SyncStatusDTO } from '../../../shared/types';
 import { formatFullDateTime, isoDateTime } from '../../lib/format';
-import { STATUS_LABEL, relativeTime, timeAgo } from './runs';
+import { STATUS_LABEL, newMessagesLabel, relativeTime, timeAgo } from './runs';
 
 const STATUS_STYLE: Record<RunStatus, string> = {
   running: 'bg-accent-soft text-accent-text',
@@ -43,6 +43,24 @@ export function Fact({ label, children }: { label: string; children: ReactNode }
       <dt className="text-xs text-ink-faint">{label}</dt>
       <dd className="mt-0.5 text-ink">{children}</dd>
     </div>
+  );
+}
+
+/** "Last successful sync · just now · 13 new messages". */
+export function LastSyncFact({ status, now }: { status: SyncStatusDTO; now: number }) {
+  return (
+    <Fact label="Last successful sync">
+      {status.lastSuccessAt ? (
+        <>
+          <TimeAgo ms={status.lastSuccessAt} now={now} past />
+          {status.lastSuccessNewMessages != null && (
+            <span className="text-ink-muted"> · {newMessagesLabel(status.lastSuccessNewMessages)}</span>
+          )}
+        </>
+      ) : (
+        'Not yet'
+      )}
+    </Fact>
   );
 }
 

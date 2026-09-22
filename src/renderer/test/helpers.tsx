@@ -251,6 +251,7 @@ export function makeSyncStatus(overrides: Partial<SyncStatusDTO> = {}): SyncStat
     intervalMinutes: 60,
     nextRunAt: Date.now() + 2 * 60_000,
     lastSuccessAt: finished,
+    lastSuccessNewMessages: null,
     blockedReason: null,
     problem: null,
     stale: false,

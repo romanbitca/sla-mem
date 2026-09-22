@@ -309,6 +309,8 @@ export interface SyncStatusDTO {
   nextRunAt: number | null;
   /** Epoch ms when the last successful Slack sync finished. */
   lastSuccessAt: number | null;
+  /** New messages that sync archived ("13 new messages"); null before the first one. */
+  lastSuccessNewMessages: number | null;
   /** Why syncing can't run right now (e.g. not connected), in plain language; null when it can. */
   blockedReason: string | null;
   /** The last run's failure, humanized; null when the last run was fine. */
