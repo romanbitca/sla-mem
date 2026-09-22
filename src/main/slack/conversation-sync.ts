@@ -1,4 +1,13 @@
-import { getStoredThreadInfo, getSyncState, listActiveThreads, setSyncState, upsertMessages, type DB } from '../db';
+import {
+  countHistoryMessagesSince,
+  getStoredThreadInfo,
+  getSyncState,
+  listActiveThreads,
+  setSyncState,
+  upsertMessages,
+  type DB,
+} from '../db';
+import { isPlainMessage } from './activity';
 import type { HistoryResponse, RepliesResponse, SlackParams } from './api-types';
 import type { SlackClient } from './client';
 import { SlackApiError } from './errors';
@@ -17,6 +26,11 @@ import { compareTs, subtractSeconds, throwIfAborted } from './util';
  *    whole pass is committed; advancing it earlier could leave a hole after a crash.
  *  - Backfill continues below oldest_ts until Slack has nothing older (on the Free plan: the
  *    90-day limit), then sets backfill_complete.
+ *
+ * Threads: a parent in the history pages carries the thread's reply count and latest reply, so a
+ * thread is fetched only when those differ from what is stored. Threads still getting replies
+ * whose parent is older than the pages read are re-polled one call each (the active-thread
+ * recheck), unless reading a little further back is cheaper (see `planSweep`).
  */
 
 export interface ConversationSyncContext {
@@ -50,13 +64,15 @@ export interface ConversationSyncResult {
   pages: number;
   /** Messages received from Slack (history pages and thread replies), new or not. */
   fetched: number;
+  /** Newest plain top-level message in the history pages (see `isPlainMessage`). */
+  newestPlainTs: string | null;
 }
 
 /** Slack's recommended maximum page size for history and replies. */
 const PAGE_LIMIT = 200;
 
 export function emptyConversationResult(): ConversationSyncResult {
-  return { inserted: 0, updated: 0, revisions: 0, threadsFetched: 0, pages: 0, fetched: 0 };
+  return { inserted: 0, updated: 0, revisions: 0, threadsFetched: 0, pages: 0, fetched: 0, newestPlainTs: null };
 }
 
 /**
@@ -84,6 +100,10 @@ export async function syncConversation(
 class ConversationRun {
   /** Threads known to be current in this run: refetched, or their parent's reply metadata matched storage. */
   private readonly checkedThreads = new Set<string>();
+  /** Incremental read: where the overlap window starts… */
+  private windowStart: string | null = null;
+  /** …and, when history is read further back for quiet threads, where that read starts. */
+  private sweepFrom: string | null = null;
 
   constructor(
     private readonly ctx: ConversationSyncContext,
@@ -104,7 +124,9 @@ class ConversationRun {
 
   async incremental(latestTs: string): Promise<void> {
     let newest = latestTs;
-    const oldest = subtractSeconds(latestTs, this.ctx.overlapSeconds);
+    this.windowStart = subtractSeconds(latestTs, this.ctx.overlapSeconds);
+    this.sweepFrom = this.planSweep(this.windowStart);
+    const oldest = this.sweepFrom ?? this.windowStart;
     const complete = await this.pageHistory({ oldest, inclusive: true }, (messages) => {
       newest = maxTs(newest, messages) ?? newest;
     });
@@ -127,11 +149,7 @@ class ConversationRun {
    * latest_reply on are requested; otherwise the whole thread is fetched to fill the gap.
    */
   async recheckActiveThreads(): Promise<void> {
-    if (this.ctx.threadRecheckDays <= 0) return;
-    const since = Math.floor(this.ctx.now() / 1000) - Math.round(this.ctx.threadRecheckDays * 86_400);
-    const active = listActiveThreads(this.ctx.db, this.id, String(since)).filter(
-      (t) => !this.checkedThreads.has(t.thread_ts),
-    );
+    const active = this.activeThreads().filter((t) => !this.checkedThreads.has(t.thread_ts));
     for (const [i, thread] of active.entries()) {
       throwIfAborted(this.ctx.signal);
       this.ctx.onProgress?.({
@@ -146,6 +164,55 @@ class ConversationRun {
     }
   }
 
+  /** Threads with a reply within `threadRecheckDays` (newest reply first). */
+  private activeThreads(): ReturnType<typeof listActiveThreads> {
+    if (this.ctx.threadRecheckDays <= 0) return [];
+    const since = Math.floor(this.ctx.now() / 1000) - Math.round(this.ctx.threadRecheckDays * 86_400);
+    return listActiveThreads(this.ctx.db, this.id, String(since));
+  }
+
+  /**
+   * Quiet threads (latest reply older than the overlap) whose parent lies before the overlap
+   * window cost a conversations.replies call each to re-check. When their parents are only a page
+   * or two further back, reading history from the oldest of them instead shows each parent's
+   * current reply count and latest reply, so only threads that changed are fetched. Picks the
+   * start that minimises extra history pages plus the polls still needed, estimating pages from
+   * the archived messages; null keeps the plain overlap window.
+   */
+  private planSweep(windowStart: string): string | null {
+    const parents = this.activeThreads()
+      .filter((t) => compareTs(t.thread_ts, windowStart) < 0 && !this.isRecentReply(t.latest_reply))
+      .map((t) => t.thread_ts)
+      .sort((a, b) => compareTs(b, a));
+    if (!parents.length) return null;
+    const pages = (from: string) =>
+      Math.max(1, Math.ceil(countHistoryMessagesSince(this.ctx.db, this.id, from) / PAGE_LIMIT));
+    const basePages = pages(windowStart);
+    let best: { cost: number; from: string | null } = { cost: parents.length, from: null };
+    parents.forEach((from, i) => {
+      const cost = pages(from) - basePages + (parents.length - i - 1);
+      if (cost < best.cost) best = { cost, from };
+    });
+    return best.from;
+  }
+
+  /** A reply inside the overlap window: edits to it are still expected. */
+  private isRecentReply(latestReply: string | null): boolean {
+    if (!latestReply) return false;
+    return Number(latestReply) >= this.ctx.now() / 1000 - this.ctx.overlapSeconds;
+  }
+
+  /**
+   * A parent read only because history was extended for quiet threads, whose thread has a recent
+   * reply: it stays with the active-thread recheck, which re-reads the latest reply and so
+   * notices an edit to it (pitfall 6), as it did before the extension.
+   */
+  private leftToRecheck(threadTs: string, parent: SlackMessage): boolean {
+    if (!this.sweepFrom || !this.windowStart) return false;
+    if (compareTs(threadTs, this.sweepFrom) < 0 || compareTs(threadTs, this.windowStart) >= 0) return false;
+    return this.isRecentReply(parent.latest_reply ?? null);
+  }
+
   /** Pages `conversations.history`; returns whether Slack reported the end of the range. */
   private async pageHistory(bounds: SlackParams, afterPage: (messages: SlackMessage[]) => void): Promise<boolean> {
     let hasMore = false;
@@ -155,6 +222,7 @@ class ConversationRun {
       const messages = validMessages(page.messages);
       this.result.pages++;
       this.result.fetched += messages.length;
+      this.result.newestPlainTs = maxTs(this.result.newestPlainTs, messages.filter(isPlainMessage));
       this.ctx.onProgress?.({ phase: 'history', fetched: this.result.fetched });
       await this.processHistoryPage(messages);
       afterPage(messages);
@@ -178,7 +246,7 @@ class ConversationRun {
       const info = getStoredThreadInfo(this.ctx.db, this.id, threadTs);
       const needed = parentMeta ? threadChanged(info, parentMeta) : info === null;
       if (needed) stale.add(threadTs);
-      else if (parentMeta) this.checkedThreads.add(threadTs);
+      else if (parentMeta && !this.leftToRecheck(threadTs, parentMeta)) this.checkedThreads.add(threadTs);
     }
     return [...stale];
   }

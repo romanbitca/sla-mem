@@ -132,6 +132,12 @@ Each item is also corrected where it belongs in this document.
   refused.
 - **Menu bar icon (added):** can be turned off in Settings → Sync; the app then keeps syncing in
   the background and is reopened like any app. While syncing, its menu shows one progress line.
+- **Faster incremental syncs (added, §5.2):** a sync no longer reads every conversation. Slack's
+  activity summary (`client.counts`, one call) says which conversations have new messages; those
+  are read, plus conversations active in the last 2 days, and the rest on a schedule (about daily,
+  weekly after 30 quiet days). Quiet threads are re-checked from their parents' reply counts
+  instead of one call each. On the real 111-conversation workspace a sync with nothing new went
+  from 178 API calls (about 3 minutes) to about 20 (about 20 seconds).
 - **Export conversation (Stage 8 nicety):** built as Markdown only (day headings, threads as
   quotes, edits, deletions, attachments and reactions noted). Markdown opens in any editor and
   renders in most viewers, so the HTML variant was left out.
@@ -688,6 +694,27 @@ A sync run:
      `conversations.replies` (`oldest = stored latest_reply`).
    - Per-conversation errors (`not_in_channel`, `channel_not_found`, `missing_scope`) are recorded
      in `sync_state.last_error`; **the run continues**. Only auth errors abort the whole run.
+   - *(As built)* **Which conversations are read.** Reading a conversation costs at least one
+     paced `conversations.history` call, so reading all of them made every sync take minutes even
+     when nothing had changed (178 calls, about 3 minutes, for 111 conversations). An incremental
+     sync therefore first asks for Slack's activity summary (`client.counts`: each conversation's
+     newest message, the call the Slack app uses to show unread conversations in bold) and reads:
+     conversations it reports new messages in; conversations with a message or thread reply in the
+     last **2 days** (about 99% of thread replies arrive while a conversation is that fresh, and
+     edits and reactions cluster there too); and the rest on a schedule, **about daily**, or
+     **weekly** after 30 quiet days or with nothing archived. Each conversation's re-read falls at
+     its own time of day, so the load is spread over the syncs. First syncs, unfinished backfills,
+     conversations that failed last time and named `conversationIds` are always read. The summary
+     isn't part of the documented Web API: if it fails or looks unfamiliar, every conversation is
+     read as before; and if a scheduled read finds a message the summary didn't report (posted
+     well before it was taken), the summary is set aside for 7 days and the conversations skipped
+     in that run are read after all.
+   - *(As built)* **Quiet threads.** An active thread (reply within 21 days) whose parent is older
+     than the history window used to cost one `conversations.replies` call every sync. When its
+     latest reply is older than the overlap, history is instead read back to its parent if that
+     costs fewer calls (estimated from the archived messages): the parent's `reply_count` and
+     `latest_reply` show whether the thread changed, and only changed threads are fetched.
+     Threads with a reply inside the overlap are still polled, so an edit to that reply is seen.
 5. `emoji.list` → upsert custom emoji (ignore failures).
 6. Download pending files (§5.6), subject to the user's attachment policy.
 7. Write run stats: conversations, messagesInserted, messagesUpdated, revisions, threadsFetched,
@@ -716,6 +743,11 @@ to polling `conversations.history`. Mitigations:
 - Active-thread recheck (above).
 - Accept the rest: an edit to a 2-month-old message may be missed. Document it; don't pretend
   otherwise.
+- *(As built)* Because unchanged conversations aren't read on every sync (§5.2), a new reply to a
+  thread in a conversation quiet for more than 2 days, or an edit or reaction there, is picked up
+  at that conversation's next scheduled read: within about a day, or a week for a conversation
+  quiet for over 30 days. New messages are fetched on the next sync, and nothing is lost (the
+  90-day window is far longer than these delays).
 
 ### 5.5 Merge policy — the rules that protect the archive
 

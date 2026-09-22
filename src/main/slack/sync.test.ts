@@ -7,6 +7,7 @@ import {
   getFileRow,
   getMessageRevisions,
   getMessages,
+  getMeta,
   getSyncState,
   getThread,
   getWorkspaceMeta,
@@ -18,6 +19,7 @@ import {
   type DB,
 } from '../db';
 import type { SyncProgress } from '../../shared/types';
+import { SUMMARY_OFF_UNTIL_KEY } from './activity';
 import { SlackApiError, SlackHttpError } from './errors';
 import { FAKE_BASE_URL, FAKE_TOKEN, FakeSlack, fakeClock } from './fake-slack';
 import { runApiSync, statsFromError, teamDomainFromUrl, type ApiSyncOptions } from './sync';
@@ -105,6 +107,14 @@ function historyCalls(channel: string) {
 
 function repliesCalls(threadTs?: string) {
   return fake.callsOf('conversations.replies').filter((c) => !threadTs || c.params.ts === threadTs);
+}
+
+/** Conversations whose history was read since call number `since`, in order. */
+function historyChannels(since: number): string[] {
+  return fake.calls
+    .slice(since)
+    .filter((c) => c.method === 'conversations.history')
+    .map((c) => c.params.channel);
 }
 
 describe('first sync', () => {
@@ -241,6 +251,103 @@ describe('incremental sync', () => {
   });
 });
 
+describe('reading only conversations that need it', () => {
+  /** A clock `minutes` after NOW. */
+  const later = (minutes: number) => () => NOW + minutes * 60_000;
+
+  beforeEach(() => {
+    fake.addMessage('C1', msg(ts(30), 'active today'));
+    fake.addMessage('C2', msg(ts(10 * DAY), 'quiet for ten days'));
+    fake.addMessage('D1', msg(ts(40 * DAY), 'silent for a month'));
+    // G1 stays empty.
+  });
+
+  it('asks Slack which conversations have new messages and reads those and recently active ones', async () => {
+    await sync();
+    expect(fake.callsOf('client.counts')).toHaveLength(0); // nothing to skip on a first sync
+
+    progress.length = 0;
+    let before = fake.calls.length;
+    let stats = await sync({ now: later(1) });
+    expect(fake.callsOf('client.counts')).toHaveLength(1);
+    expect(historyChannels(before)).toEqual(['C1']);
+    expect(stats).toMatchObject({ conversations: 1, unchanged: 3 });
+    expect(logs).toContain(
+      'Reading 1 of 4 conversations (1 active in the last 2 days); 3 unchanged since their last read',
+    );
+    expect(progress.filter((p) => p.phase === 'history').map((p) => [p.current, p.total])).toContainEqual([1, 1]);
+
+    fake.addMessage('D1', msg(ts(-1), 'a new DM'));
+    before = fake.calls.length;
+    stats = await sync({ now: later(2) });
+    expect(historyChannels(before)).toEqual(['C1', 'D1']);
+    expect(stats).toMatchObject({ messagesInserted: 1, unchanged: 2 });
+    expect(getMessages(db, { conversationId: 'D1' }).messages.map((m) => m.text)).toContain('a new DM');
+  });
+
+  it('re-reads quiet conversations about daily, and silent or empty ones about weekly', async () => {
+    await sync();
+    const readAt = async (minutes: number) => {
+      const before = fake.calls.length;
+      await sync({ now: later(minutes) });
+      return historyChannels(before).sort();
+    };
+    expect(await readAt(1)).toEqual(['C1']);
+    expect(await readAt(DAY + 1)).toEqual(expect.arrayContaining(['C1', 'C2']));
+    expect(await readAt(8 * DAY)).toEqual(['C1', 'C2', 'D1', 'G1']);
+  });
+
+  it('doesn’t read an empty conversation again until Slack reports a message in it', async () => {
+    await sync();
+    let before = fake.calls.length;
+    await sync({ now: later(1) });
+    expect(historyChannels(before)).not.toContain('G1');
+
+    fake.addMessage('G1', msg(ts(-1), 'first group message', { user: 'U2' }));
+    before = fake.calls.length;
+    await sync({ now: later(2) });
+    expect(historyChannels(before)).toContain('G1');
+    expect(storedTs('G1')).toEqual([ts(-1)]);
+  });
+
+  it('reads every conversation when Slack’s summary is unavailable', async () => {
+    await sync();
+    fake.inject('client.counts', { error: 'unknown_method' });
+    const before = fake.calls.length;
+    const stats = await sync({ now: later(1) });
+    expect(historyChannels(before)).toEqual(['C1', 'C2', 'D1', 'G1']);
+    expect(stats.unchanged).toBe(0);
+    expect(logs).toContain('Slack’s activity summary is unavailable (unknown_method); reading every conversation');
+  });
+
+  it('sets the summary aside for a week when it misses a message, and reads the rest after all', async () => {
+    await sync();
+    // The summary goes stale for C2, which then gets a message; a day later C2's periodic re-read finds it.
+    fake.summaryLatest.set('C2', ts(10 * DAY));
+    fake.addMessage('C2', msg(ts(-60), 'posted after the first sync'));
+    let before = fake.calls.length;
+    await sync({ now: later(25 * 60) });
+    expect(logs).toContain(
+      '#secret: Slack’s activity summary didn’t report its new messages; reading every conversation for the next 7 days',
+    );
+    expect(historyChannels(before).sort()).toEqual(['C1', 'C2', 'D1', 'G1']);
+    expect(getMeta(db, SUMMARY_OFF_UNTIL_KEY)).toBe(String(later(25 * 60 + 7 * DAY)()));
+
+    before = fake.calls.length;
+    await sync({ now: later(26 * 60) });
+    expect(fake.calls.slice(before).some((c) => c.method === 'client.counts')).toBe(false);
+    expect(historyChannels(before)).toEqual(['C1', 'C2', 'D1', 'G1']);
+  });
+
+  it('doesn’t ask for the summary when syncing named conversations', async () => {
+    await sync();
+    const before = fake.calls.length;
+    await sync({ now: later(1), conversationIds: ['C2'] });
+    expect(fake.callsOf('client.counts')).toHaveLength(0);
+    expect(historyChannels(before)).toEqual(['C2']);
+  });
+});
+
 describe('threads', () => {
   it('fetches new threads, deduplicates the parent across pages, and refetches when latest_reply changes', async () => {
     fake.pageSize = 2;
@@ -269,25 +376,73 @@ describe('threads', () => {
     expect(repliesCalls()).toHaveLength(settled);
   });
 
-  it('rechecks active threads whose parent is older than the overlap window', async () => {
-    const active = ts(10 * DAY);
+  it('finds new replies to quiet threads on their parents, reading history a little further back', async () => {
+    const quiet = ts(10 * DAY);
     const dormant = ts(40 * DAY);
-    fake.addMessage('C1', msg(active, 'old parent, recent replies'));
-    fake.addReply('C1', active, msg(ts(9 * DAY), 'first reply'));
+    fake.addMessage('C1', msg(quiet, 'old parent, replies a week ago'));
+    fake.addReply('C1', quiet, msg(ts(9 * DAY), 'first reply'));
     fake.addMessage('C1', msg(dormant, 'dormant thread'));
     fake.addReply('C1', dormant, msg(ts(39 * DAY), 'long ago'));
     fake.addMessage('C1', msg(ts(30), 'recent top-level'));
     await sync({ overlapSeconds: 3600 });
 
-    fake.addReply('C1', active, msg(ts(10), 'new reply'));
-    const before = repliesCalls().length;
-    const stats = await sync({ overlapSeconds: 3600 });
+    // Nothing new: one history read reaching back to the quiet thread's parent, and no thread polls
+    // (it used to be one conversations.replies call per thread with a reply in the last 21 days).
+    let before = fake.calls.length;
+    await sync({ overlapSeconds: 3600 });
+    let calls = fake.calls.slice(before);
+    expect(calls.filter((c) => c.method === 'conversations.replies')).toEqual([]);
+    expect(calls.filter((c) => c.method === 'conversations.history').map((c) => c.params.oldest)).toEqual([quiet]);
 
-    const recheck = repliesCalls().slice(before);
-    expect(recheck.map((c) => c.params.ts)).toEqual([active]); // the dormant thread isn't polled
-    expect(recheck[0].params).toMatchObject({ oldest: ts(9 * DAY), inclusive: 'true' });
+    // A new reply shows on the parent, so that thread (and only that one) is fetched.
+    fake.addReply('C1', quiet, msg(ts(10), 'new reply'));
+    before = fake.calls.length;
+    const stats = await sync({ overlapSeconds: 3600 });
+    calls = fake.calls.slice(before);
+    expect(calls.filter((c) => c.method === 'conversations.replies').map((c) => c.params.ts)).toEqual([quiet]);
     expect(stats.threadsFetched).toBe(1);
-    expect(getThread(db, 'C1', active).replies.map((r) => r.text)).toEqual(['first reply', 'new reply']);
+    expect(getThread(db, 'C1', quiet).replies.map((r) => r.text)).toEqual(['first reply', 'new reply']);
+  });
+
+  it('polls a quiet thread instead when its parent is several history pages back', async () => {
+    const parent = ts(12 * DAY);
+    fake.addMessage('C1', msg(parent, 'old thread in a busy channel'));
+    fake.addReply('C1', parent, msg(ts(11 * DAY), 'reply'));
+    for (let i = 0; i < 450; i++) fake.addMessage('C1', msg(ts(11 * DAY - (i + 1) * 30), `chatter ${i}`));
+    fake.addMessage('C1', msg(ts(20), 'latest'));
+    await sync({ overlapSeconds: 3600 });
+
+    const before = fake.calls.length;
+    await sync({ overlapSeconds: 3600 });
+    const calls = fake.calls.slice(before);
+    expect(
+      calls
+        .filter((c) => c.method === 'conversations.history' && c.params.channel === 'C1')
+        .map((c) => c.params.oldest),
+    ).toEqual([subtractSeconds(ts(20), 3600)]);
+    expect(calls.filter((c) => c.method === 'conversations.replies').map((c) => c.params)).toEqual([
+      expect.objectContaining({ ts: parent, oldest: ts(11 * DAY), inclusive: 'true' }),
+    ]);
+  });
+
+  it('still polls a thread whose latest reply is recent, to notice an edit to it (pitfall 6)', async () => {
+    const quiet = ts(10 * DAY);
+    const fresh = ts(8 * DAY);
+    fake.addMessage('C1', msg(quiet, 'quiet thread'));
+    fake.addReply('C1', quiet, msg(ts(9 * DAY), 'a reply from last week'));
+    fake.addMessage('C1', msg(fresh, 'thread with a fresh reply'));
+    const reply = fake.addReply('C1', fresh, msg(ts(40), 'teh answer'));
+    fake.addMessage('C1', msg(ts(30), 'latest'));
+    await sync({ overlapSeconds: 3600 });
+
+    fake.editMessage('C1', reply.ts, 'the answer', ts(5));
+    const before = fake.calls.length;
+    const stats = await sync({ overlapSeconds: 3600 });
+    const calls = fake.calls.slice(before);
+    expect(calls.find((c) => c.method === 'conversations.history')?.params.oldest).toBe(quiet);
+    expect(calls.filter((c) => c.method === 'conversations.replies').map((c) => c.params.ts)).toEqual([fresh]);
+    expect(stats.revisions).toBe(1);
+    expect(getMessageRevisions(db, 'C1', reply.ts).map((r) => r.text)).toEqual(['teh answer']);
   });
 
   it('fetches a dormant thread when a broadcast reply shows up in history', async () => {

@@ -66,8 +66,12 @@ describe('mock Slack scenario (PLAN §13)', () => {
     const stats = await sync();
     expect(stats).toMatchObject({ messagesInserted: 0, revisions: 0, errors: 0 });
     expect(count('SELECT count(*) AS n FROM messages')).toBe(before);
-    // One history page per conversation plus the fixed calls (auth, users, list, emoji…).
-    expect(stats.apiCalls).toBeLessThan(stats.conversations * 2 + 20);
+    // Slack's activity summary reports nothing new, so only recently active conversations are
+    // read: one history page each, no thread polls, plus the fixed calls (auth, users, list,
+    // summary, emoji).
+    expect(stats.unchanged).toBeGreaterThan(0);
+    expect(stats.conversations + stats.unchanged).toBe(count('SELECT count(*) AS n FROM conversations'));
+    expect(stats.apiCalls).toBeLessThan(stats.conversations + 10);
   });
 
   it('an edit becomes a revision, a late reply to an old thread is picked up', async () => {
