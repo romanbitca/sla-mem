@@ -20,7 +20,7 @@ import { createLogger, type Logger } from './logger';
 import { archivePaths, type ArchivePaths } from './paths';
 import { Preferences } from './preferences';
 import { RunManager, type RunJobs } from './runs';
-import { Scheduler } from './scheduler';
+import { CATCH_UP_SPREAD_MS, Scheduler } from './scheduler';
 import type { UpdateInstaller } from './update-install';
 import { restartWhenIdle, UpdateService } from './update-service';
 
@@ -128,7 +128,13 @@ export function createServices(opts: ServicesOptions): AppServices {
     jobs: opts.jobs,
     log: (line) => ctx.log.info(line),
   });
-  const scheduler = new Scheduler({ runs, settings: ctx.prefs, connection, log: (line) => ctx.log.info(line) });
+  const scheduler = new Scheduler({
+    runs,
+    settings: ctx.prefs,
+    connection,
+    catchUpSpreadMs: CATCH_UP_SPREAD_MS,
+    log: (line) => ctx.log.info(line),
+  });
   const updates = new UpdateService({
     repo: UPDATE_REPO,
     currentVersion: opts.version,

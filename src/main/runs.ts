@@ -157,7 +157,8 @@ export const STATUS_LOG_LINES = 50;
 export const NOT_CONNECTED_REASON = 'Connect Slack to start archiving.';
 /** Automatic syncs wait until onboarding asked what to archive (a sync started by hand still runs). */
 export const ONBOARDING_REASON = 'Finish setting up Slamem to start archiving.';
-const STALE_AFTER_MS = 30 * 86_400_000;
+/** Over two weeks late even for a monthly sync; what came in after it has 45 days left in Slack. */
+const STALE_AFTER_MS = 45 * 86_400_000;
 const SYNC_KINDS: readonly RunKind[] = ['sync'];
 const FAILURE_KINDS: readonly RunKind[] = ['sync', 'files'];
 const MAX_LINE_LENGTH = 2_000;

@@ -22,11 +22,13 @@ export function getWorkspaceMeta(db: DB): {
   teamName: string | null;
   teamDomain: string | null;
   selfUserId: string | null;
+  teamIcon: string | null;
 } {
   return {
     teamId: getMeta(db, 'team_id'),
     teamName: getMeta(db, 'team_name'),
     teamDomain: getMeta(db, 'team_domain'),
     selfUserId: getMeta(db, 'self_user_id'),
+    teamIcon: getMeta(db, 'team_icon'),
   };
 }

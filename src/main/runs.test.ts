@@ -270,14 +270,16 @@ describe('RunManager', () => {
     expect(getRun(db, id)).toMatchObject({ status: 'error', error: 'interrupted' });
   });
 
-  it('warns when the last successful sync is more than 30 days old (PLAN §5.3)', async () => {
+  it('warns when the last successful sync is more than 45 days old, not on a monthly schedule (PLAN §5.3)', async () => {
     const sync = controllableJob();
     const m = manager({ runApiSync: sync.job as never });
     const id = m.startSync();
     await Promise.resolve();
     sync.release({});
     await m.wait(id);
-    now += 31 * 86_400_000;
+    now += 31 * 86_400_000; // a monthly sync that is a day late
+    expect(m.status().stale).toBe(false);
+    now += 15 * 86_400_000;
     expect(m.status().stale).toBe(true);
   });
 

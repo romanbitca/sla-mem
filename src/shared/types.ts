@@ -353,6 +353,8 @@ export interface WorkspaceDTO {
   teamName: string | null;
   teamDomain: string | null;
   selfUserId: string | null;
+  /** The workspace's own icon (a Slack image URL); null when it has none or no sync has read it yet. */
+  teamIcon: string | null;
   /** Credentials are saved (the connection may still have expired; see SlackConnectionDTO). */
   connected: boolean;
 }
@@ -440,7 +442,10 @@ export interface SyncStatusDTO {
   blockedReason: string | null;
   /** The last run's failure, humanized; null when the last run was fine. */
   problem: ProblemDTO | null;
-  /** The last successful sync is older than 30 days: Slack may already have hidden some history. */
+  /**
+   * The last successful sync is older than 45 days: over two weeks late even for a monthly sync.
+   * Messages posted right after it leave Slack Free 45 days later.
+   */
   stale: boolean;
 }
 
@@ -512,9 +517,13 @@ export interface CookieLoginRequest {
 
 // ─── Settings ─────────────────────────────────────────────────────────────────────────────────
 
-/** Minutes between automatic syncs; 0 = manual only. */
-export type SyncInterval = 0 | 15 | 60 | 360 | 1440;
-export const SYNC_INTERVALS: readonly SyncInterval[] = [0, 15, 60, 360, 1440];
+/**
+ * Minutes between automatic syncs: a week, two weeks or a month (30 days); 0 = manual only. Each
+ * sync saves everything posted since the last one, and Slack Free keeps 90 days, so even a monthly
+ * sync keeps every message; fewer syncs mean fewer requests to Slack.
+ */
+export type SyncInterval = 0 | 10_080 | 20_160 | 43_200;
+export const SYNC_INTERVALS: readonly SyncInterval[] = [0, 10_080, 20_160, 43_200];
 
 /**
  * Which attachments to download (PLAN §8.4 / §10.4):

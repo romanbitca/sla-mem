@@ -202,6 +202,7 @@ export function makeWorkspace(overrides: Partial<WorkspaceDTO> = {}): WorkspaceD
     teamName: '9H',
     teamDomain: '9h',
     selfUserId: 'U1',
+    teamIcon: null,
     connected: true,
     ...overrides,
   };
@@ -241,7 +242,7 @@ export function makeConnection(overrides: Partial<SlackConnectionDTO> = {}): Sla
 
 export function makePreferences(overrides: Partial<PreferencesDTO> = {}): PreferencesDTO {
   return {
-    syncIntervalMinutes: 60,
+    syncIntervalMinutes: 10_080,
     attachmentPolicy: 'standard',
     overlapDays: 7,
     launchAtLogin: true,
@@ -296,7 +297,7 @@ export function makeSyncStatus(overrides: Partial<SyncStatusDTO> = {}): SyncStat
     progress: null,
     log: [],
     recentRuns: [makeRun({ id: 1, finishedAt: finished })],
-    intervalMinutes: 60,
+    intervalMinutes: 10_080,
     nextRunAt: Date.now() + 2 * 60_000,
     lastSuccessAt: finished,
     lastSuccessNewMessages: null,

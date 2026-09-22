@@ -18,7 +18,7 @@ import { invalid } from './errors';
 import { writeFileAtomicSync } from './fsx';
 
 export const DEFAULT_PREFERENCES: Readonly<PreferencesDTO> = Object.freeze({
-  syncIntervalMinutes: 60,
+  syncIntervalMinutes: 10_080,
   attachmentPolicy: 'standard',
   overlapDays: 7,
   launchAtLogin: true,
@@ -120,6 +120,7 @@ function readConfig(file: string): StoredConfig {
 function sanitize(p: Partial<PreferencesDTO>): PreferencesDTO {
   const d = DEFAULT_PREFERENCES;
   return {
+    // The schedules before 0.3.7 (every 15 minutes to daily) are gone: they become weekly.
     syncIntervalMinutes: SYNC_INTERVALS.includes(p.syncIntervalMinutes as SyncInterval)
       ? (p.syncIntervalMinutes as SyncInterval)
       : d.syncIntervalMinutes,

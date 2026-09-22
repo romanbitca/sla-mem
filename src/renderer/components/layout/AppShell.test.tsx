@@ -324,6 +324,21 @@ describe('AppShell', () => {
     expect(synced.parentElement!.hasAttribute('title')).toBe(false);
   });
 
+  it('shows the workspace logo instead of its initial, and the initial when the logo can’t load', async () => {
+    const logo = 'https://avatars.slack-edge.com/2024-01-01/9h_132.png';
+    vi.spyOn(api, 'getWorkspace').mockResolvedValue(
+      makeWorkspace({ teamName: '9H', teamDomain: '9h', teamIcon: logo }),
+    );
+    renderApp();
+    const sidebar = screen.getAllByRole('complementary', { name: 'Sidebar' })[0];
+    await waitFor(() => expect(sidebar.querySelector(`img[src="${logo}"]`)).toBeTruthy());
+    expect(within(sidebar).queryByText('9')).toBeNull();
+
+    fireEvent.error(sidebar.querySelector(`img[src="${logo}"]`)!); // offline
+    expect(sidebar.querySelector(`img[src="${logo}"]`)).toBeNull();
+    expect(within(sidebar).getByText('9')).toBeTruthy();
+  });
+
   it('routes unknown paths to a not-found page', async () => {
     renderApp('/nope');
     expect(await screen.findByText('Page not found')).toBeTruthy();

@@ -216,7 +216,7 @@ describe('HomePage', () => {
     setup();
     expect(await screen.findByText('58 minutes ago')).toBeTruthy();
     expect(screen.getByText('in 30 minutes')).toBeTruthy();
-    expect(screen.getByText('Every hour')).toBeTruthy();
+    expect(screen.getByText('Every week')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Sync now' }));
     await waitFor(() => expect(startSync).toHaveBeenCalledTimes(1));
   });

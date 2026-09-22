@@ -45,7 +45,7 @@ export function SyncSettingsCard({ preferences, status, statusError }: SyncSetti
         <SettingRow
           label="How often to sync"
           htmlFor={ids.interval}
-          description="Syncing continues in the background while the window is closed."
+          description="Each sync saves every message since the last one (Slack keeps them 90 days). Syncing runs in the background; Sync now gets the latest at any time."
           descriptionId={ids.intervalHint}
         >
           <Select

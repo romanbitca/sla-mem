@@ -29,7 +29,9 @@ import { compareTs, subtractSeconds, throwIfAborted } from './util';
  * Threads: a parent in the history pages carries the thread's reply count and latest reply, so a
  * thread is fetched only when those differ from what is stored. Threads still getting replies
  * whose parent is older than the pages read are re-polled one call each (the active-thread
- * recheck), unless reading a little further back is cheaper (see `planSweep`).
+ * recheck), unless reading a little further back is cheaper (see `planSweep`). "Still getting
+ * replies" is counted back from the conversation's previous sync, not from now, so a sync a month
+ * after the last one still checks the threads that were active then.
  */
 
 export interface ConversationSyncContext {
@@ -38,6 +40,7 @@ export interface ConversationSyncContext {
   /** Passed to upsertMessages so a `done` file whose local copy vanished is re-queued. */
   filesDir: string;
   overlapSeconds: number;
+  /** Threads with a reply this many days before the conversation's previous sync (or since) are re-checked. */
   threadRecheckDays: number;
   now: () => number;
   signal?: AbortSignal;
@@ -81,8 +84,8 @@ export async function syncConversation(
   conversationId: string,
   result: ConversationSyncResult = emptyConversationResult(),
 ): Promise<ConversationSyncResult> {
-  const run = new ConversationRun(ctx, conversationId, result);
   const state = getSyncState(ctx.db, conversationId);
+  const run = new ConversationRun(ctx, conversationId, result, state?.last_synced_at ?? null);
   if (!state?.latest_ts) {
     await run.firstSync();
   } else {
@@ -106,6 +109,8 @@ class ConversationRun {
     private readonly ctx: ConversationSyncContext,
     private readonly id: string,
     readonly result: ConversationSyncResult,
+    /** Epoch ms this conversation was last synced successfully; null the first time. */
+    private readonly previousSyncAt: number | null,
   ) {}
 
   async firstSync(): Promise<void> {
@@ -161,10 +166,17 @@ class ConversationRun {
     }
   }
 
-  /** Threads with a reply within `threadRecheckDays` (newest reply first). */
+  /**
+   * Threads with a reply within `threadRecheckDays` of the previous sync or later (newest reply
+   * first). Counting from the previous sync rather than from now keeps a long gap between syncs
+   * safe: a thread that was active when it was last read may have new replies, however long ago
+   * that was. (Counted from now, a two-week gap already lost replies to threads that had been
+   * quiet for ten days.)
+   */
   private activeThreads(): ReturnType<typeof listActiveThreads> {
     if (this.ctx.threadRecheckDays <= 0) return [];
-    const since = Math.floor(this.ctx.now() / 1000) - Math.round(this.ctx.threadRecheckDays * 86_400);
+    const from = Math.min(this.ctx.now(), this.previousSyncAt ?? Infinity);
+    const since = Math.floor(from / 1000) - Math.round(this.ctx.threadRecheckDays * 86_400);
     return listActiveThreads(this.ctx.db, this.id, String(since));
   }
 

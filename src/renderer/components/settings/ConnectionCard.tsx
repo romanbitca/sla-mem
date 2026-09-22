@@ -12,12 +12,14 @@ import {
   useLoginFollower,
   useLoginStatus,
   useStartLogin,
+  useWorkspace,
 } from '../../lib/queries';
 import { workspaceHost } from '../../lib/workspaceName';
 import { METHOD_LABEL } from '../connect/connection';
 import { EmailCodeTip, SignInFailed, SignInSteps } from '../connect/SignInSteps';
 import { timeAgo } from '../home/runs';
 import { AlertIcon, CheckIcon, LogOutIcon, PlugIcon, SyncIcon } from '../icons';
+import { WorkspaceIcon } from '../layout/WorkspaceIcon';
 import { Button } from '../ui/Button';
 import { Callout } from '../ui/Callout';
 import { Card } from '../ui/Card';
@@ -50,6 +52,7 @@ export function ConnectionCard({ connection }: { connection: SlackConnectionDTO 
   const justConnected = follower.followed && state === 'connected' && connection.connected && !connection.expired;
   const hasAccount = connection.connected || connection.teamId != null;
   const teamName = connection.teamName || workspaceHost(connection.teamDomain) || 'Your Slack workspace';
+  const teamIcon = useWorkspace().data?.teamIcon;
   const host = workspaceHost(connection.teamDomain);
 
   const signIn = () =>
@@ -102,12 +105,7 @@ export function ConnectionCard({ connection }: { connection: SlackConnectionDTO 
         {hasAccount ? (
           <div className="flex flex-col gap-4">
             <div className="flex items-start gap-3">
-              <span
-                aria-hidden="true"
-                className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent text-lg font-bold text-accent-ink"
-              >
-                {teamName.charAt(0).toUpperCase()}
-              </span>
+              <WorkspaceIcon name={teamName} icon={teamIcon} className="size-11 rounded-xl text-lg" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[15px] font-semibold text-ink">{teamName}</p>
                 {host && <p className="truncate text-[13px] text-ink-muted">{host}</p>}

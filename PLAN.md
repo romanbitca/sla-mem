@@ -259,6 +259,29 @@ Each item is also corrected where it belongs in this document.
   for someone with 53k messages (their conversations: 84 ms without it), the list 38 ms, both
   checked by `npm run bench`; it is partial because as a full index SQLite preferred it, being
   narrower, and sorted where it used to read in order.
+- **Sync every week, 2 weeks or month (0.3.7, §5.3):** the owner wants as few requests to Slack
+  as possible, spread out in time, and colleagues won't keep the app open. Settings → Sync offers
+  **Every week** (the default), **Every 2 weeks**, **Every month** and **Manual only**; the old
+  schedules (every 15 minutes, hour, 6 hours, daily) become weekly. None of them loses a message:
+  each sync reads every conversation from 7 days before its newest saved message, and Slack Free
+  shows a message for 90 days, so one sync in those 90 days keeps it for good. A replay of the
+  owner's 90 days (7,582 messages, 1,649 thread replies) against the sync rules missed nothing at
+  intervals from 6 hours to 7 days; from 10 days on it missed replies to threads that had been
+  quiet for 10–13 days (up to 3 at 10 days, 9 at 14, 14 at three weeks or more), because the
+  active-thread recheck counted its 21 days back from now. It now counts them from the
+  conversation's previous sync (§5.2), and the replay misses nothing up to 85 days. Requests per
+  person, with the app running on weekdays from 9 to 18: about 5,700 a week hourly (the old
+  default), 660 daily, 160 weekly, 100 every two weeks, 50 monthly; a sync costs 130–220 requests
+  whatever the gap, since it reads each conversation once. No schedule saves a message deleted
+  before the next sync: Slack returns nothing for it. A sync found overdue at start-up or on waking
+  waits a random 0–30 minutes (on top of the 10 s), drawn once, so computers opened at 9:00 don't
+  all sync then; a scheduled sync that fails (offline, Slack down) is tried again within 6 hours
+  rather than an interval later; the warning that syncing has stopped comes after 45 days (30 would
+  appear on every monthly schedule). Sync now is unchanged.
+- **Workspace logo (0.3.7, §8.2):** the sidebar and Settings → Slack connection show the
+  workspace's own icon from `team.info` (read on every sync, kept in `meta.team_icon`) instead of
+  its initial. The initial stays when the workspace has only Slack's generated icon, until the
+  first sync after updating, and when the image can't load (offline).
 - **Export conversation (Stage 8 nicety):** built as Markdown only (day headings, threads as
   quotes, edits, deletions, attachments and reactions noted). Markdown opens in any editor and
   renders in most viewers, so the HTML variant was left out.
@@ -817,7 +840,9 @@ A sync run:
      every page** — de-duplicate.
    - **Active-thread recheck**: threads whose `latest_reply` is within the last N days (default 21)
      but whose parent fell outside the history window still receive new replies. Re-poll those with
-     `conversations.replies` (`oldest = stored latest_reply`).
+     `conversations.replies` (`oldest = stored latest_reply`). *(As built, 0.3.7: the N days are
+     counted back from the conversation's previous sync, not from now, so a sync weeks after the
+     last one still checks the threads that were active then; see §0.3.)*
    - Per-conversation errors (`not_in_channel`, `channel_not_found`, `missing_scope`) are recorded
      in `sync_state.last_error`; **the run continues**. Only auth errors abort the whole run.
    - *(As built)* **Every conversation is read on every sync.** Reading one costs at least one
@@ -841,12 +866,17 @@ Everything honours an `AbortSignal` so "Cancel" is instant and keeps what is alr
 ### 5.3 Scheduling
 
 - Default: sync **every hour** while the app is running, plus once ~10 s after launch if the last
-  successful sync is older than the interval.
-- Settings offer: Manual only / 15 min / 1 hour / 6 hours / Daily.
+  successful sync is older than the interval. *(As built, 0.3.7: **every week**, and an overdue
+  sync waits a random 0–30 minutes more, drawn once; see §0.3.)*
+- Settings offer: Manual only / 15 min / 1 hour / 6 hours / Daily. *(As built, 0.3.7: Every week /
+  Every 2 weeks / Every month / Manual only.)*
 - Only one run at a time. A second request returns "already running".
+- *(As built, 0.3.7)* A scheduled sync that fails is tried again within 6 hours, and at the next
+  wake, rather than an interval later.
 - **Because the Free plan window is 90 days, a user who doesn't open the app for 3 months loses
   that period permanently.** Therefore: launch at login (opt-in during onboarding, default **on**),
-  run in the tray, and warn in the UI when the last sync is more than 30 days old.
+  run in the tray, and warn in the UI when the last sync is more than 30 days old. *(As built,
+  0.3.7: 45 days, so a monthly schedule doesn't raise it every month.)*
 - *(As built)* A launch at login starts hidden in the tray. Electron 44 removed `openAsHidden`,
   so the app registers a plain login item and checks `wasOpenedAtLogin` on macOS (and a
   `--hidden` argument on Windows).
@@ -1033,7 +1063,8 @@ Familiar to anyone who has used Slack, but clearly a *reader*:
   collapsible with a filter box; message counts; archived channels dimmed. *(As built: Overview
   and a Search item that opens the search screen instead of a box in the sidebar, Ask AI and
   People, then one filter box for all the conversations, with a clear button while it holds text; at the bottom the sync
-  status as plain text beside the Settings gear; see §0.3.)*
+  status as plain text beside the Settings gear; at the top the workspace's logo, or its initial
+  when it has none; see §0.3.)*
 - **Conversation view**: day dividers (sticky, opaque — must not overlap message content),
   consecutive messages from the same author within 5 minutes grouped, avatars, timestamps with full
   date on hover, "(edited)" with a revisions popover, "deleted in Slack" badge, reactions with
@@ -1068,6 +1099,7 @@ Familiar to anyone who has used Slack, but clearly a *reader*:
 - **Slack connection**: workspace + account, "Reconnect", "Disconnect" (with a confirm that says
   clearly: *your archive stays, only the Slack login is removed*).
 - **Sync**: how often (Manual / 15 min / Hourly / 6 hours / Daily); "Start at login".
+  *(As built, 0.3.7: Every week (default) / Every 2 weeks / Every month / Manual only.)*
   *(As built: "Start at login" and the menu bar icon are in a separate **App** card.)*
 - **Attachments**: `None` / `Images & documents up to 25 MB` (**default**) / `Everything up to 200 MB`
   — see §10.4 for why.

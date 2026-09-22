@@ -15,20 +15,20 @@ export interface ScheduleOption {
 }
 
 export const SCHEDULE_OPTIONS: readonly ScheduleOption[] = [
+  { value: 10_080, label: 'Every week' },
+  { value: 20_160, label: 'Every 2 weeks' },
+  { value: 43_200, label: 'Every month' },
   { value: 0, label: 'Manual only' },
-  { value: 15, label: 'Every 15 minutes' },
-  { value: 60, label: 'Every hour' },
-  { value: 360, label: 'Every 6 hours' },
-  { value: 1440, label: 'Daily' },
 ];
 
-/** "Every hour", or "Every 30 minutes" for a value that isn't one of the choices. */
+/** "Every week", or "Every 3 days" for a value that isn't one of the choices. */
 export function intervalLabel(minutes: number): string {
   const preset = SCHEDULE_OPTIONS.find((o) => o.value === minutes);
   if (preset) return preset.label;
-  if (minutes % 1440 === 0) return `Every ${minutes / 1440} days`;
-  if (minutes % 60 === 0) return `Every ${minutes / 60} hours`;
-  return `Every ${minutes} minutes`;
+  const every = (n: number, unit: string) => (n === 1 ? `Every ${unit}` : `Every ${n} ${unit}s`);
+  if (minutes % 1440 === 0) return every(minutes / 1440, 'day');
+  if (minutes % 60 === 0) return every(minutes / 60, 'hour');
+  return every(minutes, 'minute');
 }
 
 export interface AttachmentOption {

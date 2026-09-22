@@ -308,7 +308,7 @@ describe('preferences', () => {
     const file = path.join(dir, 'config.json');
     const prefs = new Preferences(file);
     expect(prefs.get()).toMatchObject({
-      syncIntervalMinutes: 60,
+      syncIntervalMinutes: 10_080,
       attachmentPolicy: 'standard',
       overlapDays: 7,
       launchAtLogin: true,
@@ -316,23 +316,34 @@ describe('preferences', () => {
     });
     const changes: unknown[] = [];
     prefs.on('changed', (p) => changes.push(p));
-    prefs.update({ syncIntervalMinutes: 15, attachmentPolicy: 'everything' });
+    prefs.update({ syncIntervalMinutes: 43_200, attachmentPolicy: 'everything' });
     expect(changes).toHaveLength(1);
-    prefs.update({ syncIntervalMinutes: 15 });
+    prefs.update({ syncIntervalMinutes: 43_200 });
     expect(changes).toHaveLength(1); // no-op
     expect(() => prefs.update({ syncIntervalMinutes: 7 })).toThrow(/how often/);
+    expect(() => prefs.update({ syncIntervalMinutes: 60 })).toThrow(/how often/); // hourly is gone
     expect(() => prefs.update({ nonsense: true })).toThrow(/Unknown setting/);
     expect(prefs.get().aiModel).toBe('claude-sonnet-5');
     prefs.update({ aiModel: 'claude-haiku-4-5' });
     expect(() => prefs.update({ aiModel: 'gpt-5' })).toThrow(/model from the list/);
     expect(new Preferences(file).get()).toMatchObject({
-      syncIntervalMinutes: 15,
+      syncIntervalMinutes: 43_200,
       attachmentPolicy: 'everything',
       aiModel: 'claude-haiku-4-5',
     });
     fs.writeFileSync(file, '{broken');
-    expect(new Preferences(file).get().syncIntervalMinutes).toBe(60);
+    expect(new Preferences(file).get().syncIntervalMinutes).toBe(10_080);
     expect(fs.readdirSync(dir).some((f) => f.startsWith('config.json.corrupt-'))).toBe(true);
+  });
+
+  it('turns the schedules before 0.3.7 (every 15 minutes to daily) into weekly; manual stays manual', () => {
+    const file = path.join(dir, 'config.json');
+    for (const old of [15, 60, 360, 1440]) {
+      fs.writeFileSync(file, JSON.stringify({ preferences: { syncIntervalMinutes: old } }));
+      expect(new Preferences(file).get().syncIntervalMinutes).toBe(10_080);
+    }
+    fs.writeFileSync(file, JSON.stringify({ preferences: { syncIntervalMinutes: 0 } }));
+    expect(new Preferences(file).get().syncIntervalMinutes).toBe(0);
   });
 });
 

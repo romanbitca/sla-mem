@@ -587,16 +587,24 @@ describe('stats and workspace meta', () => {
 
   it('reads workspace meta', () => {
     const db = memDb();
-    expect(getWorkspaceMeta(db)).toEqual({ teamId: null, teamName: null, teamDomain: null, selfUserId: null });
+    expect(getWorkspaceMeta(db)).toEqual({
+      teamId: null,
+      teamName: null,
+      teamDomain: null,
+      selfUserId: null,
+      teamIcon: null,
+    });
     setMeta(db, 'team_id', 'T1');
     setMeta(db, 'team_name', '9hdigital');
     setMeta(db, 'team_domain', '9hdigital');
     setMeta(db, 'self_user_id', 'U1');
+    setMeta(db, 'team_icon', 'https://avatars.slack-edge.com/9h_132.png');
     expect(getWorkspaceMeta(db)).toEqual({
       teamId: 'T1',
       teamName: '9hdigital',
       teamDomain: '9hdigital',
       selfUserId: 'U1',
+      teamIcon: 'https://avatars.slack-edge.com/9h_132.png',
     });
   });
 });

@@ -28,6 +28,7 @@ import { IconButton } from '../ui/IconButton';
 import { Kbd, modKeyLabel } from '../ui/Kbd';
 import { Spinner } from '../ui/Spinner';
 import { SyncIndicator } from './SyncIndicator';
+import { WorkspaceIcon } from './WorkspaceIcon';
 
 type SectionId = 'channels' | 'dms' | 'groups';
 
@@ -139,9 +140,7 @@ export function Sidebar({ syncStatus, syncError, onClose, className, inert }: Si
       inert={inert || undefined}
     >
       <div className="flex h-14 shrink-0 items-center gap-2 px-3">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-sm font-bold text-accent-ink">
-          {teamName.charAt(0).toUpperCase()}
-        </span>
+        <WorkspaceIcon name={teamName} icon={workspace?.teamIcon} className="size-8 rounded-lg text-sm" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm leading-tight font-semibold text-ink">{teamName}</p>
           <p className="truncate text-[11px] leading-tight text-ink-faint">{host || 'Local archive'}</p>

@@ -89,8 +89,11 @@ describe('settings helpers', () => {
 
   it('labels schedules, attachment choices and cleanup ages in words', () => {
     expect(intervalLabel(0)).toBe('Manual only');
+    expect(intervalLabel(10_080)).toBe('Every week');
+    expect(intervalLabel(43_200)).toBe('Every month');
+    expect(intervalLabel(1440)).toBe('Every day');
+    expect(intervalLabel(4320)).toBe('Every 3 days');
     expect(intervalLabel(60)).toBe('Every hour');
-    expect(intervalLabel(1440)).toBe('Daily');
     expect(intervalLabel(120)).toBe('Every 2 hours');
     expect(ATTACHMENT_OPTIONS.map((o) => o.label)).toEqual([
       'Don’t download attachments',
@@ -179,15 +182,14 @@ describe('Settings — sync and attachments', () => {
     const sync = await card('Sync');
     const select = within(sync).getByLabelText('How often to sync') as HTMLSelectElement;
     expect([...select.options].map((o) => o.textContent)).toEqual([
+      'Every week',
+      'Every 2 weeks',
+      'Every month',
       'Manual only',
-      'Every 15 minutes',
-      'Every hour',
-      'Every 6 hours',
-      'Daily',
     ]);
-    expect(select.value).toBe('60');
-    fireEvent.change(select, { target: { value: '360' } });
-    await waitFor(() => expect(update).toHaveBeenCalledWith({ syncIntervalMinutes: 360 }));
+    expect(select.value).toBe('10080');
+    fireEvent.change(select, { target: { value: '43200' } });
+    await waitFor(() => expect(update).toHaveBeenCalledWith({ syncIntervalMinutes: 43_200 }));
     expect(await within(sync).findByText('Saved')).toBeTruthy();
 
     // Starting at login is about the app, not syncing: it lives in the App card.
@@ -220,9 +222,9 @@ describe('Settings — sync and attachments', () => {
     setup();
     const sync = await card('Sync');
     const select = within(sync).getByLabelText('How often to sync') as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: '15' } });
+    fireEvent.change(select, { target: { value: '20160' } });
     expect(await within(sync).findByText('Couldn’t save: That schedule isn’t possible.')).toBeTruthy();
-    await waitFor(() => expect(select.value).toBe('60'));
+    await waitFor(() => expect(select.value).toBe('10080'));
   });
 
   it('chooses which attachments to keep, with the note about Slack’s 90 days', async () => {

@@ -173,7 +173,7 @@ function checkOwner(db: DB): void {
     );
   }
   // A fresh archive becomes the backup owner's.
-  for (const key of ['team_id', 'team_name', 'team_domain', 'self_user_id']) {
+  for (const key of ['team_id', 'team_name', 'team_domain', 'team_icon', 'self_user_id']) {
     const value = bkMeta(db, key);
     if (value != null) setMeta(db, key, value);
   }

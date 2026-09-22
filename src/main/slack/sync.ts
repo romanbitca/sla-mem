@@ -1,5 +1,6 @@
 import path from 'node:path';
 import {
+  deleteMeta,
   getConversation,
   getMeta,
   getSyncState,
@@ -14,7 +15,7 @@ import {
   type DB,
 } from '../db';
 import type { AttachmentPolicy, ConversationDTO, SyncProgress } from '../../shared/types';
-import type { AuthTestResponse, EmojiListResponse, TeamInfoResponse } from './api-types';
+import type { AuthTestResponse, EmojiListResponse, TeamIcon, TeamInfoResponse } from './api-types';
 import { SlackClient, redactSlackSecrets, type SlackClientOptions } from './client';
 import { emptyConversationResult, syncConversation, type ConversationSyncResult } from './conversation-sync';
 import { SlackApiError, SlackHttpError, WrongAccountError, isFatalAuthError, toFatalAuthError } from './errors';
@@ -55,7 +56,10 @@ export interface ApiSyncOptions {
    * reactions and thread activity (PLAN §5.2: 3 days is too short). Default 7 days.
    */
   overlapSeconds?: number;
-  /** Threads whose latest reply is newer than this are re-polled on every sync. Default 21. */
+  /**
+   * Threads with a reply within this many days before a conversation's previous sync (or since)
+   * are re-checked on every sync, even when their parent is older than the pages read. Default 21.
+   */
   threadRecheckDays?: number;
   /** Client tuning (tests disable pacing and inject sleep). */
   clientOptions?: Omit<Partial<SlackClientOptions>, 'token' | 'cookie' | 'baseUrl' | 'fetch' | 'log' | 'signal'>;
@@ -254,15 +258,44 @@ async function syncUsers(ctx: SyncContext): Promise<void> {
   await refreshTeamInfo(ctx);
 }
 
-/** team.info has the canonical name/domain; optional (ignore errors, PLAN §2.5). */
+/** team.info has the canonical name, domain and icon; optional (ignore errors, PLAN §2.5). */
 async function refreshTeamInfo(ctx: SyncContext): Promise<void> {
   try {
     const info = await ctx.client.call<TeamInfoResponse>('team.info');
     if (info.team?.name) setMeta(ctx.db, 'team_name', info.team.name);
     if (info.team?.domain) setMeta(ctx.db, 'team_domain', info.team.domain);
+    if (info.team?.icon) {
+      const icon = teamIconUrl(info.team.icon);
+      if (icon) setMeta(ctx.db, 'team_icon', icon);
+      else deleteMeta(ctx.db, 'team_icon');
+    }
   } catch (err) {
     if (!isIgnorable(err)) throw err;
   }
+}
+
+/** Sizes to try, best for the sidebar's 32 px and Settings' 44 px at 2× first. */
+const TEAM_ICON_SIZES = [
+  'image_132',
+  'image_102',
+  'image_88',
+  'image_230',
+  'image_68',
+  'image_44',
+  'image_34',
+] as const;
+
+/**
+ * The workspace's own logo as an https URL, or null when it has none: Slack's generated default
+ * (initials on a colour) adds nothing over the app's own initial.
+ */
+export function teamIconUrl(icon: TeamIcon): string | null {
+  if (icon.image_default) return null;
+  for (const size of TEAM_ICON_SIZES) {
+    const url = icon[size];
+    if (typeof url === 'string' && /^https:\/\/[^\s]+$/i.test(url)) return url;
+  }
+  return null;
 }
 
 async function syncConversationList(ctx: SyncContext, selfUserId: string): Promise<SlackConversation[]> {

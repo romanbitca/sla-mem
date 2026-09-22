@@ -3,6 +3,7 @@
  * through an injected `fetch`. It paginates fixtures with cursors like Slack does, hides history
  * beyond a Free-plan window, and can inject 429s, 5xx, network errors and Slack error codes.
  */
+import type { TeamIcon } from './api-types';
 import type { SlackConversation, SlackMessage, SlackUser } from './types';
 
 export const FAKE_TOKEN = 'xoxp-1111-2222-fake-token-do-not-log';
@@ -43,7 +44,11 @@ export interface RecordedDownload {
 export class FakeSlack {
   token = FAKE_TOKEN;
   baseUrl = FAKE_BASE_URL;
-  team = { id: 'T0001', name: '9hdigital', domain: '9hdigital' };
+  team: { id: string; name: string; domain: string; icon?: TeamIcon } = {
+    id: 'T0001',
+    name: '9hdigital',
+    domain: '9hdigital',
+  };
   selfUserId = 'USELF';
   /** Server-side page size cap, so small fixtures still paginate. */
   pageSize = 200;

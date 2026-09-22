@@ -1,18 +1,24 @@
 import { EventEmitter } from 'node:events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { conflict } from './errors';
-import { Scheduler } from './scheduler';
+import { RETRY_CHECK_MS, Scheduler } from './scheduler';
 import type { SchedulerRuns } from './scheduler';
 
 const MIN = 60_000;
+const DAY = 24 * 60 * MIN;
+const WEEK = 7 * 24 * 60;
 const T0 = Date.UTC(2026, 0, 5, 9, 0, 0);
 
-/** In-memory stand-in for RunManager: startSync "completes" instantly and records a success. */
+/**
+ * In-memory stand-in for RunManager: startSync "completes" instantly and records a success, or
+ * a failure (no new success) while `failing` is set.
+ */
 function fakeRuns(opts: { lastSuccess?: number | null; blocked?: string | null } = {}) {
   const state = {
     lastSuccess: opts.lastSuccess ?? null,
     blocked: opts.blocked ?? null,
     running: false,
+    failing: false,
     nextRunAt: null as number | null,
     starts: [] as number[],
     startError: null as Error | null,
@@ -27,7 +33,7 @@ function fakeRuns(opts: { lastSuccess?: number | null; blocked?: string | null }
     startSync: () => {
       if (state.startError) throw state.startError;
       state.starts.push(Date.now());
-      state.lastSuccess = Date.now();
+      if (!state.failing) state.lastSuccess = Date.now();
       return state.starts.length;
     },
   };
@@ -169,6 +175,84 @@ describe('Scheduler', () => {
     expect(state.nextRunAt).toBe(lastSuccess + interval * MIN);
     await vi.advanceTimersByTimeAsync(10 * 24 * 60 * MIN);
     expect(state.starts).toHaveLength(1);
+  });
+
+  it('tries a failed sync again within six hours, even on a monthly schedule', async () => {
+    const { runs, state } = fakeRuns({ lastSuccess: T0 - 40 * DAY });
+    state.failing = true; // e.g. the Wi-Fi isn't up yet
+    scheduler(runs, 30 * 24 * 60).start();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(state.starts).toEqual([T0 + 10_000]);
+    expect(state.nextRunAt).toBe(T0 + 10_000 + 30 * DAY);
+
+    state.failing = false;
+    await vi.advanceTimersByTimeAsync(RETRY_CHECK_MS);
+    expect(state.starts).toEqual([T0 + 10_000, T0 + 10_000 + RETRY_CHECK_MS]);
+  });
+
+  it('after a sync that went fine, the six-hour check only waits for the due time', async () => {
+    const { runs, state } = fakeRuns({ lastSuccess: T0 - 8 * DAY });
+    scheduler(runs, WEEK).start();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(state.starts).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(RETRY_CHECK_MS);
+    expect(state.starts).toHaveLength(1);
+    expect(state.nextRunAt).toBe(T0 + 10_000 + 7 * DAY);
+    await vi.advanceTimersByTimeAsync(7 * DAY - RETRY_CHECK_MS);
+    expect(state.starts).toHaveLength(2);
+  });
+});
+
+describe('Scheduler catch-up spread', () => {
+  function spread(opts: { lastSuccess?: number | null; random?: number } = {}) {
+    const { runs, state } = fakeRuns(opts);
+    const s = new Scheduler({
+      runs,
+      intervalMinutes: WEEK,
+      catchUpSpreadMs: 30 * MIN,
+      random: () => opts.random ?? 0.5,
+    });
+    schedulers.push(s);
+    return { s, state };
+  }
+
+  it('waits a random while before an overdue sync, so computers opening together don’t sync together', async () => {
+    const { s, state } = spread({ lastSuccess: T0 - 8 * DAY, random: 0.5 });
+    s.start();
+    expect(state.nextRunAt).toBe(T0 + 10_000 + 15 * MIN);
+    await vi.advanceTimersByTimeAsync(10_000 + 15 * MIN - 1);
+    expect(state.starts).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(state.starts).toHaveLength(1);
+  });
+
+  it('draws the wait once: a computer that slept through it syncs soon after waking', async () => {
+    const { s, state } = spread({ lastSuccess: T0 - 8 * DAY, random: 0.9 });
+    s.start();
+    const planned = T0 + 10_000 + 27 * MIN;
+    expect(state.nextRunAt).toBe(planned);
+
+    // Woke briefly before the planned time: the same wait stands.
+    vi.setSystemTime(T0 + 5 * MIN);
+    s.wake();
+    expect(state.nextRunAt).toBe(planned);
+
+    // Slept past it: no new wait, just the short delay.
+    vi.setSystemTime(T0 + 3 * 60 * MIN);
+    s.wake();
+    expect(state.nextRunAt).toBe(T0 + 3 * 60 * MIN + 10_000);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(state.starts).toHaveLength(1);
+  });
+
+  it('a sync that becomes due while the computer is awake starts on time', async () => {
+    const lastSuccess = T0 - 6 * DAY;
+    const { s, state } = spread({ lastSuccess, random: 0.9 });
+    s.start();
+    expect(state.nextRunAt).toBe(lastSuccess + 7 * DAY);
+    await vi.advanceTimersByTimeAsync(DAY);
+    expect(state.starts).toEqual([lastSuccess + 7 * DAY]);
   });
 });
 

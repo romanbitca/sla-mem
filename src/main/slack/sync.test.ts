@@ -20,7 +20,7 @@ import {
 import type { SyncProgress } from '../../shared/types';
 import { SlackApiError, SlackHttpError } from './errors';
 import { FAKE_BASE_URL, FAKE_TOKEN, FakeSlack, fakeClock } from './fake-slack';
-import { runApiSync, statsFromError, teamDomainFromUrl, type ApiSyncOptions } from './sync';
+import { runApiSync, statsFromError, teamDomainFromUrl, teamIconUrl, type ApiSyncOptions } from './sync';
 import type { SlackMessage } from './types';
 import { subtractSeconds } from './util';
 
@@ -132,6 +132,7 @@ describe('first sync', () => {
       teamName: '9hdigital',
       teamDomain: '9hdigital',
       selfUserId: 'USELF',
+      teamIcon: null,
     });
     expect(listUsers(db)).toHaveLength(4);
     expect(getConversation(db, 'D1')).toMatchObject({ type: 'im', dmUserId: 'U1' });
@@ -362,6 +363,25 @@ describe('threads', () => {
     expect(calls.filter((c) => c.method === 'conversations.replies').map((c) => c.params.ts)).toEqual([fresh]);
     expect(stats.revisions).toBe(1);
     expect(getMessageRevisions(db, 'C1', reply.ts).map((r) => r.text)).toEqual(['teh answer']);
+  });
+
+  it('still checks the threads that were active at the last sync when the next one is a month later', async () => {
+    const parent = ts(10 * DAY);
+    fake.addMessage('C1', msg(parent, 'question from last week'));
+    fake.addReply('C1', parent, msg(ts(9 * DAY), 'first answer'));
+    fake.addMessage('C1', msg(ts(30), 'recent'));
+    await sync({ overlapSeconds: 3600 });
+
+    // A month passes without a sync; the thread gets a reply the day before the next one. Counted
+    // from the new sync, its last reply (39 days back) is outside the 21 days; counted from the
+    // previous sync (9 days back) it isn't, so the thread is still checked.
+    const later = NOW + 30 * DAY * 60_000;
+    fake.now = () => later;
+    fake.addReply('C1', parent, msg(ts(-29 * DAY), 'answer a month later'));
+    const stats = await sync({ overlapSeconds: 3600, now: () => later });
+
+    expect(stats.threadsFetched).toBe(1);
+    expect(getThread(db, 'C1', parent).replies.map((r) => r.text)).toEqual(['first answer', 'answer a month later']);
   });
 
   it('fetches a dormant thread when a broadcast reply shows up in history', async () => {
@@ -619,6 +639,25 @@ describe('options and extras', () => {
     expect(getFileRow(db, 'F2')!.download_status).toBe('unavailable');
     expect(fs.readFileSync(path.join(filesDir, 'F1', 'plan.pdf'), 'utf8')).toBe('%PDF plan');
     expect(progress.some((p) => p.phase === 'files' && p.current === 1 && p.total === 1)).toBe(true);
+  });
+
+  it('keeps the workspace logo from team.info, and drops it when Slack’s generated icon is back', async () => {
+    const logo = 'https://avatars.slack-edge.com/2024-01-01/9h_132.png';
+    fake.team.icon = { image_44: 'https://avatars.slack-edge.com/2024-01-01/9h_44.png', image_132: logo };
+    await sync();
+    expect(getWorkspaceMeta(db).teamIcon).toBe(logo);
+
+    fake.team.icon = { image_132: 'https://a.slack-edge.com/default_132.png', image_default: true };
+    await sync();
+    expect(getWorkspaceMeta(db).teamIcon).toBeNull();
+  });
+
+  it('picks the sharpest https logo size', () => {
+    expect(
+      teamIconUrl({ image_34: 'https://x.slack-edge.com/34.png', image_88: 'https://x.slack-edge.com/88.png' }),
+    ).toBe('https://x.slack-edge.com/88.png');
+    expect(teamIconUrl({ image_132: 'javascript:alert(1)', image_68: 'http://x.slack-edge.com/68.png' })).toBeNull();
+    expect(teamIconUrl({})).toBeNull();
   });
 
   it('parses the team domain from auth.test urls', () => {
