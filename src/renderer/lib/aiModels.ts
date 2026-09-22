@@ -1,11 +1,11 @@
 import type { AiModel, AiUsageDTO } from '../../shared/types';
 import { formatCount } from './format';
 
-/** How Settings and the Ask AI screen name each model. Prices relative to Opus (Anthropic's list). */
+/** How Settings and the Ask AI screen name each model (prices from Anthropic's list). */
 export const AI_MODEL_INFO: Record<AiModel, { name: string; note: string }> = {
-  'claude-opus-5': { name: 'Claude Opus 5', note: 'best answers' },
-  'claude-sonnet-5': { name: 'Claude Sonnet 5', note: 'faster, 40% of the price' },
-  'claude-haiku-4-5': { name: 'Claude Haiku 4.5', note: 'fastest, 20% of the price' },
+  'claude-sonnet-5': { name: 'Claude Sonnet 5', note: 'recommended' },
+  'claude-haiku-4-5': { name: 'Claude Haiku 4.5', note: 'fastest, half the price' },
+  'claude-opus-5': { name: 'Claude Opus 5', note: 'smartest, most expensive' },
 };
 
 /** "Claude Opus 5 · 8.1k tokens · $0.03" under an answer. */

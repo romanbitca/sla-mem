@@ -424,11 +424,11 @@ export type AttachmentPolicy = 'none' | 'standard' | 'everything';
 export type ThemePreference = 'system' | 'light' | 'dark';
 
 /**
- * The Claude model Ask AI uses (paid for by the reader's own Anthropic API key). Opus writes the
- * best answers; Sonnet and Haiku are faster and cheaper.
+ * The Claude model Ask AI uses (paid for by the reader's own Anthropic API key). Sonnet is the
+ * default; Haiku is faster and cheaper, Opus smarter and the most expensive (2.5 times Sonnet).
  */
-export type AiModel = 'claude-opus-5' | 'claude-sonnet-5' | 'claude-haiku-4-5';
-export const AI_MODELS: readonly AiModel[] = ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5'];
+export type AiModel = 'claude-sonnet-5' | 'claude-haiku-4-5' | 'claude-opus-5';
+export const AI_MODELS: readonly AiModel[] = ['claude-sonnet-5', 'claude-haiku-4-5', 'claude-opus-5'];
 
 export interface PreferencesDTO {
   syncIntervalMinutes: SyncInterval;

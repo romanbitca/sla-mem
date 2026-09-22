@@ -322,7 +322,7 @@ describe('preferences', () => {
     expect(changes).toHaveLength(1); // no-op
     expect(() => prefs.update({ syncIntervalMinutes: 7 })).toThrow(/how often/);
     expect(() => prefs.update({ nonsense: true })).toThrow(/Unknown setting/);
-    expect(prefs.get().aiModel).toBe('claude-opus-5');
+    expect(prefs.get().aiModel).toBe('claude-sonnet-5');
     prefs.update({ aiModel: 'claude-haiku-4-5' });
     expect(() => prefs.update({ aiModel: 'gpt-5' })).toThrow(/model from the list/);
     expect(new Preferences(file).get()).toMatchObject({

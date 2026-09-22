@@ -187,14 +187,17 @@ Each item is also corrected where it belongs in this document.
   Claude answers with numbered citations that open the message beside the chat (or its
   conversation, with a way back), like search results. It uses the reader's own Anthropic API key
   (Settings → Ask AI: checked with Anthropic before saving, kept encrypted with the OS keychain like
-  the Slack session, never shown again) and the model chosen there (Claude Opus 5 by default,
-  Sonnet 5 or Haiku 4.5 for speed and price). Claude works through four local tools (search with
+  the Slack session, never shown again) and the model chosen there (Claude Sonnet 5 by default,
+  Haiku 4.5 for speed and half the price, Opus 5 for hard questions: Settings warns that it costs
+  about 2.5 times as much). Answers come in the language of the question, whatever language the
+  messages are in. Claude works through four local tools (search with
   Slack syntax, open a message with its thread or surroundings, read a conversation over a period,
   list the busiest conversations); only their compact text, the question and the answer travel,
   and only while a question is answered: this is the one exception to "the only network traffic is
   Slack" (§1.2), and it happens only once the reader adds a key. The "In", "From" and "Date" buttons
   under the question box limit a question; the tools can't look outside the limits. Kept cheap and
-  quick: low effort, the prompt cache, compact tool text and a round limit; each answer shows its
+  quick: medium effort (low made 1–3 cent answers in 10–24 s on Sonnet 5, but searched in the
+  wrong language), the prompt cache, compact tool text and a round limit; each answer shows its
   tokens and cost. Chats live in memory only (New chat forgets one; quitting forgets all); logs say
   what an answer cost, never what was asked. `npm run mock:claude` plus `SLA_MEM_ANTHROPIC_API`
   (development builds only) stand in for Anthropic without a key.

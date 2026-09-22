@@ -329,9 +329,10 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
  * word that earlier limits are gone.
  */
 function withLimits(question: string, limits: string | null, told: string | null): string {
-  if (limits)
-    return `[The user limited this question to: ${limits}. The tools only look within these limits.]\n\n${question}`;
-  if (told) return `[No limits any more: the whole archive.]\n\n${question}`;
+  if (limits) {
+    return `[Note from Slamem, not the user: they limited this question to ${limits}. The tools only look within these limits.]\n\n${question}`;
+  }
+  if (told) return `[Note from Slamem, not the user: no limits any more, the whole archive.]\n\n${question}`;
   return question;
 }
 

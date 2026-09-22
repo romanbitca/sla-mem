@@ -3,7 +3,9 @@
  * can answer (a few rounds at most), and the answer streams to the window as it is written.
  *
  * Cost and speed (the reader pays with their own API key):
- *  - effort "low" on the models that take it: fewer, better-aimed tool calls and a short answer;
+ *  - effort "medium" on the models that take it: enough thinking to search well and check what it
+ *    found (on real questions "low" ran 3 to 13 tool calls for 1 to 3 cents on Sonnet 5), without
+ *    the cost of "high";
  *  - the prompt cache: the instructions, tools and the chat so far are sent unchanged every
  *    round, so after the first round they are read from cache at a tenth of the price;
  *  - tool results are compact text (tools.ts), and a round limit stops a runaway search.
@@ -20,9 +22,9 @@ import type { AiModel } from '../../shared/types';
 import { TOOLS, type ToolOutcome } from './tools';
 
 /** Tool rounds before Claude is asked to answer with what it has. */
-export const MAX_TOOL_ROUNDS = 8;
-/** Per response, thinking included; answers are short, this only stops a runaway. */
-const MAX_TOKENS = 8_192;
+export const MAX_TOOL_ROUNDS = 10;
+/** Per response, thinking included: room to think, while still stopping a runaway. */
+const MAX_TOKENS = 16_000;
 
 export interface TokenUsage {
   input: number;
@@ -115,19 +117,22 @@ export async function runTurn(o: TurnOptions, usage: TokenUsage = emptyUsage()):
   }
 }
 
+/** How hard Claude thinks before each step (Sonnet 5 and Opus 5; Haiku 4.5 has no such setting). */
+export const EFFORT = 'medium' as const;
+
 /**
  * What each model is asked for. Thinking stays on where it is the default (turning it off makes
- * Opus 5 worse at tool calls); low effort keeps it short. Haiku 4.5 takes neither setting.
+ * Opus 5 worse at tool calls), at EFFORT. Haiku 4.5 takes neither setting.
  */
 function modelOptions(model: AiModel, fallbacks: boolean) {
   switch (model) {
+    case 'claude-sonnet-5':
+      return { thinking: { type: 'adaptive' as const }, output_config: { effort: EFFORT } };
     case 'claude-opus-5':
       return {
-        output_config: { effort: 'low' as const },
+        output_config: { effort: EFFORT },
         ...(fallbacks ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
       };
-    case 'claude-sonnet-5':
-      return { thinking: { type: 'adaptive' as const }, output_config: { effort: 'low' as const } };
     case 'claude-haiku-4-5':
       return {};
   }

@@ -204,7 +204,7 @@ export function makePreferences(overrides: Partial<PreferencesDTO> = {}): Prefer
     onboardingComplete: true,
     showTrayIcon: true,
     excludedConversationIds: [],
-    aiModel: 'claude-opus-5',
+    aiModel: 'claude-sonnet-5',
     ...overrides,
   };
 }

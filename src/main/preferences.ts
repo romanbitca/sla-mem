@@ -26,7 +26,7 @@ export const DEFAULT_PREFERENCES: Readonly<PreferencesDTO> = Object.freeze({
   onboardingComplete: false,
   showTrayIcon: true,
   excludedConversationIds: [],
-  aiModel: 'claude-opus-5',
+  aiModel: 'claude-sonnet-5',
 });
 
 /** App state that isn't a user preference but must survive restarts. */

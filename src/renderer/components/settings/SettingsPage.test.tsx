@@ -286,6 +286,22 @@ describe('Settings — Ask AI', () => {
     await waitFor(() => expect(patches).toHaveBeenCalledWith({ aiModel: 'claude-haiku-4-5' }));
   });
 
+  it('recommends Sonnet, and warns that Opus is the most expensive', async () => {
+    setup(makeSettings({ ai: { saved: true, hint: '0123' } }));
+    const ask = await card('Ask AI');
+    const model = within(ask).getByLabelText('Model') as HTMLSelectElement;
+    expect(model.value).toBe('claude-sonnet-5');
+    expect(Array.from(model.options).map((o) => o.textContent)).toEqual([
+      'Claude Sonnet 5 — recommended',
+      'Claude Haiku 4.5 — fastest, half the price',
+      'Claude Opus 5 — smartest, most expensive',
+    ]);
+    expect(within(ask).queryByText(/most expensive model/)).toBeNull();
+    acceptPatches(makeSettings({ ai: { saved: true, hint: '0123' } }));
+    fireEvent.change(model, { target: { value: 'claude-opus-5' } });
+    expect(await within(ask).findByText(/Opus is the most expensive model/)).toBeTruthy();
+  });
+
   it('opens the Anthropic Console to create a key', async () => {
     setup();
     const ask = await card('Ask AI');

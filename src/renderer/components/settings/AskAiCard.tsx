@@ -4,7 +4,7 @@ import { AI_MODEL_INFO } from '../../lib/aiModels';
 import { describeError } from '../../lib/api';
 import { useFlag } from '../../lib/hooks';
 import { useOpenExternal, useRemoveAiKey, useSaveAiKey, useUpdatePreferences } from '../../lib/queries';
-import { CheckIcon, ExternalLinkIcon, InfoIcon, KeyIcon, SparklesIcon, TrashIcon } from '../icons';
+import { AlertIcon, CheckIcon, ExternalLinkIcon, InfoIcon, KeyIcon, SparklesIcon, TrashIcon } from '../icons';
 import { Button } from '../ui/Button';
 import { Callout } from '../ui/Callout';
 import { Card } from '../ui/Card';
@@ -135,14 +135,26 @@ export function AskAiCard({ ai, model }: { ai: AiKeyStatusDTO; model: AiModel })
           labelId={ids.model}
           htmlFor={`${ids.model}-select`}
           descriptionId={ids.modelHint}
-          description="Opus writes the best answers. Sonnet and Haiku answer faster and cost less."
+          description={
+            model === 'claude-opus-5' ? (
+              <span className="inline-flex items-start gap-1 text-warn">
+                <AlertIcon size={13} className="mt-px shrink-0" />
+                <span>
+                  Opus is the most expensive model: each answer costs about 2.5 times as much as with Sonnet. Use it
+                  only now and then, for questions Sonnet can’t answer.
+                </span>
+              </span>
+            ) : (
+              'Sonnet gives the best balance of answers, speed and price. Haiku is faster and costs half as much.'
+            )
+          }
         >
           <Select
             id={`${ids.model}-select`}
             value={model}
             aria-describedby={ids.modelHint}
             onChange={(e) => update.mutate({ aiModel: e.target.value as AiModel }, { onSuccess: flashSaved })}
-            className="w-full sm:w-72"
+            className="w-full sm:w-84"
           >
             {AI_MODELS.map((m) => (
               <option key={m} value={m}>

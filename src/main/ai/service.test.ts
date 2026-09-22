@@ -126,7 +126,7 @@ describe('AiService: answering', () => {
     const end = await finished('turn-1');
     expect(end).toMatchObject({ type: 'done', stopped: false });
 
-    // What went to Anthropic: Opus at low effort, the tools, the prompt cache, refusal fallbacks.
+    // What went to Anthropic: Opus at medium effort, the tools, the prompt cache, refusal fallbacks.
     const [first, second] = posts();
     expect(first.path).toBe('/v1/messages');
     expect(first.headers['x-api-key']).toBe(KEY);
@@ -134,8 +134,8 @@ describe('AiService: answering', () => {
     expect(first.body).toMatchObject({
       model: 'claude-opus-5',
       stream: true,
-      max_tokens: 8192,
-      output_config: { effort: 'low' },
+      max_tokens: 16000,
+      output_config: { effort: 'medium' },
       fallbacks: 'default',
       cache_control: { type: 'ephemeral' },
       messages: [{ role: 'user', content: 'Who asked me about tests?' }],
@@ -143,6 +143,7 @@ describe('AiService: answering', () => {
     expect(first.body?.thinking).toBeUndefined();
     expect((first.body?.tools as { name: string }[]).map((t) => t.name)).toContain('search_messages');
     expect(first.body?.system).toContain('Today is');
+    expect(first.body?.system).toContain("in the language of the user's latest question");
 
     // The tool ran locally; its compact result went back with the assistant's turn unchanged.
     const messages = second.body?.messages as { role: string; content: unknown }[];
@@ -211,13 +212,13 @@ describe('AiService: answering', () => {
       {
         role: 'user',
         content:
-          '[The user limited this question to: #general; messages by Bob Brown; since 2026-09-01. The tools only look within these limits.]\n\nAnything?',
+          '[Note from Slamem, not the user: they limited this question to #general; messages by Bob Brown; since 2026-09-01. The tools only look within these limits.]\n\nAnything?',
       },
     ]);
     service.ask({ chatId: 'c', turnId: 't2', question: 'And now?' });
     await finished('t2');
     const last = (posts()[1].body?.messages as { content: string }[]).at(-1);
-    expect(last?.content).toBe('[No limits any more: the whole archive.]\n\nAnd now?');
+    expect(last?.content).toBe('[Note from Slamem, not the user: no limits any more, the whole archive.]\n\nAnd now?');
     service.ask({ chatId: 'c', turnId: 't3', question: 'Again?' });
     await finished('t3');
     expect((posts()[2].body?.messages as { content: string }[]).at(-1)?.content).toBe('Again?');
@@ -244,7 +245,10 @@ describe('AiService: answering', () => {
     const sonnet = setup(answer, { model: 'claude-sonnet-5' });
     sonnet.service.ask({ chatId: 'c', turnId: 't', question: 'Hi' });
     await sonnet.finished('t');
-    expect(sonnet.posts()[0].body).toMatchObject({ thinking: { type: 'adaptive' }, output_config: { effort: 'low' } });
+    expect(sonnet.posts()[0].body).toMatchObject({
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'medium' },
+    });
     expect(sonnet.posts()[0].body).not.toHaveProperty('fallbacks');
   });
 
