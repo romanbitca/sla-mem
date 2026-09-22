@@ -108,7 +108,8 @@ Each item is also corrected where it belongs in this document.
   `window.archive`, typed by `src/shared/ipc.ts`, with a result envelope carrying error codes.
 - **Schema (§4, Appendix B):** added `bots`, `conversation_stats`, `files.skip_reason`,
   `files.next_attempt_at`, `runs.problem`, `runs.pid`, and a different index set, measured at 300k
-  and 500k messages.
+  and 500k messages. Migration v2 (0.3.6, People) adds one partial index, for one author in one
+  conversation.
 - **Attachments are served over `archive://` (§3.6),** never `file://`, and only for types that
   are safe to show inline.
 - **Search (§6):** exclusions are prefix-matched like bare words; Chinese and Japanese text is
@@ -135,8 +136,10 @@ Each item is also corrected where it belongs in this document.
   inputs are inert, `markdown` blocks show as text, and images on Slack's private file URLs are
   not shown. A thread panel draws 200 replies at a time.
 - **Search as a place (added, §8.2):** the sidebar has a **Search** item next to Overview instead
-  of a search box; it (and ⌘K / Ctrl+K, and "/") opens the search screen with the last search,
-  the cursor in its box. In a window at least 1200 px wide a result opens beside the list (the
+  of a search box; it opens the search screen with the last search, and ⌘K / Ctrl+K and "/" do
+  too, with the cursor in its box. The list under the box ("Narrow your search", people,
+  channels) opens on a click in the box or on typing, never by itself (0.3.6: opening Search put
+  the cursor in the box, and the list popped up unasked). In a window at least 1200 px wide a result opens beside the list (the
   conversation at that message, or the thread for a reply), the list staying where it is with the
   open result marked; the preview is in the URL (`c`, `ts`, `thread`), Esc closes it, and "Open
   conversation" shows the whole conversation. In narrower windows a result opens the
@@ -233,6 +236,29 @@ Each item is also corrected where it belongs in this document.
   cost and number of questions, and a finished answer adds itself straight away. 0.3.3 and 0.3.4
   only wrote costs to the log, so the first time spending is read those log lines are brought over
   once (on the owner's archive: 13 answers, $0.21). The Anthropic Console has the exact bill.
+- **People (0.3.6, §8.2):** a sidebar place listing everyone in the archive (people only, not
+  apps or the reader): **People you message** (a DM or a group DM), then **In your channels**,
+  then **Left the workspace** (deactivated in Slack; their messages stay), with a filter by name,
+  handle or title. Each person has a page: their title, their local time from Slack's time zone
+  ("4:35 PM local time · 1 hour behind you") and email; **Open DM**, **Brief me** (puts a
+  question about them in Ask AI's box, not sent: every answer costs the reader), their messages
+  in Search, and Open in Slack; the last time you talked, direct messages, their messages;
+  **Open questions** from the last 30 days both ways; the latest messages between you (the DM,
+  what either of you wrote in shared group DMs, mentions of each other); messages per week;
+  where you talk (group DMs named by who else is in them) and the channels they write in (each
+  opening their messages there in Search); and the files and links they shared. Names in
+  messages, @mentions and a DM's title open the page. An open question is what Slack's own data
+  shows: in the DM, or a line that speaks to you (a mention opening it, closing a sentence, or
+  after "cc"; not "I told @Ana" nor "3 tasks for @Ana"), with a question mark or a request of a
+  few words ("2 min pls" asks for patience), outside code, quotes, link addresses and greetings;
+  it is settled by a reaction, a later reply in its thread, any later message in the DM or group
+  DM, a top-level answer in the channel within a day, or an answer from anyone else it was meant
+  for. On the owner's archive (7,582 messages, 81 people) that finds 5 open questions, all real,
+  where counting every "?" found 13, half of them noise. Migration v2 adds `messages_conv_user_time`
+  (conversation, author, time) where user_id is set: at 488k messages a person's page takes 22 ms
+  for someone with 53k messages (their conversations: 84 ms without it), the list 38 ms, both
+  checked by `npm run bench`; it is partial because as a full index SQLite preferred it, being
+  narrower, and sorted where it used to read in order.
 - **Export conversation (Stage 8 nicety):** built as Markdown only (day headings, threads as
   quotes, edits, deletions, attachments and reactions noted). Markdown opens in any editor and
   renders in most viewers, so the HTML variant was left out.
@@ -1005,8 +1031,8 @@ Familiar to anyone who has used Slack, but clearly a *reader*:
 
 - **Sidebar**: workspace name; a search box (⌘K / Ctrl+K); Channels, Direct messages, Group DMs, each
   collapsible with a filter box; message counts; archived channels dimmed. *(As built: Overview
-  and a Search item that opens the search screen instead of a box in the sidebar, then one filter
-  box for all the conversations, with a clear button while it holds text; at the bottom the sync
+  and a Search item that opens the search screen instead of a box in the sidebar, Ask AI and
+  People, then one filter box for all the conversations, with a clear button while it holds text; at the bottom the sync
   status as plain text beside the Settings gear; see §0.3.)*
 - **Conversation view**: day dividers (sticky, opaque — must not overlap message content),
   consecutive messages from the same author within 5 minutes grouped, avatars, timestamps with full
@@ -1022,6 +1048,8 @@ Familiar to anyone who has used Slack, but clearly a *reader*:
   chips, sort control, results with conversation + author + date + highlighted snippet, grouped or
   flat, "load more", and click-through to the message in context.
 - *(As built: an **Ask AI** place under Search, a chat with Claude over the archive; see §0.3.)*
+- *(As built: a **People** place, everyone in the archive and a page for each: who they are, what's
+  open between you, your latest messages, where you talk; see §0.3.)*
 - **Archive home**: how many messages/conversations/files, the date range covered, how much disk is
   used, when the last sync ran, a **Sync now** button, and prominently: **"N messages older than 90
   days — no longer visible in Slack"**, which is the payoff. *(As built: called **Overview**; when a
@@ -1556,8 +1584,8 @@ bot_profile, user_profile`.
 
 ## Appendix B — Database DDL
 
-As built: this is migration v1 in `src/main/db/schema.ts`, which is authoritative. Additions to
-the original draft are marked `-- added`.
+As built: this is migrations v1 and v2 in `src/main/db/schema.ts`, which is authoritative.
+Additions to the original draft are marked `-- added`.
 
 ```sql
 PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
@@ -1664,6 +1692,11 @@ CREATE INDEX message_files_file        ON message_files (file_id);
 CREATE INDEX message_revisions_conv_ts ON message_revisions (conversation_id, ts);
 CREATE INDEX files_status_created      ON files (download_status, created);
 CREATE INDEX runs_status               ON runs (status);
+
+-- v2 (People): one author in one conversation. Partial so that only a query naming an author uses
+-- it; as a full index SQLite took it for older queries and sorted.
+CREATE INDEX messages_conv_user_time ON messages (conversation_id, user_id, time)
+       WHERE user_id IS NOT NULL;
 ```
 
 ---
