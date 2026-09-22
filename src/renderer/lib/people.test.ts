@@ -76,8 +76,8 @@ describe('time zones', () => {
 
 describe('small helpers', () => {
   it('names someone by their first name, when they have one', () => {
-    expect(firstName('Gerhardt Camilleri')).toBe('Gerhardt');
-    expect(firstName('Geri')).toBe('Geri');
+    expect(firstName('Dana Whitfield')).toBe('Dana');
+    expect(firstName('Dana')).toBe('Dana');
     expect(firstName('J Smith')).toBe('J Smith');
   });
 
@@ -88,8 +88,8 @@ describe('small helpers', () => {
   });
 
   it('asks Ask AI for a brief with the name and the Slack handle', () => {
-    expect(briefQuestion({ label: 'Geri', realName: 'Gerhardt Camilleri', name: 'geri.camilleri' })).toBe(
-      'Brief me on Gerhardt Camilleri (@geri.camilleri) before we talk: what we’re working on together, what we decided lately, and what’s still open between us (questions either of us hasn’t answered, anything I promised).',
+    expect(briefQuestion({ label: 'Dana', realName: 'Dana Whitfield', name: 'dana.whitfield' })).toBe(
+      'Brief me on Dana Whitfield (@dana.whitfield) before we talk: what we’re working on together, what we decided lately, and what’s still open between us (questions either of us hasn’t answered, anything I promised).',
     );
     expect(briefQuestion({ label: 'bo', realName: null, name: 'bo' })).toMatch(/^Brief me on bo before we talk/);
   });

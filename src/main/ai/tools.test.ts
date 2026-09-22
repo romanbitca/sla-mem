@@ -176,20 +176,20 @@ describe('Ask AI tools', () => {
     expect(bad.content).toBe('after must be a date like 2026-03-14.');
   });
 
-  it('finds what was worded differently: the people, the topic, the reader’s name, and synonyms (the Geri case)', () => {
-    // Asked "where Geri said he put some of my projects on somebody"; he wrote "distributed".
+  it('finds what was worded differently: the people, the topic, the reader’s name, and synonyms (the Dana case)', () => {
+    // Asked "where Dana said they put some of my projects on somebody"; the message said "distributed".
     const db = seededDb();
-    upsertUsers(db, [{ id: 'UGERI', name: 'geri', real_name: 'Geri', profile: { display_name: 'Geri' } }]);
+    upsertUsers(db, [{ id: 'UDANA', name: 'dana', real_name: 'Dana', profile: { display_name: 'Dana' } }]);
     upsertMessages(
       db,
       'C2',
       [
-        msg(tsAt(10), 'Roman was given the responsibility to drive the chatbot project forward', { user: 'UGERI' }),
-        msg(tsAt(20), 'Please put the invoice project on hold until Monday', { user: 'UGERI' }),
+        msg(tsAt(10), 'Roman was given the responsibility to drive the chatbot project forward', { user: 'UDANA' }),
+        msg(tsAt(20), 'Please put the invoice project on hold until Monday', { user: 'UDANA' }),
         msg(
           tsAt(30),
-          '<@U1> I have distributed your projects among <@U2> and <@U3>. <@USELF> I did the same for you, Insignia I kept with you.',
-          { user: 'UGERI' },
+          '<@U1> I have distributed your projects among <@U2> and <@U3>. <@USELF> I did the same for you, Atlas I kept with you.',
+          { user: 'UDANA' },
         ),
       ],
       'api',
@@ -197,20 +197,20 @@ describe('Ask AI tools', () => {
     const ctx = context(db);
     const target = 'I have distributed your projects';
     // The user's own wording misses it, and finds the look-alike instead.
-    for (const query of ['from:geri put', 'from:geri assigned project', 'from:geri put your project on']) {
+    for (const query of ['from:dana put', 'from:dana assigned project', 'from:dana put your project on']) {
       expect(runTool(ctx, 'search_messages', { query }).content).not.toContain(target);
     }
-    expect(runTool(ctx, 'search_messages', { query: 'from:geri put' }).content).toContain('put the invoice project');
+    expect(runTool(ctx, 'search_messages', { query: 'from:dana put' }).content).toContain('put the invoice project');
     // The author's side: the person, the topic and the reader's name (mentions read as @Name)…
-    expect(runTool(ctx, 'search_messages', { query: 'from:geri selfie project' }).content).toContain(target);
+    expect(runTool(ctx, 'search_messages', { query: 'from:dana selfie project' }).content).toContain(target);
     // …or the action as synonyms, in one search.
     const out = runTool(ctx, 'search_messages', {
-      query: 'from:geri project',
+      query: 'from:dana project',
       any_words: ['distribut', 'assign', 'gave', 'hand', 'transfer'],
     });
     expect(out.content).toMatch(/^1 match/);
     expect(out.content).toContain(target);
-    expect(out.step?.label).toBe('Searched “from:geri project” + one of distribut, assign, gave, hand, transfer');
+    expect(out.step?.label).toBe('Searched “from:dana project” + one of distribut, assign, gave, hand, transfer');
     expect(runTool(ctx, 'search_messages', { query: '', any_words: ['distribut'] }).step?.label).toBe(
       'Searched for one of distribut',
     );

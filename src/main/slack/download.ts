@@ -161,6 +161,8 @@ async function streamToHandle(
   // Bodies that ignore the fetch signal still stop promptly: cancelling the reader ends read().
   const onAbort = () => void reader.cancel().catch(() => undefined);
   signal.addEventListener('abort', onAbort, { once: true });
+  // Stopped while the file was being created: the event has already fired.
+  if (signal.aborted) onAbort();
   let bytes = 0;
   try {
     arm();

@@ -1,9 +1,12 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { getConversation, openDb, upsertConversations } from '../db';
 import { pickLocalCopy, sanitizeFileName } from './attachments';
 import { analyzeLayout, fileIdFromPath, localFileName } from './layout';
 import { exportingUserFromDms, parseListing, planConversations, userFromMessage } from './listing';
-import { findExportRoot, isJunkPath, safeEntryPath } from './source';
+import { findExportRoot, isJunkPath, MAX_TEXT_BYTES, openExportSource, safeEntryPath } from './source';
 
 describe('fileIdFromPath', () => {
   it.each([
@@ -199,5 +202,23 @@ describe('listings', () => {
     });
     expect(userFromMessage({ ts: '1.0', user: 'U1' })).toBeNull();
     expect(userFromMessage({ ts: '1.0', user_profile: { name: 'x' } })).toBeNull();
+  });
+});
+
+describe('reading an export someone else made', () => {
+  it('refuses a JSON file too large to be real instead of reading it into memory', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sa-huge-'));
+    try {
+      fs.writeFileSync(path.join(dir, 'channels.json'), '[]');
+      // Sparse: the size is there without the bytes.
+      fs.writeFileSync(path.join(dir, 'users.json'), '');
+      fs.truncateSync(path.join(dir, 'users.json'), MAX_TEXT_BYTES + 1);
+      const source = await openExportSource(dir);
+      await expect(source.readText('users.json')).rejects.toThrow(/too large to read/);
+      expect(await source.readText('channels.json')).toBe('[]');
+      await source.close();
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

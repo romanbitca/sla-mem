@@ -47,6 +47,25 @@ export interface SlackClientOptions {
 }
 
 /**
+ * The Web API methods Slamem may call, every one of which only reads. The app never changes
+ * anything in Slack (PLAN §1.2); this list makes that a rule of the client rather than a habit of
+ * its callers: any other method is refused before a request is made.
+ */
+export const READ_ONLY_METHODS: ReadonlySet<string> = new Set([
+  'auth.test',
+  'conversations.history',
+  'conversations.info',
+  'conversations.list',
+  'conversations.members',
+  'conversations.replies',
+  'emoji.list',
+  'team.info',
+  'users.conversations',
+  'users.info',
+  'users.list',
+]);
+
+/**
  * Minimum spacing between calls of one method. Slack budgets each method separately per
  * workspace: tier 2 ≈ 20/min, tier 3 ≈ 50/min, tier 4 ≈ 100/min. Pacing slightly under the
  * budget means a long sync almost never sees a 429.
@@ -75,6 +94,8 @@ const RETRYABLE_API_ERRORS = new Set(['internal_error', 'fatal_error', 'service_
 
 const SLACK_AUTH_HOSTS = ['slack.com'];
 const SLACK_PUBLIC_HOSTS = ['slack-edge.com', 'slack-files.com'];
+/** Where Slack serves a file and its thumbnails (`url_private`, `url_private_download`, `thumb_*`). */
+const SLACK_FILE_PATHS = ['/files-pri/', '/files-tmb/'];
 const MAX_API_REDIRECTS = 5;
 
 /**
@@ -151,6 +172,7 @@ export class SlackClient {
 
   /** Calls a Web API method. Throws `SlackApiError` on `ok:false`, `SlackHttpError` when retries run out. */
   async call<T = object>(method: string, params: SlackParams = {}): Promise<T & SlackApiResponse> {
+    if (!READ_ONLY_METHODS.has(method)) throw new Error(`Slamem only reads from Slack; refusing to call ${method}`);
     let failures = 0;
     let rateLimits = 0;
     for (;;) {
@@ -231,15 +253,22 @@ export class SlackClient {
   }
 
   /**
-   * Credentials (token and session cookie) go only to slack.com hosts and the configured API
-   * origin. Slack's public CDNs are fetched without them; any other starting host is refused so an
-   * imported export can't point the downloader at arbitrary URLs. Redirects may leave Slack (CDNs)
-   * but then carry no credentials, and never downgrade to http.
+   * Credentials (token and session cookie) go only to where Slack serves files: a `/files-pri/` or
+   * `/files-tmb/` address on slack.com (or on the configured API origin, the mock Slack). File
+   * addresses come from Slack, but also from imported exports and backups, which anyone can write:
+   * `https://slack.com/api/chat.postMessage?…` must never be "downloaded" with the user's session,
+   * so no other slack.com address is fetched as a file, and a redirect to one is followed without
+   * credentials. Slack's public CDNs are fetched without credentials; any other starting host is
+   * refused. Redirects may leave Slack (CDNs), without credentials, and never downgrade to http.
    */
   private downloadHeaders(url: URL, isRedirect: boolean): Record<string, string> | null {
-    if (this.isCredentialHost(url)) return this.credentialHeaders();
-    if (url.protocol !== 'https:') return null;
-    if (hostMatches(url.hostname, SLACK_PUBLIC_HOSTS) || isRedirect) return {};
+    const configured = url.origin === this.baseOrigin;
+    const slack = configured || (url.protocol === 'https:' && hostMatches(url.hostname, SLACK_AUTH_HOSTS));
+    if (slack && isSlackFilePath(url.pathname)) return this.credentialHeaders();
+    if (url.protocol !== 'https:' && !configured) return null;
+    // Slack's sign-in page, when the session has expired, arrives as a redirect: followed without
+    // credentials, it ends as the usual "got an HTML page" failure.
+    if (isRedirect || hostMatches(url.hostname, SLACK_PUBLIC_HOSTS)) return {};
     return null;
   }
 
@@ -351,6 +380,14 @@ function encodeParams(params: SlackParams): string {
 
 function isRedirectStatus(status: number): boolean {
   return status === 301 || status === 302 || status === 303 || status === 307 || status === 308;
+}
+
+/**
+ * A file's own address on Slack. Percent-encoded dots, slashes and backslashes are refused: a
+ * server that decoded them could read `/files-pri/x/..%2F..%2Fapi/…` as a Web API path.
+ */
+function isSlackFilePath(pathname: string): boolean {
+  return SLACK_FILE_PATHS.some((prefix) => pathname.startsWith(prefix)) && !/%(2e|2f|5c)/i.test(pathname);
 }
 
 function hostMatches(hostname: string, domains: readonly string[]): boolean {

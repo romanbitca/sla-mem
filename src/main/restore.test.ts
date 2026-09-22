@@ -160,6 +160,32 @@ describe('restoreBackup (moving to another computer)', () => {
     someoneElse.db.close();
   });
 
+  it('refuses a tampered or damaged backup before reading it, and changes nothing', async () => {
+    const old = computer('old');
+    upsertMessages(old.db, 'C1', [msg(tsAt(1), 'hello')], 'api');
+    // A trigger that would plant a person in whichever archive ran it.
+    old.db.exec(
+      "CREATE TRIGGER planted AFTER UPDATE ON meta BEGIN INSERT INTO users (id, raw, updated_at) VALUES ('UEVIL', '{}', 0); END",
+    );
+    old.db.close();
+    const tampered = path.join(root, 'tampered');
+    fs.mkdirSync(tampered);
+    fs.copyFileSync(old.paths.dbPath, path.join(tampered, 'archive.db'));
+    const damaged = path.join(root, 'damaged');
+    fs.mkdirSync(damaged);
+    fs.writeFileSync(path.join(damaged, 'archive.db'), 'SQLite format 3\0 but nothing else');
+
+    const fresh = computer('new');
+    fresh.db.exec("DELETE FROM meta WHERE key IN ('team_id', 'self_user_id')");
+    await expect(restore(fresh, tampered)).rejects.toThrow('may have been tampered with');
+    await expect(restore(fresh, damaged)).rejects.toThrow('its database is damaged');
+    expect(count(fresh.db, 'SELECT count(*) AS n FROM messages')).toBe(0);
+    expect(count(fresh.db, "SELECT count(*) AS n FROM users WHERE id = 'UEVIL'")).toBe(0);
+    expect(getMeta(fresh.db, 'team_id')).toBeNull();
+    expect(fs.readdirSync(fresh.paths.tmpDir)).toEqual([]);
+    fresh.db.close();
+  });
+
   it('tells a Slack export from a backup', async () => {
     const exportDir = path.join(root, 'export');
     fs.mkdirSync(exportDir);

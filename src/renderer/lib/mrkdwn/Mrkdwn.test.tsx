@@ -65,6 +65,16 @@ describe('<Mrkdwn>', () => {
     expect(bare.getAttribute('href')).toBe('https://bare.dev/path');
   });
 
+  it('shows where a link really goes when its text says something else', () => {
+    renderMd('<https://login.evil.example/slack|https://slack.com/signin> <https://x.dev/|x.dev> https://bare.dev/p');
+    // The text looks like Slack; hovering tells the truth, as a browser's status bar would.
+    expect(screen.getByRole('link', { name: 'https://slack.com/signin' }).getAttribute('title')).toBe(
+      'https://login.evil.example/slack',
+    );
+    expect(screen.getByRole('link', { name: 'x.dev' }).hasAttribute('title')).toBe(false);
+    expect(screen.getByRole('link', { name: 'https://bare.dev/p' }).hasAttribute('title')).toBe(false);
+  });
+
   it('never links javascript: or other unsafe URLs', () => {
     const { container } = renderMd('<javascript:alert(1)|click> <data:text/html;base64,xx|data> javascript:void(0)');
     expect(container.querySelectorAll('a')).toHaveLength(0);

@@ -51,7 +51,8 @@ export async function backupArchive(opts: BackupOptions): Promise<BackupResultDT
     opts.onProgress?.('Copying the database…');
     await opts.db.backup(snapshot);
     const zip = new yazl.ZipFile();
-    const done = pipeline(zip.outputStream, fs.createWriteStream(partial));
+    // Every message and attachment is in it: readable by this user account only, wherever it's saved.
+    const done = pipeline(zip.outputStream, fs.createWriteStream(partial, { mode: 0o600 }));
     // The snapshot is already compressed poorly by nature; store attachments as-is (mostly media).
     zip.addFile(snapshot, 'archive.db', { compress: true });
     if (fs.existsSync(opts.paths.configPath)) zip.addFile(opts.paths.configPath, 'config.json');

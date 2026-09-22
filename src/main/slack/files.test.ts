@@ -213,7 +213,11 @@ describe('downloadPendingFiles', () => {
   });
 
   it('keeps hostile file names inside files/<id>/', async () => {
-    const f = slackFile('F10', '../../../../etc/evil.sh');
+    // Slack's address for a file uses a slug of its name; the name itself arrives as typed.
+    const f = slackFile('F10', '../../../../etc/evil.sh', {
+      url_private: `${HOST}/files-pri/T0001-F10/evil.sh`,
+      url_private_download: `${HOST}/files-pri/T0001-F10/download/evil.sh`,
+    });
     queueFile(f);
     serve(f, 'echo pwned', 'text/x-sh');
     await run();
@@ -232,6 +236,28 @@ describe('downloadPendingFiles', () => {
     expect(stats.filesFailed).toBe(1);
     expect(getFileRow(db, 'F11')!.download_error).toMatch(/refusing/);
     expect(fake.downloads).toHaveLength(0);
+  });
+
+  it('never "downloads" a Slack address that isn’t a file: an imported export can name any', async () => {
+    // With the session, these would post a message as the user, or reach one through a server
+    // that decodes %2F.
+    queueFile(slackFile('F13', 'a.pdf', { url_private_download: 'https://slack.com/api/chat.postMessage?text=hi' }));
+    queueFile(
+      slackFile('F14', 'b.pdf', { url_private_download: `${HOST}/files-pri/T0001-F14/..%2F..%2Fapi%2Fauth.revoke` }),
+    );
+    const photo = slackFile('F15', 'c.jpg', {
+      mimetype: 'image/jpeg',
+      filetype: 'jpg',
+      thumb_720: 'https://acme.slack.com/api/chat.postMessage?text=hi',
+    });
+    queueFile(photo);
+    serve(photo, PNG, 'image/jpeg');
+    const stats = await run();
+    expect(stats.filesFailed).toBe(2);
+    expect(getFileRow(db, 'F13')!.download_error).toMatch(/refusing/);
+    expect(getFileRow(db, 'F14')!.download_error).toMatch(/refusing/);
+    expect(getFileRow(db, 'F15')!.download_status).toBe('done');
+    expect(fake.downloads.map((d) => d.url)).toEqual([photo.url_private_download]);
   });
 
   it('keeps the file when only its thumbnail fails', async () => {

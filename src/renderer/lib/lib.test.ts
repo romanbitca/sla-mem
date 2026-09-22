@@ -219,6 +219,7 @@ describe('links and url safety', () => {
     expect(slackPermalink(null, top)).toBeNull();
     expect(slackPermalink('', top)).toBeNull();
     expect(slackPermalink('evil.example:8080', top)).toBeNull();
+    expect(slackPermalink('evil.example', top)).toBeNull();
     expect(slackPermalink('9h', { ...top, ts: 'nope' })).toBeNull();
     expect(slackPermalink('9h', { ...top, conversationId: '../C1' })).toBeNull();
   });
@@ -303,6 +304,10 @@ describe('workspace names', () => {
     expect(workspaceHost('  ')).toBeNull();
     expect(workspaceHost('acme.enterprise.slack.com')).toBe('acme.enterprise.slack.com');
     expect(workspaceHost('evil.example:8080')).toBeNull();
+    // An imported backup can name any site: only Slack's own addresses become links.
+    expect(workspaceHost('evil.example')).toBeNull();
+    expect(workspaceHost('https://9h.slack.com.evil.example/')).toBeNull();
+    expect(workspaceHost('slack.com')).toBeNull();
     expect(workspaceHost('https://user@evil.example/')).toBeNull();
     expect(workspaceHost('two words')).toBeNull();
     expect(workspaceHost('-bad-.slack.com')).toBeNull();

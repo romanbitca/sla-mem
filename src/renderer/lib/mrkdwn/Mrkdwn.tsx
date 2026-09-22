@@ -10,7 +10,7 @@ import { slackDateTitle } from './date';
 import { parseMrkdwn } from './parse';
 import { resolveEmoji, shortcodeWithTone } from './resolveEmoji';
 import { isBlockNode, type CodeChildNode, type DateNode, type MrkdwnNode } from './types';
-import { safeHref } from './url';
+import { linkTitle, safeHref } from './url';
 
 // Start fetching the emoji chunk as soon as the renderer is part of the page, in parallel with
 // the first API calls, so the first messages rarely flash `:smile:` before the glyph arrives.
@@ -189,7 +189,14 @@ function renderReference(node: CodeChildNode, key: number, env: RenderEnv): Reac
       const href = safeHref(node.url);
       if (!href) return renderText(node.label, key, env);
       return (
-        <a key={key} className="md-link" href={href} target="_blank" rel="noopener noreferrer">
+        <a
+          key={key}
+          className="md-link"
+          href={href}
+          title={linkTitle(node.label, href)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           {highlightText(node.label, env.highlight)}
         </a>
       );

@@ -53,7 +53,7 @@ function matches(p: PersonSummaryDTO, user: UserDTO | undefined, needle: string)
   );
 }
 
-/** "Gerhardt Camilleri" → "Gerhardt": how the page names someone in its headings. */
+/** "Dana Whitfield" → "Dana": how the page names someone in its headings. */
 export function firstName(label: string): string {
   const first = label.trim().split(/\s+/)[0] ?? '';
   return first.length >= 2 ? first : label.trim();

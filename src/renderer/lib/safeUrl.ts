@@ -6,6 +6,8 @@
  */
 import { safeHref as normalizedSafeHref } from './mrkdwn/url';
 
+export { linkTitle } from './mrkdwn/url';
+
 export function safeHref(url: string | null | undefined): string | undefined {
   return normalizedSafeHref(url) ?? undefined;
 }

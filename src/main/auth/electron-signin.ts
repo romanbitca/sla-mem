@@ -5,7 +5,7 @@
  * an ordinary, sandboxed browsing window. Popups (SSO) stay inside the same locked-down session;
  * other URL schemes (e.g. slack:// "open the desktop app") are ignored.
  */
-import { BrowserWindow, session, type Session } from 'electron';
+import { BrowserWindow, session, type Session, type WebContents } from 'electron';
 import type { Logger } from '../logger';
 import { isSessionCookieDomain, isDefaultWebOrigin } from './origin';
 import { isWorkspaceHost, type SignInSurface } from './signin';
@@ -87,6 +87,28 @@ export function createElectronSignInSurface(opts: ElectronSignInOptions): SignIn
     navigateOnDragDrop: false,
   } as const;
 
+  /** The sign-in window and every popup it opens (SSO), however deep, get the same rules. */
+  const lockDown = (contents: WebContents) => {
+    contents.setWindowOpenHandler(({ url: target }) =>
+      allowedNavigation(target)
+        ? {
+            action: 'allow',
+            overrideBrowserWindowOptions: { autoHideMenuBar: true, webPreferences: secureWebPreferences },
+          }
+        : { action: 'deny' },
+    );
+    contents.on('did-create-window', (popup) => lockDown(popup.webContents));
+    contents.on('will-navigate', (event, target) => {
+      if (!allowedNavigation(target)) event.preventDefault();
+    });
+    contents.on('will-redirect', (event, target) => {
+      if (!allowedNavigation(target)) event.preventDefault();
+    });
+    contents.on('did-navigate', (_event, target) => remember(target));
+    contents.on('did-navigate-in-page', (_event, target) => remember(target));
+    contents.on('will-attach-webview', (event) => event.preventDefault());
+  };
+
   return {
     open(url) {
       win = new BrowserWindow({
@@ -97,24 +119,7 @@ export function createElectronSignInSurface(opts: ElectronSignInOptions): SignIn
         show: true,
         webPreferences: secureWebPreferences,
       });
-      const contents = win.webContents;
-      contents.setWindowOpenHandler(({ url: target }) =>
-        allowedNavigation(target)
-          ? {
-              action: 'allow',
-              overrideBrowserWindowOptions: { autoHideMenuBar: true, webPreferences: secureWebPreferences },
-            }
-          : { action: 'deny' },
-      );
-      contents.on('will-navigate', (event, target) => {
-        if (!allowedNavigation(target)) event.preventDefault();
-      });
-      contents.on('will-redirect', (event, target) => {
-        if (!allowedNavigation(target)) event.preventDefault();
-      });
-      contents.on('did-navigate', (_event, target) => remember(target));
-      contents.on('did-navigate-in-page', (_event, target) => remember(target));
-      contents.on('will-attach-webview', (event) => event.preventDefault());
+      lockDown(win.webContents);
       win.on('closed', () => {
         win = null;
         closedListener?.();

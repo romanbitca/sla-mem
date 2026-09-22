@@ -26,6 +26,9 @@ function isOnDisk(file: string): boolean {
 }
 
 function applyPragmas(db: DB): void {
+  // The schema's triggers and views may use only harmless SQL functions: an imported backup is
+  // attached to this connection (restore.ts), and its schema is someone else's (db/foreign.ts).
+  db.pragma('trusted_schema = OFF');
   // WAL lets the UI keep reading while a sync writes.
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');

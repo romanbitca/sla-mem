@@ -141,6 +141,11 @@ builds as workflow artifacts without touching Releases: use it to try an install
 > `src/main/context.ts` and `publish` in `electron-builder.yml` at it, add a `RELEASES_TOKEN` secret
 > that can write there, and update the links in [docs/INSTALL.md](docs/INSTALL.md).
 
+## Security
+
+[SECURITY.md](SECURITY.md) explains how Slamem protects the Slack session and the archive, what
+it doesn't protect against, and how to report a problem privately.
+
 ## Licence
 
 Proprietary. Copyright © 2026 Roman Bitca. All rights reserved. Internal use only.

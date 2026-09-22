@@ -41,6 +41,21 @@ export function displayUrl(url: string): string {
   return /^mailto:/i.test(url) ? url.slice('mailto:'.length) : url;
 }
 
+/**
+ * The tooltip of a link whose text isn't its address: where it really goes, as a browser's status
+ * bar would show it ("Invoice" or "https://bank.example" can point anywhere). None when the text
+ * already is the address.
+ */
+export function linkTitle(label: string | null | undefined, href: string): string | undefined {
+  const bare = (s: string) =>
+    s
+      .trim()
+      .replace(/^(https?:\/\/|mailto:)/i, '')
+      .replace(/\/$/, '')
+      .toLowerCase();
+  return label && bare(label) === bare(href) ? undefined : href;
+}
+
 const TRAILING_PUNCTUATION = new Set(['.', ',', ':', ';', '!', '?', "'", '"', '*', '_', '~']);
 const CLOSER_TO_OPENER: Record<string, string> = { ')': '(', ']': '[', '}': '{' };
 

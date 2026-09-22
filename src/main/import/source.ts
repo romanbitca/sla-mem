@@ -17,6 +17,7 @@ export interface ExportSource {
   readonly kind: 'directory' | 'zip';
   /** Entry path → uncompressed size in bytes. */
   readonly entries: ReadonlyMap<string, number>;
+  /** An entry as text; one larger than MAX_TEXT_BYTES is refused rather than read into memory. */
   readText(entryPath: string): Promise<string>;
   /**
    * Streams an entry into `destFile` (created or truncated). `move` lets a directory source
@@ -24,6 +25,19 @@ export interface ExportSource {
    */
   copyTo(entryPath: string, destFile: string, opts?: { move?: boolean }): Promise<void>;
   close(): Promise<void>;
+}
+
+/**
+ * The largest JSON file an export or backup may hold: far above a real one (a day of a busy channel
+ * is a few MB, users.json of a large company tens of MB), and small enough that a crafted "zip
+ * bomb" entry can't exhaust memory.
+ */
+export const MAX_TEXT_BYTES = 256 * 1024 * 1024;
+
+function checkTextSize(entryPath: string, size: number): void {
+  if (size > MAX_TEXT_BYTES) {
+    throw new Error(`Export entry ${entryPath} is too large to read (${Math.round(size / 1024 / 1024)} MB)`);
+  }
 }
 
 /** Opens `p` as a directory export or, for any regular file, as a zip archive. */
@@ -132,7 +146,11 @@ async function openDirectorySource(root: string): Promise<ExportSource> {
   return {
     kind: 'directory',
     entries: new Map([...files].map(([p, f]) => [p, f.size])),
-    readText: async (entryPath) => stripBom(await fsp.readFile(get(entryPath).abs, 'utf8')),
+    readText: async (entryPath) => {
+      const f = get(entryPath);
+      checkTextSize(entryPath, (await fsp.stat(f.abs)).size);
+      return stripBom(await fsp.readFile(f.abs, 'utf8'));
+    },
     copyTo: (entryPath, destFile, opts) => transfer(get(entryPath).abs, destFile, opts?.move === true),
     close: async () => undefined,
   };
@@ -200,7 +218,11 @@ async function openZipSource(file: string): Promise<ExportSource> {
   return {
     kind: 'zip',
     entries: new Map([...entries].map(([p, e]) => [p, e.uncompressedSize])),
-    readText: async (entryPath) => stripBom((await readAll(await open(entryPath))).toString('utf8')),
+    readText: async (entryPath) => {
+      // The declared size is enforced while reading (validateEntrySizes).
+      checkTextSize(entryPath, entries.get(entryPath)?.uncompressedSize ?? 0);
+      return stripBom((await readAll(await open(entryPath))).toString('utf8'));
+    },
     copyTo: async (entryPath, destFile) => pipeline(await open(entryPath), fs.createWriteStream(destFile)),
     close: async () => zip.close(),
   };

@@ -15,7 +15,8 @@ export function isSafeFileId(id: string): boolean {
 
 /**
  * A file name that is safe as the last segment of `filesDir/<id>/<name>`: no path separators,
- * no control characters, never '.'/'..' or a dotfile, at most 150 chars (extension kept).
+ * no control characters, never '.'/'..' or a dotfile, no trailing dots or spaces (Windows drops
+ * them, so "setup.exe." would really be setup.exe), at most 150 chars (extension kept).
  */
 export function sanitizeFileName(name: string | null | undefined): string {
   const base =
@@ -26,7 +27,8 @@ export function sanitizeFileName(name: string | null | undefined): string {
     .normalize('NFC')
     .replace(/[\u0000-\u001f\u007f<>:"|?*]/g, '_')
     .trim()
-    .replace(/^\.+/, '');
+    .replace(/^\.+/, '')
+    .replace(/[.\s]+$/, '');
   if (!safe) safe = 'file';
   if (safe.length <= MAX_NAME_LENGTH) return safe;
   const ext = path.extname(safe);

@@ -3,7 +3,6 @@
  * IPC and to the operating system (sleep/wake, login items, dialogs, notifications).
  */
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import {
   app,
   BrowserWindow,
@@ -23,6 +22,7 @@ import {
 import type { ArchiveEvent, ArchiveEvents } from '../shared/ipc';
 import { eventChannel } from '../shared/ipc';
 import type { AppInfoDTO } from '../shared/types';
+import type { SecretCipher } from './auth';
 import { clearSlackSession, createElectronSignInSurface } from './auth/electron-signin';
 import { closeServices, createServices, wireServices, type AppServices, type PlatformHooks } from './context';
 import { refreshSearchTextIfOutdated } from './db';
@@ -39,6 +39,7 @@ import {
   oldAppName,
   type LegacyMove,
 } from './paths';
+import { APP_INDEX_URL, APP_SCHEME, isAppPageUrl, serveAppFile } from './app-protocol';
 import { ARCHIVE_SCHEME, serveArchiveFile } from './protocol';
 import { denyPermissions, hardenWebContents, openExternalSafe } from './security';
 import { createTray, IDLE_TRAY_STATE, type TrayController, type TrayState } from './tray';
@@ -46,7 +47,7 @@ import { createInstaller } from './update-install';
 
 const isDev = !app.isPackaged;
 const rendererDevUrl = isDev ? process.env.ELECTRON_RENDERER_URL : undefined;
-const rendererFile = path.join(__dirname, '../renderer/index.html');
+const rendererDir = path.join(__dirname, '../renderer');
 const USER_GUIDE_URL = 'https://github.com/romanbitca/sla-mem/blob/main/docs/INSTALL.md';
 
 // The app is called Slamem, but Electron's own name for it stays "sla-mem" (its name until
@@ -102,8 +103,10 @@ const slackOverrides = isDev
   : {};
 const aiBaseUrl = isDev ? process.env.SLA_MEM_ANTHROPIC_API || undefined : undefined;
 
-// Must happen before `ready`: archive:// behaves like a normal, secure origin for <img>/<video>.
+// Must happen before `ready`: the app's own pages (slamem://app, app-protocol.ts) and attachments
+// (archive://) behave like normal, secure origins.
 protocol.registerSchemesAsPrivileged([
+  { scheme: APP_SCHEME, privileges: { standard: true, secure: true, codeCache: true } },
   { scheme: ARCHIVE_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
 ]);
 
@@ -121,12 +124,7 @@ let appLog: AppServices['log'] | null = null;
 
 function isAppUrl(url: string): boolean {
   if (rendererDevUrl) return url.startsWith(rendererDevUrl);
-  try {
-    const u = new URL(url);
-    return u.protocol === 'file:' && path.resolve(decodeURIComponent(u.pathname)) === path.resolve(rendererFile);
-  } catch {
-    return false;
-  }
+  return isAppPageUrl(url);
 }
 
 function isTrustedSender(event: IpcMainInvokeEvent): boolean {
@@ -170,7 +168,7 @@ function createMainWindow(s: AppServices): BrowserWindow {
     if (!win.isDestroyed() && !startHidden) win.show();
   });
   if (rendererDevUrl) void win.loadURL(rendererDevUrl);
-  else void win.loadURL(pathToFileURL(rendererFile).href);
+  else void win.loadURL(APP_INDEX_URL);
 
   // Closing the window keeps the app (and its scheduled syncs) running in the tray (PLAN §8.3).
   win.on('close', (event) => {
@@ -526,7 +524,13 @@ function safeStartSync(s: AppServices): void {
 /** macOS: running straight from the disk image breaks updates and login items (PLAN §11 Stage 7). */
 async function offerMoveToApplications(s: AppServices): Promise<void> {
   if (process.platform !== 'darwin' || !app.isPackaged || app.isInApplicationsFolder()) return;
-  const { response } = await dialog.showMessageBox({
+  // Asked once the window is on screen, as a sheet on it: a free-standing alert would stop this
+  // process, which serves the window's own page (app-protocol.ts), and leave the window blank.
+  const win = mainWindow;
+  if (!win || win.isDestroyed()) return;
+  if (!win.isVisible()) await new Promise<void>((resolve) => win.once('show', () => resolve()));
+  if (win.isDestroyed() || quitting) return;
+  const { response } = await dialog.showMessageBox(win, {
     type: 'question',
     message: 'Move Slamem to your Applications folder?',
     detail: 'It needs to live in Applications to start at login and to update properly.',
@@ -549,11 +553,23 @@ function resourcesDir(): string {
   return app.isPackaged ? path.join(process.resourcesPath, 'tray') : path.join(app.getAppPath(), 'resources', 'tray');
 }
 
+/**
+ * The OS keychain through safeStorage, except that Linux without a keyring ("basic_text") counts as
+ * unavailable: it "encrypts" with a key built into Chromium, which protects nothing (PLAN §3.5).
+ */
+const osCipher: SecretCipher = {
+  isEncryptionAvailable: () =>
+    safeStorage.isEncryptionAvailable() &&
+    !(process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text'),
+  encryptString: (plainText) => safeStorage.encryptString(plainText),
+  decryptString: (encrypted) => safeStorage.decryptString(encrypted),
+};
+
 async function start(): Promise<void> {
   const s = createServices({
     dataDir: app.getPath('userData'),
     echoLogs: isDev,
-    cipher: safeStorage,
+    cipher: osCipher,
     createSignInSurface: () =>
       createElectronSignInSurface({
         webOrigin: slackOverrides.webOrigin ?? 'https://app.slack.com',
@@ -586,6 +602,7 @@ async function start(): Promise<void> {
 
   nativeTheme.themeSource = s.prefs.get().theme;
   denyPermissions(session.defaultSession);
+  session.defaultSession.protocol.handle(APP_SCHEME, (request) => serveAppFile(request, rendererDir));
   session.defaultSession.protocol.handle(ARCHIVE_SCHEME, (request) =>
     serveArchiveFile(request, { db: s.db, filesDir: s.paths.filesDir }),
   );
@@ -637,6 +654,12 @@ if (reopening) {
   app.on('second-instance', () => {
     if (process.platform === 'darwin') void app.dock?.show();
     showMainWindow();
+  });
+
+  // Whatever page the app ever shows, popups included, can't embed a <webview> (each window also
+  // locks down its own navigation: security.ts, auth/electron-signin.ts).
+  app.on('web-contents-created', (_event, contents) => {
+    contents.on('will-attach-webview', (event) => event.preventDefault());
   });
 
   void app.whenReady().then(() => {

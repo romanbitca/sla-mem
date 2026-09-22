@@ -5,6 +5,7 @@
 export type { DB, FileRow, FileSkipReason, SyncStateRow, SyncStatePatch, MessageRow, MessageSource } from './types';
 
 export { openDb, migrate, getSchemaVersion } from './open';
+export { checkForeignDatabase, ForeignDatabaseError, type ForeignDatabaseProblem } from './foreign';
 export { MIGRATIONS, LATEST_SCHEMA_VERSION } from './schema';
 export { getMeta, setMeta, deleteMeta, getWorkspaceMeta } from './meta';
 

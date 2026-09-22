@@ -105,6 +105,8 @@ describe('backup', () => {
         now: new Date(2026, 8, 21, 9, 5),
       });
       expect(path.basename(result.path)).toBe('Slamem backup 2026-09-21 0905.zip');
+      // It holds every message: only this user account may read it (Windows has no such bits).
+      if (process.platform !== 'win32') expect(fs.statSync(result.path).mode & 0o777).toBe(0o600);
       const entries = await unzip(result.path, path.join(dest, 'restored'));
       expect(entries.sort()).toEqual(['README.txt', 'archive.db', 'config.json', 'files/F1/photo.png']);
       const restored = openDb(path.join(dest, 'restored', 'archive.db'));

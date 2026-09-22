@@ -60,6 +60,26 @@ describe('SlackClient.call', () => {
     expect(init?.body).toBe('limit=2&presence=false');
   });
 
+  it('calls only methods that read, refusing anything else without a request', async () => {
+    const seen: string[] = [];
+    const spy: typeof fetch = async (input, init) => {
+      seen.push(String(input));
+      return fake.fetch(input, init);
+    };
+    for (const method of [
+      'chat.postMessage',
+      'chat.delete',
+      'auth.revoke',
+      'files.sharedPublicURL',
+      'users.list/../x',
+    ]) {
+      await expect(client({ fetch: spy }).call(method, { channel: 'C1', text: 'hi' })).rejects.toThrow(
+        /only reads from Slack/,
+      );
+    }
+    expect(seen).toEqual([]);
+  });
+
   it('throws SlackApiError with the Slack error code and missing scope', async () => {
     fake.emoji = null;
     const err = await client()
@@ -240,6 +260,47 @@ describe('downloadFile', () => {
     expect(fs.readFileSync(dest, 'utf8')).toBe('bytes');
   });
 
+  it('sends the session only to Slack’s file addresses, never to the Web API or other Slack pages', async () => {
+    for (const url of [
+      'https://slack.com/api/chat.postMessage?channel=C1&text=hi',
+      'https://acme.slack.com/api/auth.revoke',
+      'https://files.slack.com/api/chat.delete',
+      'https://acme.slack.com/signout',
+      'https://files.slack.com/files-pri/T0001-F1/..%2F..%2Fapi%2Fauth.revoke',
+      'https://files.slack.com/files-pri/T0001-F1/%2E%2E/%2e%2e/api/auth.revoke',
+    ]) {
+      const err = await client()
+        .downloadFile(url, path.join(tmp, 'x'))
+        .catch((e: unknown) => e);
+      expect((err as DownloadError).kind, url).toBe('untrusted_url');
+    }
+    expect(fake.downloads).toHaveLength(0);
+  });
+
+  it('follows a redirect to a Slack page that isn’t a file without the session', async () => {
+    fake.files.set(
+      FILE_URL,
+      () => new Response(null, { status: 302, headers: { location: 'https://slack.com/api/auth.revoke' } }),
+    );
+    fake.files.set('https://slack.com/api/auth.revoke', { body: '{"ok":false}', contentType: 'application/json' });
+    await client().downloadFile(FILE_URL, path.join(tmp, 'F1', 'report.pdf'));
+    expect(fake.downloads.map((d) => [d.url, d.authorization])).toEqual([
+      [FILE_URL, `Bearer ${FAKE_TOKEN}`],
+      ['https://slack.com/api/auth.revoke', null],
+    ]);
+  });
+
+  it('turns an expired session’s redirect to the sign-in page into the HTML failure', async () => {
+    const signIn = 'https://acme.slack.com/?redir=%2Ffiles-pri%2FT0001-F1%2Freport.pdf';
+    fake.files.set(FILE_URL, () => new Response(null, { status: 302, headers: { location: signIn } }));
+    fake.files.set('https://acme.slack.com/', { body: '<html>Sign in</html>', contentType: 'text/html' });
+    const err = await client()
+      .downloadFile(FILE_URL, path.join(tmp, 'F1', 'report.pdf'))
+      .catch((e: unknown) => e);
+    expect((err as DownloadError).kind).toBe('html');
+    expect(fake.downloads.map((d) => d.authorization)).toEqual([`Bearer ${FAKE_TOKEN}`, null]);
+  });
+
   it('rejects an HTML login page unless HTML is expected', async () => {
     fake.files.set(FILE_URL, { body: '<html>Sign in to Slack</html>', contentType: 'text/html; charset=utf-8' });
     const dest = path.join(tmp, 'F1', 'report.pdf');
@@ -289,6 +350,24 @@ describe('downloadFile', () => {
       .catch((e: unknown) => e);
     expect((err as DownloadError).status).toBe(403);
     expect(fake.downloads).toHaveLength(1);
+  });
+
+  it('stops at once when cancelled as the answer arrives, before the file exists', async () => {
+    const controller = new AbortController();
+    fake.files.set(FILE_URL, () => {
+      controller.abort(); // e.g. Cancel sync, between the answer and the reading of its body
+      const body = new ReadableStream<Uint8Array>({
+        start(c) {
+          c.enqueue(new TextEncoder().encode('never ends'));
+        },
+      });
+      return new Response(body, { headers: { 'content-type': 'application/pdf' } });
+    });
+    const dest = path.join(tmp, 'F1', 'report.pdf');
+    await expect(client({ signal: controller.signal }).downloadFile(FILE_URL, dest)).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+    expect(fs.readdirSync(path.join(tmp, 'F1'))).toEqual([]);
   });
 
   it('leaves no partial file when aborted mid-transfer', async () => {

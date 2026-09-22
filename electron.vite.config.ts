@@ -18,7 +18,9 @@ const PROD_CSP = [
   `img-src ${IMG_SRC}`,
   'media-src archive:',
   "font-src 'self' data:",
-  "connect-src 'self'",
+  // The window gets everything over IPC and makes no requests of its own: not even to local
+  // files, which a page loaded from file:// could otherwise read.
+  "connect-src 'none'",
   "object-src 'none'",
   "frame-src 'none'",
   "base-uri 'none'",

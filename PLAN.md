@@ -214,7 +214,7 @@ Each item is also corrected where it belongs in this document.
   about 2.5 times as much). Answers come in the language of the question, whatever language the
   messages are in. A search can also list words of which one must appear (synonyms and
   translations), and Claude is taught to search the author's wording rather than the reader's: on
-  a real miss ("where Geri put my projects on someone", written "distributed your projects
+  a real miss ("where Dana put my projects on someone", written "distributed your projects
   among"), searching the person, the topic and the reader's name, or the verb's synonyms, found
   the message first or second, where the reader's own words never showed it. Claude works through four local tools (search with
   Slack syntax, open a message with its thread or surroundings, read a conversation over a period,
@@ -282,6 +282,29 @@ Each item is also corrected where it belongs in this document.
   workspace's own icon from `team.info` (read on every sync, kept in `meta.team_icon`) instead of
   its initial. The initial stays when the workspace has only Slack's generated icon, until the
   first sync after updating, and when the image can't load (offline).
+- **Security review (0.3.8, §3.6, §9.4):** the app was read the way an attacker would. One real
+  hole: file addresses come from Slack but also from imported exports and backups, which anyone
+  can write, and the downloader sent the Slack session to any https address on slack.com, so a
+  crafted export could have made the next sync call `chat.postMessage` or any other Web API method
+  as the user. The session now goes only to Slack's file addresses (`/files-pri/`, `/files-tmb/`),
+  and the Slack client refuses every method that isn't one of the read methods it lists. Hardened
+  besides: a backup's database is checked read-only before it is merged (intact, and holding only
+  Slamem's own tables, indexes and triggers), with SQLite's `trusted_schema` off on every
+  connection; attachments get the mark of a download (macOS quarantine, Windows Mark of the Web)
+  before Open or Show in folder, the list of files never opened grew (installers, profiles,
+  shortcuts, Office add-ins, remote-desktop files…) and trailing dots no longer hide an extension;
+  the window loads from `slamem://app` instead of `file://`, with Electron's file:// extras off and
+  a CSP that allows no requests; the macOS app runs with the Hardened Runtime; the sign-in
+  window's SSO popups get its rules; "Open in Slack" and copied links only ever point at
+  slack.com; backups are readable by their owner only; a link whose text isn't its address shows
+  the address on hover; oversized JSON in an import is refused; Linux's plaintext keyring fallback
+  counts as no keyring; the release workflow's builds get a read-only token, with actions pinned
+  to commits. A colleague's name that had reached the public repository (tests, this document) was
+  replaced. [SECURITY.md](SECURITY.md) gives reviewers the model, its limits and a private way to
+  report a problem. The "Move to Applications?" question became a sheet on the window, asked once
+  the window is on screen: a free-standing alert stops the process that now serves the page. And a
+  download cancelled (Cancel sync, quitting) between Slack's answer and the reading of its body
+  now stops at once instead of waiting out the 60-second stall timer.
 - **Export conversation (Stage 8 nicety):** built as Markdown only (day headings, threads as
   quotes, edits, deletions, attachments and reactions noted). Markdown opens in any editor and
   renders in most viewers, so the HTML variant was left out.
@@ -667,8 +690,8 @@ has no port, no origin, no CSRF surface. Keep the app closed.
 > service functions, and replacing the renderer's `fetch` calls with `window.api.*`. The database,
 > sync, import, search and rendering layers transfer unchanged.
 
-Renderer routing: use a **hash router** or memory router (the app is loaded from `file://` in
-production, so a browser history router will break).
+Renderer routing: use a **hash router** or memory router (the app is a single page,
+`slamem://app/index.html` in production (§3.6), so a browser history router will break).
 
 ### 3.4 Where data lives
 
@@ -750,10 +773,36 @@ As built:
   with `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox`, supports Range
   requests, and refuses any path that resolves outside the files folder. Everything else (PDFs
   included) opens in the system app; runnable files are only revealed in the folder.
+- The window loads from `slamem://app/…` (`src/main/app-protocol.ts`), not `file://`: a page
+  loaded from file:// may read other local files, and "self" in its CSP covers the whole disk,
+  attachments included. The protocol serves only the built renderer's own files, by type.
 - The CSP is a `<meta>` tag injected at build time: scripts from the app only; images from the
-  app, `archive:`, `data:`/`blob:` and Slack's avatar/emoji CDNs.
+  app, `archive:`, `data:`/`blob:` and Slack's avatar/emoji CDNs; no requests at all
+  (`connect-src 'none'`: the window gets everything over IPC).
 - The packaged app sets Electron fuses: cookie encryption on; `RunAsNode`, `NODE_OPTIONS` and
-  `--inspect` off; asar integrity checked; the app only loads from its asar.
+  `--inspect` off; asar integrity checked; the app only loads from its asar; file:// pages get no
+  extra powers (`GrantFileProtocolExtraPrivileges` off). On macOS it runs with the Hardened
+  Runtime (§9.4).
+- Read-only against Slack is a rule of the client, not a habit of its callers: `SlackClient.call`
+  refuses any method outside `READ_ONLY_METHODS`. File addresses come from Slack but also from
+  imported exports and backups, so downloads carry the session only to Slack's file addresses
+  (`/files-pri/`, `/files-tmb/` on slack.com, percent-encoded dots and slashes refused), never to
+  a Web API path or another Slack page, and never past a redirect that leaves those addresses.
+- Imports are someone else's files. A backup's database is opened read-only with `trusted_schema`
+  off and cell size checks on, must pass `quick_check` and hold only what the migrations create
+  (any version's tables and indexes, exactly Slamem's triggers and virtual tables), before this
+  archive's connection attaches it (`db/foreign.ts`); every connection runs with `trusted_schema`
+  off. JSON entries over 256 MB are refused rather than read into memory.
+- Before Open or Show in folder, an attachment gets the mark a browser gives a download (macOS
+  quarantine `0081;…;Slamem;`, Windows `Zone.Identifier` zone 3), so Gatekeeper vets an app or
+  script in it (also once unzipped) and Windows applies SmartScreen and Office's Protected View.
+  Files that would run are never opened (`file-actions.ts`), whatever trailing dots or spaces
+  follow the extension.
+- The sign-in window's popups (SSO), however deep, get the same navigation rules as the window.
+- Links whose text isn't their address show the address on hover; "Open in Slack" and copied
+  message links are built only from a slack.com workspace address.
+- [SECURITY.md](SECURITY.md) is the model for reviewers: what is protected, the known limits, and
+  how to report a problem privately.
 - The sign-in window accepts any `https` page, because the SSO provider a workspace redirects to
   can't be known in advance (Google, Okta, Microsoft…). It stays an ordinary browsing window:
   sandboxed, no Node, no preload, every permission request refused, no downloads, and other
@@ -1171,7 +1220,11 @@ The app ships **unsigned**. Consequences, which colleagues must be walked throug
 
 *As built:* macOS builds are **ad-hoc signed** (`identity: '-'`). That is not a Developer ID, so
 Gatekeeper still blocks the first launch, but Apple Silicon refuses to run code with no signature
-at all. The first time the app reads its saved sign-in, macOS may ask whether it can use the
+at all. Since 0.3.8 they run with the **Hardened Runtime**: other programs can't inject code
+(`DYLD_INSERT_LIBRARIES`) or attach a debugger to read the Slack session from memory. The
+entitlements (`build/entitlements.mac.plist`) are the two exceptions Electron needs: JIT for V8,
+and library validation off, since an ad-hoc signature has no team to match. Verified on a packaged
+build: a test library injected that way loads into a plain program and not into Slamem. The first time the app reads its saved sign-in, macOS may ask whether it can use the
 keychain; the guide tells users to click **Always Allow**.
 
 Write these as a short illustrated guide — **Appendix E is a ready-to-send draft**. Put it in the
@@ -1228,6 +1281,10 @@ Squirrel or electron-updater (`src/main/update-install.ts`, `update-service.ts`)
 5. The next start compares its version with a note written before the restart: the log says
    "Updated to X (from Y)", or the banner says the update couldn't be installed and offers Try
    again and Download.
+
+Everything here rests on GitHub: whoever can publish a release in the repository can ship code
+to every user (SECURITY.md, Known limits). A Developer ID would let the updater also require the
+same signer.
 
 Downloaded by the app itself, the new macOS app carries no quarantine flag, so Gatekeeper doesn't
 stop it again. macOS may ask once for the keychain (ad-hoc signing gives every build a new
@@ -1561,6 +1618,8 @@ findings were confirmed. The ones that matter for this build, distilled:
 28. macOS unsigned builds cannot silently auto-update (§9.5). *As built:* they replace themselves
     after quitting instead (Update and restart, §9.5).
 29. Renderer loaded from `file://` breaking browser-history routing — use a hash/memory router.
+    *As built:* it loads from `slamem://app` since 0.3.8 (§3.6); still one page, still a hash
+    router.
 
 ---
 

@@ -10,7 +10,7 @@ import path from 'node:path';
 import { deleteConversationData, getConversation, listConversations, requeueFile } from '../db';
 import { exportConversationMarkdown, exportFileName } from '../export';
 import { blocked, conflict, invalid, notFound } from '../errors';
-import { isRunnableFile, localAttachmentPath } from '../file-actions';
+import { isRunnableFile, localAttachmentPath, markAsDownloaded } from '../file-actions';
 import { isSafeExternalUrl } from '../security-urls';
 import { deleteAttachmentsOlderThan, storageInfo } from '../storage';
 import { record, slackId, string } from '../validate';
@@ -154,13 +154,16 @@ export function actionHandlers(s: AppServices, hooks: PlatformHooks): ActionHand
     // ─── attachments ───────────────────────────────────────────────────────────────────────────
     openFile: async (req) => {
       const abs = localAttachmentPath(s.db, s.paths.filesDir, slackId(record(req).fileId, 'file'));
+      await markAttachment(s, abs);
       // Programs and scripts are revealed, never launched from the archive (PLAN §3.6).
       if (isRunnableFile(abs)) hooks.showItemInFolder(abs);
       else await hooks.openPath(abs);
       return ok;
     },
-    revealFile: (req) => {
-      hooks.showItemInFolder(localAttachmentPath(s.db, s.paths.filesDir, slackId(record(req).fileId, 'file')));
+    revealFile: async (req) => {
+      const abs = localAttachmentPath(s.db, s.paths.filesDir, slackId(record(req).fileId, 'file'));
+      await markAttachment(s, abs);
+      hooks.showItemInFolder(abs);
       return ok;
     },
 
@@ -206,6 +209,15 @@ export function actionHandlers(s: AppServices, hooks: PlatformHooks): ActionHand
     },
     installUpdate: () => s.updates.installUpdate(),
   };
+}
+
+/** Best effort: an attachment that can't be marked (e.g. on a FAT drive) still opens. */
+async function markAttachment(s: AppServices, abs: string): Promise<void> {
+  try {
+    await markAsDownloaded(abs);
+  } catch (err) {
+    s.log.warn(`Couldn’t mark an attachment as downloaded: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 function optionalWorkspace(req: unknown): string | undefined {

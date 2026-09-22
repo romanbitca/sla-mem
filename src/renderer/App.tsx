@@ -99,8 +99,9 @@ export function App() {
   const [client] = useState(createQueryClient);
   return (
     <AppProviders client={client}>
-      {/* The app loads from file:// in production, where only a hash router works (PLAN pitfall 29).
-          Plain state updates (no transitions) keep scroll restoration in step with the URL. */}
+      {/* The app loads a single page (slamem://app/index.html in production), so routes live in the
+          hash (PLAN pitfall 29). Plain state updates (no transitions) keep scroll restoration in
+          step with the URL. */}
       <HashRouter useTransitions={false}>
         <AppEffects />
         <ErrorBoundary className="flex h-full flex-col items-center justify-center gap-3 bg-canvas px-6 text-center">

@@ -16,6 +16,8 @@ import path from 'node:path';
 import type { SyncProgress } from '../shared/types';
 import {
   allocateMessageId,
+  checkForeignDatabase,
+  ForeignDatabaseError,
   getMeta,
   openDb,
   refreshSearchTextIfOutdated,
@@ -85,7 +87,7 @@ export async function restoreBackup(opts: RestoreBackupOptions): Promise<Restore
     progress('Opening the backup…');
     const backupDb = path.join(work, 'archive.db');
     await source.copyTo('archive.db', backupDb);
-    upgradeBackup(backupDb);
+    upgradeBackup(backupDb, log);
     const excluded = await backupExclusions(source);
 
     db.prepare('ATTACH DATABASE ? AS bk').run(backupDb);
@@ -120,15 +122,29 @@ export async function restoreBackup(opts: RestoreBackupOptions): Promise<Restore
 
 // ─── the backup's database ───────────────────────────────────────────────────────────────────
 
-/** Brings a backup from an older version up to this schema; one from a newer version is refused. */
-function upgradeBackup(file: string): void {
+/**
+ * Checks the backup's database before anything else reads it (anyone can make a file that looks
+ * like a backup, see db/foreign.ts), then brings one from an older version up to this schema. One
+ * from a newer version is refused.
+ */
+function upgradeBackup(file: string, log: (line: string) => void): void {
   try {
+    checkForeignDatabase(file);
     openDb(file).close();
   } catch (err) {
-    if (/newer/i.test(err instanceof Error ? err.message : '')) {
+    const detail = err instanceof Error ? err.message : String(err);
+    log(`Backup refused: ${detail}`);
+    const problem = err instanceof ForeignDatabaseError ? err.problem : /newer/i.test(detail) ? 'newer' : 'damaged';
+    if (problem === 'newer') {
       throw new Error('This backup was made by a newer version of Slamem. Update Slamem on this computer first.', {
         cause: err,
       });
+    }
+    if (problem === 'unexpected') {
+      throw new Error(
+        'This backup can’t be imported: its database holds things Slamem never writes, so it may have been tampered with.',
+        { cause: err },
+      );
     }
     throw new Error('This backup can’t be read: its database is damaged.', { cause: err });
   }

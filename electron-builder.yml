@@ -40,6 +40,8 @@ electronFuses:
   enableNodeCliInspectArguments: false
   enableEmbeddedAsarIntegrityValidation: true
   onlyLoadAppFromAsar: true
+  # The window loads from slamem://app (src/main/app-protocol.ts): file:// pages need no extra powers.
+  grantFileProtocolExtraPrivileges: false
 
 mac:
   category: public.app-category.productivity
@@ -47,7 +49,11 @@ mac:
   darkModeSupport: true
   # No paid certificate (PLAN §1.4): ad-hoc signing, which Apple Silicon requires to run at all.
   identity: '-'
-  hardenedRuntime: false
+  # Other programs can't inject code (DYLD_*) or attach a debugger to read the Slack session from
+  # memory. The entitlements are the two exceptions Electron needs.
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
   # The zip (for update downloads); the dmg sets its own name below.
   artifactName: Slamem-${version}-${arch}-mac.${ext}
   gatekeeperAssess: false

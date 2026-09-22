@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The two exceptions Slamem needs to the Hardened Runtime (electron-builder.yml, mac): V8 compiles
+  JavaScript at run time (allow-jit), and an ad-hoc signature carries no team, so the app's own
+  frameworks and native modules only load with library validation off. Everything else stays on:
+  no DYLD_* environment variables, no debugger attaching, no unsigned executable memory.
+-->
+<plist version="1.0">
+  <dict>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+  </dict>
+</plist>

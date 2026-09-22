@@ -18,7 +18,7 @@ import {
 } from '../../lib/blockkit';
 import { Mrkdwn, MrkdwnNodes } from '../../lib/mrkdwn';
 import { remoteImageSrc } from '../../lib/remoteImage';
-import { safeHref } from '../../lib/safeUrl';
+import { linkTitle, safeHref } from '../../lib/safeUrl';
 import { FileIcon, FilmIcon } from '../icons';
 
 /**
@@ -183,7 +183,13 @@ function InertButton({ element }: { element: Loose }) {
   );
   if (href) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={clsx(classes, 'focus-ring hover:bg-hover')}>
+      <a
+        href={href}
+        title={linkTitle(label, href)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={clsx(classes, 'focus-ring hover:bg-hover')}
+      >
         <span className="truncate">{label}</span>
       </a>
     );
@@ -226,7 +232,13 @@ function VideoBlock({ block }: { block: Loose }) {
         {title && (
           <p className="text-sm font-semibold">
             {href ? (
-              <a href={href} target="_blank" rel="noopener noreferrer" className="md-link">
+              <a
+                href={href}
+                title={linkTitle(title.text, href)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="md-link"
+              >
                 {title.text}
               </a>
             ) : (

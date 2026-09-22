@@ -4,7 +4,7 @@ import type { AttachmentDTO } from '../../../shared/types';
 import { hasVisibleBlocks } from '../../lib/blockkit';
 import { Mrkdwn } from '../../lib/mrkdwn';
 import { remoteImageSrc } from '../../lib/remoteImage';
-import { attachmentColor, safeHref } from '../../lib/safeUrl';
+import { attachmentColor, linkTitle, safeHref } from '../../lib/safeUrl';
 import { BlockKit } from './BlockKit';
 
 /** Link unfurls, bot attachments and shared messages, as quiet cards with a colored rail. */
@@ -75,7 +75,13 @@ export function AttachmentCard({ attachment: a }: { attachment: AttachmentDTO })
             <div className="mb-0.5 flex items-center gap-1.5 text-[13px] font-semibold text-ink">
               <RemoteIcon src={a.authorIcon} size={a.isMsgUnfurl ? 18 : 16} rounded />
               {authorHref ? (
-                <a href={authorHref} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">
+                <a
+                  href={authorHref}
+                  title={linkTitle(a.authorName, authorHref)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="truncate hover:underline"
+                >
                   {a.authorName}
                 </a>
               ) : (
@@ -86,7 +92,13 @@ export function AttachmentCard({ attachment: a }: { attachment: AttachmentDTO })
           {a.title && (
             <div className="text-sm font-semibold">
               {titleHref ? (
-                <a href={titleHref} target="_blank" rel="noopener noreferrer" className="md-link">
+                <a
+                  href={titleHref}
+                  title={linkTitle(a.title, titleHref)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="md-link"
+                >
                   {a.title}
                 </a>
               ) : (
