@@ -88,13 +88,17 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN || secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
-          ls -l dist
-          # GitHub accepts several drafts with one tag, so look before creating: a re-run replaces
-          # the files in the release it made before.
+          # The artifacts keep the version folder electron-builder wrote into (dist/0.2.2/…).
+          files=()
+          while IFS= read -r f; do files+=("$f"); done < <(find dist -type f | sort)
+          printf '%s\n' "${files[@]}"
+          if [[ ${#files[@]} -eq 0 ]]; then echo "::error::No installers were downloaded"; exit 1; fi
+          # GitHub accepts several drafts with one tag, so look before creating: a re-run fills the
+          # release it made before (gh creates the draft first, then uploads).
           existing=$(gh api "repos/$GH_REPO/releases" --jq "[.[] | select(.tag_name == \"$GITHUB_REF_NAME\")][0].id // empty")
           if [[ -n "$existing" ]]; then
-            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" dist/* --draft --verify-tag --title "sla-mem ${GITHUB_REF_NAME#v}" \
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" --draft --verify-tag --title "sla-mem ${GITHUB_REF_NAME#v}" \
               --notes "Write what's new for non-technical readers (the app shows it as plain text), then publish."
           fi
