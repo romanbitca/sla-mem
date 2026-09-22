@@ -467,12 +467,27 @@ const HAS_SQL: Record<SearchHas, string> = {
   image: 'm.has_images = 1',
 };
 
-export function search(db: DB, params: SearchParams, opts: { now?: Date } = {}): SearchResponse {
+/**
+ * Limits a search can't widen (Ask AI's "In", "From" and "Date" choices): unlike the explicit
+ * filters, which add to what `q` names, these narrow it. Asking for a conversation or person
+ * outside them finds nothing.
+ */
+export interface SearchWithin {
+  conversationIds?: readonly string[];
+  userIds?: readonly string[];
+  /** Inclusive, YYYY-MM-DD local time. */
+  after?: string | null;
+  /** Exclusive, YYYY-MM-DD local time. */
+  before?: string | null;
+}
+
+export function search(db: DB, params: SearchParams, opts: { now?: Date; within?: SearchWithin } = {}): SearchResponse {
   const started = performance.now();
   const now = opts.now ?? new Date();
   const resolvers = loadSearchResolvers(db, () => now);
   const parsed = parseSearchQuery(params.q ?? '', resolvers);
   const filters = mergeFilters(parsed, params, resolvers);
+  const outside = opts.within ? !narrowWithin(filters, opts.within, resolvers) : false;
   const response = (total: number, hits: SearchHit[]): SearchResponse => ({
     total,
     hits,
@@ -488,7 +503,7 @@ export function search(db: DB, params: SearchParams, opts: { now?: Date } = {}):
     tookMs: Math.round((performance.now() - started) * 10) / 10,
   });
 
-  if (parsed.unresolved.length) return response(0, []);
+  if (parsed.unresolved.length || outside) return response(0, []);
   const match = buildMatchExpression(parsed);
   const where = filterClauses(filters, match);
   if (!match.positive && !where.sql.length) return response(0, []); // nothing asked for
@@ -526,6 +541,31 @@ function mergeFilters(parsed: ParsedSearchQuery, params: SearchParams, r: Search
     else narrowDates(filters, key === 'after' ? day : null, key === 'before' ? day : null);
   }
   return filters;
+}
+
+/** Narrows the filters to `within`; false when nothing can match any more. */
+function narrowWithin(filters: Filters, within: SearchWithin, r: SearchResolvers): boolean {
+  const conversations = within.conversationIds ?? [];
+  if (conversations.length) {
+    filters.conversationIds = filters.conversationIds.length
+      ? filters.conversationIds.filter((id) => conversations.includes(id))
+      : [...conversations];
+    if (!filters.conversationIds.length) return false;
+  }
+  const users = within.userIds ?? [];
+  if (users.length) {
+    const bots = r.botsOfUsers([...users]);
+    if (filters.userIds.length || filters.botIds.length) {
+      filters.userIds = filters.userIds.filter((id) => users.includes(id));
+      filters.botIds = filters.botIds.filter((id) => bots.includes(id));
+    } else {
+      filters.userIds = [...users];
+      filters.botIds = bots;
+    }
+    if (!filters.userIds.length && !filters.botIds.length) return false;
+  }
+  narrowDates(filters, within.after ?? null, within.before ?? null);
+  return !(filters.after && filters.before && filters.after >= filters.before);
 }
 
 function strings(values: unknown): string[] {

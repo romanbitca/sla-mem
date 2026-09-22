@@ -8,7 +8,8 @@
  *  - `text` fields are raw Slack mrkdwn (entities `&lt; &gt; &amp;` still escaped, `<@U123>` refs
  *    intact). The renderer parses them into React nodes; main never produces HTML.
  *  - Times that are not Slack ts (run start/finish, connection times) are epoch milliseconds.
- *  - Secrets (the Slack token and session cookie) never appear in any of these shapes.
+ *  - Secrets (the Slack token and session cookie, the Anthropic API key) never appear in any of
+ *    these shapes, except the key once on its way in (`saveAiKey`).
  */
 
 // ─── Directory ────────────────────────────────────────────────────────────────────────────────
@@ -422,6 +423,13 @@ export type AttachmentPolicy = 'none' | 'standard' | 'everything';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 
+/**
+ * The Claude model Ask AI uses (paid for by the reader's own Anthropic API key). Opus writes the
+ * best answers; Sonnet and Haiku are faster and cheaper.
+ */
+export type AiModel = 'claude-opus-5' | 'claude-sonnet-5' | 'claude-haiku-4-5';
+export const AI_MODELS: readonly AiModel[] = ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5'];
+
 export interface PreferencesDTO {
   syncIntervalMinutes: SyncInterval;
   attachmentPolicy: AttachmentPolicy;
@@ -434,18 +442,107 @@ export interface PreferencesDTO {
   showTrayIcon: boolean;
   /** Conversations never synced: no history, threads or attachments are fetched for them. */
   excludedConversationIds: string[];
+  aiModel: AiModel;
 }
 
 export type PreferencesPatch = Partial<
   Pick<
     PreferencesDTO,
-    'syncIntervalMinutes' | 'attachmentPolicy' | 'launchAtLogin' | 'theme' | 'showTrayIcon' | 'excludedConversationIds'
+    | 'syncIntervalMinutes'
+    | 'attachmentPolicy'
+    | 'launchAtLogin'
+    | 'theme'
+    | 'showTrayIcon'
+    | 'excludedConversationIds'
+    | 'aiModel'
   >
 >;
 
 export interface SettingsDTO {
   preferences: PreferencesDTO;
   connection: SlackConnectionDTO;
+  ai: AiKeyStatusDTO;
+}
+
+// ─── Ask AI ───────────────────────────────────────────────────────────────────────────────────
+
+/** Whether an Anthropic API key is saved. The key itself never leaves main. */
+export interface AiKeyStatusDTO {
+  saved: boolean;
+  /** The key's last four characters, to recognise it by ("…x7Qa"); null when none is saved. */
+  hint: string | null;
+}
+
+/** Something the assistant did on the way to an answer, shown as a line above it. */
+export interface AiStepDTO {
+  kind: 'search' | 'read' | 'list';
+  /** e.g. 'Searched “test from:ana”', 'Read #general, 1–7 Sep'. */
+  label: string;
+  /** The outcome, e.g. "12 results"; null when there's nothing to add. */
+  detail: string | null;
+}
+
+/** A message the assistant was shown, numbered: the answer cites it as [n]. */
+export interface AiSourceDTO {
+  ref: number;
+  message: MessageDTO;
+}
+
+export interface AiUsageDTO {
+  model: AiModel;
+  /** Everything read, cached or not. */
+  inputTokens: number;
+  outputTokens: number;
+  /** At Anthropic's list prices, in US dollars. */
+  costUsd: number;
+}
+
+/**
+ *  - no_key: no API key is saved
+ *  - bad_key: Anthropic refused the key
+ *  - no_credit: the Anthropic account has no credit left
+ *  - rate_limited / overloaded: try again in a moment
+ *  - offline: Anthropic couldn't be reached
+ *  - refused: Claude declined to answer
+ *  - failed: anything else
+ */
+export type AiErrorKind =
+  'no_key' | 'bad_key' | 'no_credit' | 'rate_limited' | 'overloaded' | 'offline' | 'refused' | 'failed';
+
+/**
+ * One question's progress (`ai` event), in order: steps and text as they happen, sources as the
+ * assistant reads messages, then exactly one `done` or `error`.
+ */
+export type AiEventDTO = { chatId: string; turnId: string } & (
+  | { type: 'step'; step: AiStepDTO }
+  | { type: 'text'; text: string }
+  | { type: 'sources'; sources: AiSourceDTO[] }
+  | { type: 'done'; usage: AiUsageDTO | null; stopped: boolean }
+  | { type: 'error'; kind: AiErrorKind; message: string }
+);
+
+/**
+ * What a question is limited to (the "In", "From" and "Date" buttons under the question box).
+ * Claude is told, and its tools can't look outside it. Empty lists and nulls mean no limit.
+ */
+export interface AiScopeDTO {
+  /** Only these conversations. */
+  conversationIds: string[];
+  /** Only messages these people wrote. */
+  userIds: string[];
+  /** Inclusive, YYYY-MM-DD (local time). */
+  after: string | null;
+  /** Exclusive, YYYY-MM-DD (local time). */
+  before: string | null;
+}
+
+export interface AskAiRequest {
+  /** Chosen by the window; a new chat is a new id. */
+  chatId: string;
+  /** This question, echoed in its events. */
+  turnId: string;
+  question: string;
+  scope?: AiScopeDTO;
 }
 
 // ─── Storage, backup, app ─────────────────────────────────────────────────────────────────────

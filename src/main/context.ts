@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { AppInfoDTO, AttachmentPolicy, LoginStatusDTO, PreferencesDTO, ThemePreference } from '../shared/types';
+import { AiService, SafeStorageAiKeyStore } from './ai';
 import {
   ConnectionService,
   LoginManager,
@@ -62,6 +63,7 @@ export interface AppServices extends AppContext {
   runs: RunManager;
   scheduler: Scheduler;
   updates: UpdateService;
+  ai: AiService;
 }
 
 export interface ServicesOptions {
@@ -74,6 +76,8 @@ export interface ServicesOptions {
   /** Development / test overrides for the mock Slack (never honoured by packaged builds). */
   apiBaseUrl?: string;
   webOrigin?: string;
+  /** The same for Anthropic's API (Ask AI). */
+  aiBaseUrl?: string;
   fetch?: typeof fetch;
   jobs?: Partial<RunJobs>;
   version: string;
@@ -135,7 +139,15 @@ export function createServices(opts: ServicesOptions): AppServices {
     installer: opts.installer ?? null,
     workDir: path.join(ctx.paths.tmpDir, 'update'),
   });
-  return { ...ctx, connection, login, runs, scheduler, updates };
+  const ai = new AiService({
+    db: ctx.db,
+    store: new SafeStorageAiKeyStore(ctx.paths.aiKeyPath, opts.cipher),
+    model: () => ctx.prefs.get().aiModel,
+    log: (line) => ctx.log.info(line),
+    baseURL: opts.aiBaseUrl,
+    fetch: opts.fetch,
+  });
+  return { ...ctx, connection, login, runs, scheduler, updates, ai };
 }
 
 /** Policy order, from strictest to loosest: loosening it may make skipped files eligible. */
@@ -211,6 +223,7 @@ export function wireServices(
 export async function closeServices(s: AppServices): Promise<void> {
   s.scheduler.stop();
   s.updates.stop();
+  s.ai.shutdown();
   s.login.cancel();
   await s.runs.shutdown(5_000);
   closeContext(s);

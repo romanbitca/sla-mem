@@ -11,6 +11,10 @@ seen, forever**, even after Slack hides it.
 - **Local-first.** One computer, no server, no cloud, no account, no telemetry. The only network
   traffic is between the app and Slack (plus a check for new versions on GitHub, and the download
   of one when you click Update and restart).
+- **Ask AI, only if you turn it on.** With your own Anthropic API key (Settings → Ask AI), you can
+  ask questions about your archive and Claude answers with links to the messages. Only then, and
+  only while it answers a question, do the question and the messages it reads go to Anthropic.
+  Chats are never saved.
 - **Only your own view.** It archives the conversations _you_ are in, using your own Slack login.
   Nobody else's DMs or private channels, no workspace admin needed.
 - **Read-only against Slack.** It never posts, edits, reacts or deletes anything in Slack.
@@ -56,6 +60,7 @@ npm run dev
 | `npm run dev`                                | Electron with hot reload (data in the per-user app data folder, "Slamem (dev)")        |
 | `npm run seed:demo` then `npm run dev:demo`  | A synthetic 10k-message archive in `./.demo-data`, then the app on it                  |
 | `npm run mock:slack` then `npm run dev:mock` | A fake Slack workspace on port 4849, then the app signed in to it (`./.mock-data`)     |
+| `npm run mock:claude`                        | A pretend Claude on port 4850 for Ask AI without a key (see below)                     |
 | `npm run check`                              | Typecheck, lint and all tests (what CI runs)                                           |
 | `npm test`                                   | Unit, integration (mock Slack server) and component tests                              |
 | `npm run build` then `npm run e2e`           | The built app driven end to end against the mock Slack (sign-in, sync, restart, crash) |
@@ -71,6 +76,18 @@ Layout: `src/main` (Electron main process: database, Slack sync, sign-in window,
 Automated tests never talk to real Slack. The mock (`test/mock-slack/`) serves the Web API,
 authenticated file downloads and the sign-in pages from a synthetic workspace, with fault
 injection (429s, failures, a signed-out session) and a 90-day Free-plan window.
+
+### Trying Ask AI without an API key
+
+`npm run mock:claude` starts a stand-in for Anthropic's API that searches for the question's
+longest word and cites what it finds. Point a development build at it, then save any key that
+starts with `sk-ant-` in Settings → Ask AI:
+
+```bash
+SLA_MEM_ANTHROPIC_API=http://127.0.0.1:4850 npm run dev:demo
+```
+
+Like the mock Slack, the override is ignored by packaged builds.
 
 ### Pointing a build at another folder
 

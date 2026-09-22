@@ -16,6 +16,7 @@ import SearchPage from './pages/SearchPage';
 
 // Visited rarely (settings now and then, onboarding once): keep them out of the main bundle.
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const AskPage = lazy(() => import('./pages/AskPage'));
 const Onboarding = lazy(() => import('./components/onboarding/Onboarding'));
 
 /** Route table, separate from the router so tests can mount it in a MemoryRouter. */
@@ -26,6 +27,14 @@ export function AppRoutes() {
         <Route index element={<HomePage />} />
         <Route path="c/:id" element={<ConversationPage />} />
         <Route path="search" element={<SearchPage />} />
+        <Route
+          path="ask"
+          element={
+            <Suspense fallback={<LoadingState label="Opening Ask AI…" />}>
+              <AskPage />
+            </Suspense>
+          }
+        />
         <Route
           path="settings"
           element={

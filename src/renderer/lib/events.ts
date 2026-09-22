@@ -1,12 +1,14 @@
 /**
  * Events main pushes to the window (src/shared/ipc.ts `ArchiveEvents`), written straight into
  * the react-query cache so every screen shows live sync progress, sign-in steps, settings and
- * update availability without polling.
+ * update availability without polling. Ask AI's answers go to its chat (askChat.ts), which lives
+ * outside any screen so an answer keeps arriving while the reader looks at a cited message.
  */
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { SettingsDTO } from '../../shared/types';
+import { applyAiEvent } from './askChat';
 import { getBridge } from './bridge';
 import { useStableCallback } from './hooks';
 import { applyLoginStatus, qk } from './queries';
@@ -51,6 +53,7 @@ export function useArchiveEvents(): void {
       bridge.on('navigate', (payload) => {
         if (isAppPath(payload?.path)) go(payload.path);
       }),
+      bridge.on('ai', applyAiEvent),
     ];
     return () => {
       for (const off of unsubscribe) off();

@@ -7,6 +7,7 @@
  */
 import type { ApiMethod, ApiRequest, ApiResponse, IpcErrorCode, IpcResult } from '../../shared/ipc';
 import type {
+  AskAiRequest,
   CookieLoginRequest,
   MessagesQuery,
   PreferencesPatch,
@@ -66,9 +67,9 @@ const DEFAULT_MESSAGES: Record<IpcErrorCode, string> = {
 };
 
 // Main already speaks plain language; these are a safety net so nothing technical ever reaches
-// the reader: session secrets, the words token/cookie, error codes (`invalid_auth`,
+// the reader: session secrets and API keys, the words token/cookie, error codes (`invalid_auth`,
 // `SQLITE_BUSY`, `net::ERR_…`, `ENOSPC`), HTTP statuses, exception names and stack traces.
-const SECRET = /xox[a-z]-/i;
+const SECRET = /xox[a-z]-|sk-ant-[A-Za-z0-9_-]{8}/i;
 const TOKEN_WORDS = /\b(?:tokens?|xox[a-z]?)\b/i;
 const COOKIE_WORDS = /\bcookies?\b/i;
 /** `invalid_auth`, `Invalid_Auth`, `SQLITE_BUSY`, but not a channel name like `#dev_ops`. */
@@ -221,6 +222,13 @@ export const api = {
   // Attachments
   openFile: (req: { fileId: string }) => call('openFile', req),
   revealFile: (req: { fileId: string }) => call('revealFile', req),
+
+  // Ask AI
+  saveAiKey: (req: { key: string }) => call('saveAiKey', req),
+  removeAiKey: () => call('removeAiKey'),
+  askAi: (req: AskAiRequest) => call('askAi', req),
+  stopAi: (req: { chatId: string }) => call('stopAi', req),
+  endAiChat: (req: { chatId: string }) => call('endAiChat', req),
 
   // App
   getAppInfo: (_signal?: AbortSignal) => call('getAppInfo'),

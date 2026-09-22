@@ -13,6 +13,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi, type Mock } from 'vitest';
 import type { ArchiveBridge, ArchiveEvent, ArchiveEvents } from '../../shared/ipc';
 import type {
+  AiKeyStatusDTO,
   AppInfoDTO,
   AttachmentDTO,
   ConversationDTO,
@@ -203,16 +204,18 @@ export function makePreferences(overrides: Partial<PreferencesDTO> = {}): Prefer
     onboardingComplete: true,
     showTrayIcon: true,
     excludedConversationIds: [],
+    aiModel: 'claude-opus-5',
     ...overrides,
   };
 }
 
 export function makeSettings(
-  overrides: { connection?: SlackConnectionDTO; preferences?: Partial<PreferencesDTO> } = {},
+  overrides: { connection?: SlackConnectionDTO; preferences?: Partial<PreferencesDTO>; ai?: AiKeyStatusDTO } = {},
 ): SettingsDTO {
   return {
     connection: overrides.connection ?? makeConnection(),
     preferences: makePreferences(overrides.preferences),
+    ai: overrides.ai ?? { saved: false, hint: null },
   };
 }
 

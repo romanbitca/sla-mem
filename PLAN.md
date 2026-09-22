@@ -182,6 +182,22 @@ Each item is also corrected where it belongs in this document.
   details give way as the header narrows (a thread open), and the tooltips keep them.
 - **Sidebar filter (0.3.2):** "Filter conversations" is a bordered box with a filter icon, set apart
   from Overview and Search by a line, and its clear button shows whenever it holds text.
+- **Ask AI (added, opt-in):** a sidebar place where the reader asks questions about the archive in
+  plain words ("where did Ana mention the tests?", "what happened in #design this week?") and
+  Claude answers with numbered citations that open the message beside the chat (or its
+  conversation, with a way back), like search results. It uses the reader's own Anthropic API key
+  (Settings → Ask AI: checked with Anthropic before saving, kept encrypted with the OS keychain like
+  the Slack session, never shown again) and the model chosen there (Claude Opus 5 by default,
+  Sonnet 5 or Haiku 4.5 for speed and price). Claude works through four local tools (search with
+  Slack syntax, open a message with its thread or surroundings, read a conversation over a period,
+  list the busiest conversations); only their compact text, the question and the answer travel,
+  and only while a question is answered: this is the one exception to "the only network traffic is
+  Slack" (§1.2), and it happens only once the reader adds a key. The "In", "From" and "Date" buttons
+  under the question box limit a question; the tools can't look outside the limits. Kept cheap and
+  quick: low effort, the prompt cache, compact tool text and a round limit; each answer shows its
+  tokens and cost. Chats live in memory only (New chat forgets one; quitting forgets all); logs say
+  what an answer cost, never what was asked. `npm run mock:claude` plus `SLA_MEM_ANTHROPIC_API`
+  (development builds only) stand in for Anthropic without a key.
 - **Export conversation (Stage 8 nicety):** built as Markdown only (day headings, threads as
   quotes, edits, deletions, attachments and reactions noted). Markdown opens in any editor and
   renders in most viewers, so the HTML variant was left out.
@@ -223,7 +239,9 @@ Slack history on their own computer**.
 - It syncs regularly. Anything it has ever seen is kept **forever**, even after Slack hides or
   deletes it. This is the core value proposition and the source of most hard requirements.
 - It is **local-first**: one machine, no server, no cloud, no account system, no telemetry. The only
-  network traffic is directly between the app and Slack, fetching that user's own data.
+  network traffic is directly between the app and Slack, fetching that user's own data. *(As
+  built: the update check and download from GitHub, and, only once the reader adds their own
+  Anthropic API key, Ask AI's questions to Claude; see §0.3.)*
 - Each person runs their own copy and sees **only their own Slack view**: the channels they are in,
   their DMs, their private channels. There is no central archive and no cross-user access.
 
@@ -964,6 +982,7 @@ Familiar to anyone who has used Slack, but clearly a *reader*:
 - **Search page**: the query box with hints/autocomplete for `from:`/`in:`/`has:`, editable filter
   chips, sort control, results with conversation + author + date + highlighted snippet, grouped or
   flat, "load more", and click-through to the message in context.
+- *(As built: an **Ask AI** place under Search, a chat with Claude over the archive; see §0.3.)*
 - **Archive home**: how many messages/conversations/files, the date range covered, how much disk is
   used, when the last sync ran, a **Sync now** button, and prominently: **"N messages older than 90
   days — no longer visible in Slack"**, which is the payoff. *(As built: called **Overview**; when a
@@ -988,6 +1007,7 @@ Familiar to anyone who has used Slack, but clearly a *reader*:
 - **Storage**: disk used, broken down (messages vs attachments), "Show folder", "Delete downloaded
   attachments older than…", and a **Back up now** action that zips the archive to a chosen folder.
 - **About**: version, check for updates, link to the guide.
+- *(As built: an **Ask AI** card: the Anthropic API key, the model, and what is sent to Anthropic.)*
 
 ### 8.5 Error messages — plain language, always with an action
 

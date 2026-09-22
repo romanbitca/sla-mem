@@ -9,11 +9,12 @@ import type {
   ThreadDTO,
   UserDTO,
 } from '../../shared/types';
+import { desegmentCjk } from './cjk';
 import { hydrateMessages } from './dto';
 import { nonEmpty, userLabelOf, type UserNameColumns } from './labels';
 import { parseStringArray } from './merge';
 import { getMeta } from './meta';
-import { stmt } from './stmt';
+import { inList, stmt } from './stmt';
 import type { DB } from './types';
 
 // =============================================================================================
@@ -466,4 +467,131 @@ function resolveEmoji(
     current = byName.get(current.alias_for);
   }
   return current ? null : `alias:${last}`;
+}
+
+// =============================================================================================
+// Reading for Ask AI: whole stretches of a conversation, and where the activity was
+// =============================================================================================
+
+/** A stored ts for the start of a second, comparable with stored ts as text (they share a width). */
+export function tsAtSecond(epochSeconds: number): string {
+  return `${Math.floor(epochSeconds)}.000000`;
+}
+
+export interface TopLevelRow {
+  id: number;
+  ts: string;
+  replyCount: number;
+}
+
+/**
+ * A conversation's top-level messages with `after <= ts < before` (either bound optional): the
+ * oldest `limit` of them, or with `latest` the newest `limit`. Either way in ascending order.
+ */
+export function topLevelInRange(
+  db: DB,
+  conversationId: string,
+  opts: { after?: string | null; before?: string | null; limit: number; latest?: boolean },
+): { rows: TopLevelRow[]; more: boolean } {
+  const conditions = ['conversation_id = ?', TOP_LEVEL];
+  const params: unknown[] = [conversationId];
+  if (opts.after) {
+    conditions.push('ts >= ?');
+    params.push(normalizeTs(opts.after));
+  }
+  if (opts.before) {
+    conditions.push('ts < ?');
+    params.push(normalizeTs(opts.before));
+  }
+  const rows = stmt<{ id: number; ts: string; reply_count: number }>(
+    db,
+    `SELECT id, ts, reply_count FROM messages WHERE ${conditions.join(' AND ')}
+     ORDER BY ts ${opts.latest ? 'DESC' : 'ASC'} LIMIT ?`,
+  )
+    .all(...params, opts.limit + 1)
+    .map((r) => ({ id: r.id, ts: r.ts, replyCount: r.reply_count }));
+  const more = rows.length > opts.limit;
+  const page = rows.slice(0, opts.limit);
+  return { rows: opts.latest ? page.reverse() : page, more };
+}
+
+/** Row ids of a thread's replies (parent excluded), oldest first, and how many there are. */
+export function threadReplies(
+  db: DB,
+  conversationId: string,
+  threadTs: string,
+  limit: number,
+): { ids: number[]; total: number } {
+  const root = normalizeTs(threadTs);
+  const ids = stmt<{ id: number }>(
+    db,
+    'SELECT id FROM messages WHERE conversation_id = ? AND thread_ts = ? AND ts <> ? ORDER BY ts LIMIT ?',
+  )
+    .all(conversationId, root, root, limit)
+    .map((r) => r.id);
+  const total =
+    ids.length < limit
+      ? ids.length
+      : count(
+          db,
+          'SELECT count(*) AS n FROM messages WHERE conversation_id = ? AND thread_ts = ? AND ts <> ?',
+          conversationId,
+          root,
+          root,
+        );
+  return { ids, total };
+}
+
+/** Row ids of messages by conversation and ts (unknown ones are left out), in the given order. */
+export function messageRowIds(db: DB, messages: readonly { conversationId: string; ts: string }[]): number[] {
+  const byKey = stmt<{ id: number }>(db, 'SELECT id FROM messages WHERE conversation_id = ? AND ts = ?');
+  return messages.flatMap((m) => {
+    const row = byKey.get(m.conversationId, normalizeTs(m.ts));
+    return row ? [row.id] : [];
+  });
+}
+
+/**
+ * The search text of messages by row id: mentions resolved to names, markup gone, attachment and
+ * file names included, Chinese and Japanese without their search spacing.
+ */
+export function plainTexts(db: DB, ids: readonly number[]): Map<number, string> {
+  if (!ids.length) return new Map();
+  const rows = stmt<{ id: number; plain_text: string }>(
+    db,
+    'SELECT id, plain_text FROM messages WHERE id IN (SELECT value FROM json_each(?))',
+  ).all(JSON.stringify(ids));
+  return new Map(rows.map((r) => [r.id, desegmentCjk(r.plain_text)]));
+}
+
+export interface ConversationActivity {
+  conversationId: string;
+  messages: number;
+  latestTs: string | null;
+}
+
+/**
+ * How many messages each conversation has with `after <= time < before` (epoch seconds, either
+ * optional), by `userIds` when given, busiest first. With neither this is the kept totals, not a
+ * scan.
+ */
+export function conversationActivity(
+  db: DB,
+  opts: { after?: number | null; before?: number | null; userIds?: readonly string[]; limit: number },
+): ConversationActivity[] {
+  const users = opts.userIds ?? [];
+  if (opts.after == null && opts.before == null && !users.length) {
+    return stmt<ConversationActivity>(
+      db,
+      `SELECT conversation_id AS conversationId, message_count AS messages, latest_ts AS latestTs
+       FROM conversation_stats WHERE message_count > 0 ORDER BY message_count DESC LIMIT ?`,
+    ).all(opts.limit);
+  }
+  const by = users.length ? inList('user_id', users) : null;
+  return stmt<ConversationActivity>(
+    db,
+    `SELECT conversation_id AS conversationId, count(*) AS messages, max(ts) AS latestTs
+     FROM messages WHERE time >= ? AND time < ?${by ? ` AND ${by.sql}` : ''}
+     GROUP BY conversation_id ORDER BY messages DESC, latestTs DESC LIMIT ?`,
+  ).all(opts.after ?? 0, opts.before ?? Number.MAX_SAFE_INTEGER, ...(by?.params ?? []), opts.limit);
 }

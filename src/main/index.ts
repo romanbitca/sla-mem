@@ -92,13 +92,15 @@ if (reopening) {
 }
 if (process.platform === 'win32') app.setAppUserModelId('com.9h.sla-mem');
 
-// The development mock Slack (test/mock-slack) is only ever reachable from unpackaged builds.
+// The development mocks (test/mock-slack, test/mock-anthropic) are only ever reachable from
+// unpackaged builds.
 const slackOverrides = isDev
   ? {
       apiBaseUrl: process.env.SLA_MEM_SLACK_API || undefined,
       webOrigin: process.env.SLA_MEM_SLACK_WEB || undefined,
     }
   : {};
+const aiBaseUrl = isDev ? process.env.SLA_MEM_ANTHROPIC_API || undefined : undefined;
 
 // Must happen before `ready`: archive:// behaves like a normal, secure origin for <img>/<video>.
 protocol.registerSchemesAsPrivileged([
@@ -398,6 +400,8 @@ function wireStatus(s: AppServices): () => void {
     pushStatus();
   });
   s.updates.on('changed', (info) => send('update', info));
+  s.ai.on('changed', () => send('settings', settingsDTO(s)));
+  s.ai.on('event', (event) => send('ai', event));
   pushStatus();
   return () => {
     stopped = true;
@@ -563,6 +567,7 @@ async function start(): Promise<void> {
     },
     apiBaseUrl: slackOverrides.apiBaseUrl,
     webOrigin: slackOverrides.webOrigin,
+    aiBaseUrl,
     version: app.getVersion(),
     installer: createInstaller({ platform: process.platform, execPath: process.execPath, isPackaged: app.isPackaged }),
   });

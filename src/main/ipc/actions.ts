@@ -31,7 +31,7 @@ type ActionHandlers = Omit<
 >;
 
 export function settingsDTO(s: AppServices): SettingsDTO {
-  return { preferences: s.prefs.get(), connection: s.connection.status() };
+  return { preferences: s.prefs.get(), connection: s.connection.status(), ai: s.ai.status() };
 }
 
 export function actionHandlers(s: AppServices, hooks: PlatformHooks): ActionHandlers {
@@ -159,6 +159,28 @@ export function actionHandlers(s: AppServices, hooks: PlatformHooks): ActionHand
     },
     revealFile: (req) => {
       hooks.showItemInFolder(localAttachmentPath(s.db, s.paths.filesDir, slackId(record(req).fileId, 'file')));
+      return ok;
+    },
+
+    // ─── Ask AI ────────────────────────────────────────────────────────────────────────────────
+    saveAiKey: async (req) => {
+      await s.ai.saveKey(record(req).key);
+      return settingsDTO(s);
+    },
+    removeAiKey: () => {
+      s.ai.removeKey();
+      return settingsDTO(s);
+    },
+    askAi: (req) => {
+      s.ai.ask(req);
+      return ok;
+    },
+    stopAi: (req) => {
+      s.ai.stop(record(req).chatId);
+      return ok;
+    },
+    endAiChat: (req) => {
+      s.ai.end(record(req).chatId);
       return ok;
     },
 

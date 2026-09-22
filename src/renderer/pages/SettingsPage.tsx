@@ -5,6 +5,7 @@ import { SidebarToggle } from '../components/layout/shell';
 import { AboutCard } from '../components/settings/AboutCard';
 import { AdvancedCard } from '../components/settings/AdvancedCard';
 import { AppSettingsCard } from '../components/settings/AppSettingsCard';
+import { AskAiCard } from '../components/settings/AskAiCard';
 import { AttachmentsCard } from '../components/settings/AttachmentsCard';
 import { ConnectionCard } from '../components/settings/ConnectionCard';
 import { StorageCard } from '../components/settings/StorageCard';
@@ -43,6 +44,7 @@ export default function SettingsPage() {
         <AppSettingsCard preferences={data.preferences} />
         <WhatToArchiveCard excludedIds={data.preferences.excludedConversationIds} />
         <AttachmentsCard policy={data.preferences.attachmentPolicy} />
+        <AskAiCard ai={data.ai} model={data.preferences.aiModel} />
       </>
     );
   } else if (settings.isError) {

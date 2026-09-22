@@ -10,6 +10,7 @@ import {
   search,
   searchTuning,
   type SearchResolvers,
+  type SearchWithin,
 } from './search';
 import { msg, seededDb } from './test-helpers';
 import type { DB } from './types';
@@ -404,6 +405,23 @@ describe('search', () => {
     });
     expect(res.total).toBe(0); // U1's deploy messages have no links
     expect(run(db, 'deploy', { conversation: ['C1', 'D1'], user: ['U1'] }).total).toBe(2);
+  });
+
+  it('narrows to limits a query can’t widen (Ask AI’s In, From and Date)', () => {
+    const within = (q: string, w: SearchWithin) => search(db, { q }, { now: NOW, within: w });
+    // Unlike explicit params, limits intersect with what the query names.
+    expect(texts(within('deploy', { conversationIds: ['C2', 'D1'] })).sort()).toEqual([
+      'private deploy note',
+      'random deploy chatter',
+    ]);
+    expect(within('deploy in:#general', { conversationIds: ['C2'] }).total).toBe(0);
+    expect(texts(within('deploy in:#random', { conversationIds: ['C2', 'D1'] }))).toEqual(['random deploy chatter']);
+    expect(within('deploy', { userIds: ['U1'] }).total).toBe(2);
+    expect(within('deploy from:bob', { userIds: ['U1'] }).total).toBe(0);
+    expect(texts(within('deploy', { after: '2024-04-01', before: '2024-04-03' }))).toEqual(['random deploy chatter']);
+    expect(within('deploy before:2024-04-01', { after: '2024-04-01' }).total).toBe(0);
+    // Filter-only questions work inside the limits too.
+    expect(within('', { conversationIds: ['D1'] }).total).toBe(1);
   });
 
   it('returns nothing for unresolved modifiers, invalid date params or an empty query', () => {

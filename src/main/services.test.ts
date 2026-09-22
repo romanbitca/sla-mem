@@ -286,6 +286,11 @@ describe('redaction and logging (PLAN §3.5, pitfall 20)', () => {
     expect(out).not.toMatch(/AbC|dEf|gH|123-456|A0-abc/);
   });
 
+  it('masks Anthropic API keys (Ask AI)', () => {
+    const out = redactSecrets('401 for x-api-key sk-ant-api03-AbCdEf_123-xyz in request');
+    expect(out).toBe('401 for x-api-key sk-ant-[redacted] in request');
+  });
+
   it('never writes a secret to the log file and rotates at the size cap', () => {
     const log = createLogger({ dir: path.join(dir, 'logs'), maxBytes: 400 });
     for (let i = 0; i < 20; i++)
@@ -317,7 +322,14 @@ describe('preferences', () => {
     expect(changes).toHaveLength(1); // no-op
     expect(() => prefs.update({ syncIntervalMinutes: 7 })).toThrow(/how often/);
     expect(() => prefs.update({ nonsense: true })).toThrow(/Unknown setting/);
-    expect(new Preferences(file).get()).toMatchObject({ syncIntervalMinutes: 15, attachmentPolicy: 'everything' });
+    expect(prefs.get().aiModel).toBe('claude-opus-5');
+    prefs.update({ aiModel: 'claude-haiku-4-5' });
+    expect(() => prefs.update({ aiModel: 'gpt-5' })).toThrow(/model from the list/);
+    expect(new Preferences(file).get()).toMatchObject({
+      syncIntervalMinutes: 15,
+      attachmentPolicy: 'everything',
+      aiModel: 'claude-haiku-4-5',
+    });
     fs.writeFileSync(file, '{broken');
     expect(new Preferences(file).get().syncIntervalMinutes).toBe(60);
     expect(fs.readdirSync(dir).some((f) => f.startsWith('config.json.corrupt-'))).toBe(true);

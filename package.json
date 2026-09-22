@@ -30,6 +30,7 @@
     "seed": "tsx scripts/seed.ts",
     "seed:demo": "tsx scripts/seed.ts --out ./.demo-data --messages 10000",
     "mock:slack": "tsx test/mock-slack/cli.ts",
+    "mock:claude": "tsx test/mock-anthropic/cli.ts",
     "gen:emoji": "tsx scripts/gen-emoji.ts",
     "icons": "electron scripts/make-icons.cjs",
     "dist": "npm run build && electron-builder",
@@ -45,6 +46,7 @@
     "yazl": "^3.3.1"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.127.0",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.103.2",

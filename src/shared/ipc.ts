@@ -7,7 +7,9 @@
  * error `code` (Electron flattens thrown errors into "Error invoking remote method…" strings).
  */
 import type {
+  AiEventDTO,
   AppInfoDTO,
+  AskAiRequest,
   BackupResultDTO,
   ExportResultDTO,
   DeletedArchiveDTO,
@@ -98,6 +100,17 @@ export interface ArchiveApi {
   openFile(req: { fileId: string }): OkDTO;
   revealFile(req: { fileId: string }): OkDTO;
 
+  // Ask AI (Claude, with the reader's own Anthropic API key)
+  /** Checks the key with Anthropic (no tokens used), then saves it encrypted. */
+  saveAiKey(req: { key: string }): SettingsDTO;
+  removeAiKey(): SettingsDTO;
+  /** Starts answering; the answer arrives as `ai` events. One question at a time per chat. */
+  askAi(req: AskAiRequest): OkDTO;
+  /** Stops the answer being written in that chat; what arrived so far stays. */
+  stopAi(req: { chatId: string }): OkDTO;
+  /** New chat: forgets this one. Chats are only ever kept in memory. */
+  endAiChat(req: { chatId: string }): OkDTO;
+
   // App
   getAppInfo(): AppInfoDTO;
   openExternal(req: { url: string }): OkDTO;
@@ -153,6 +166,11 @@ export const API_METHODS = [
   'showLogs',
   'openFile',
   'revealFile',
+  'saveAiKey',
+  'removeAiKey',
+  'askAi',
+  'stopAi',
+  'endAiChat',
   'getAppInfo',
   'openExternal',
   'getUpdateInfo',
@@ -200,6 +218,8 @@ export interface ArchiveEvents {
   update: UpdateInfoDTO;
   /** Main asks the UI to show a route (tray menu "Settings", notification clicks). */
   navigate: { path: string };
+  /** Ask AI: an answer being written (steps, text, sources, then done or error). */
+  ai: AiEventDTO;
 }
 
 export type ArchiveEvent = keyof ArchiveEvents;
@@ -210,6 +230,7 @@ export const ARCHIVE_EVENTS = [
   'settings',
   'update',
   'navigate',
+  'ai',
 ] as const satisfies readonly ArchiveEvent[];
 
 export const eventChannel = (event: ArchiveEvent): string => `${IPC_CHANNEL_PREFIX}event:${event}`;

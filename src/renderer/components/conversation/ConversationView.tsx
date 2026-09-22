@@ -395,22 +395,26 @@ function StillInSlack({ oldest }: { oldest: Date }) {
   );
 }
 
-/** Opened from search results: the way back to them, with the opened result focused. */
+/**
+ * Opened from search results or an Ask AI answer: the way back to them, with the opened result
+ * focused.
+ */
 function BackToSearch() {
   const location = useLocation();
   const navigate = useNavigate();
   const back = fromSearchOf(location.state);
   if (!back) return null;
+  const toChat = back.fromSearch.startsWith('/ask');
   return (
     <Button
       size="sm"
       variant="ghost"
       icon={<ChevronLeftIcon size={15} />}
-      title="Back to the search results"
+      title={toChat ? 'Back to the answer' : 'Back to the search results'}
       onClick={() => navigate(back.fromSearch, { state: { focusHit: back.hit } satisfies ReturnToSearchState })}
       className="-ml-1.5 shrink-0"
     >
-      Search results
+      {toChat ? 'Ask AI' : 'Search results'}
     </Button>
   );
 }

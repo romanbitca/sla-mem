@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getWorkspaceMeta, setMeta } from './meta';
 import {
+  conversationActivity,
   conversationBeyondFreeWindow,
   getConversation,
   getMessageRevisions,
@@ -9,7 +10,12 @@ import {
   getThread,
   listConversations,
   listUsers,
+  messageRowIds,
   normalizeTs,
+  plainTexts,
+  threadReplies,
+  topLevelInRange,
+  tsAtSecond,
 } from './read';
 import { BASE_SECONDS, memDb, msg, seededDb, tsAt } from './test-helpers';
 import type { DB } from './types';
@@ -528,5 +534,44 @@ describe('stats and workspace meta', () => {
       teamDomain: '9hdigital',
       selfUserId: 'U1',
     });
+  });
+});
+
+describe('reading for Ask AI', () => {
+  it('reads top-level messages in a range, oldest or latest first, always ascending', () => {
+    const db = threadedDb();
+    const oldest = topLevelInRange(db, 'C1', { after: tsAt(2), before: tsAt(6), limit: 3 });
+    expect(oldest.rows.map((r) => r.ts)).toEqual([tsAt(2), tsAt(3), tsAt(4)]);
+    expect(oldest.more).toBe(true);
+    expect(oldest.rows[1].replyCount).toBe(3);
+    const latest = topLevelInRange(db, 'C1', { limit: 2, latest: true });
+    expect(latest.rows.map((r) => r.ts)).toEqual([tsAt(10), tsAt(33)]);
+    expect(topLevelInRange(db, 'C1', { after: tsAt(40), limit: 5 })).toEqual({ rows: [], more: false });
+  });
+
+  it('lists a thread’s replies with their total, and finds rows and their search text', () => {
+    const db = threadedDb();
+    expect(threadReplies(db, 'C1', tsAt(3), 10).ids).toHaveLength(3);
+    expect(threadReplies(db, 'C1', tsAt(3), 2)).toMatchObject({ total: 3 });
+    const ids = messageRowIds(db, [
+      { conversationId: 'C1', ts: tsAt(31) },
+      { conversationId: 'C1', ts: '1.000000' },
+    ]);
+    expect(ids).toHaveLength(1);
+    expect(plainTexts(db, ids).get(ids[0])).toBe('reply one');
+  });
+
+  it('counts messages per conversation in a period, busiest first', () => {
+    const db = threadedDb();
+    upsertMessages(db, 'C2', [msg(tsAt(100), 'later')], 'api');
+    expect(conversationActivity(db, { limit: 5 })).toEqual([
+      { conversationId: 'C1', messages: 13, latestTs: tsAt(33) },
+      { conversationId: 'C2', messages: 1, latestTs: tsAt(100) },
+    ]);
+    const after = BASE_SECONDS + 50 * 60;
+    expect(conversationActivity(db, { after, limit: 5 })).toEqual([
+      { conversationId: 'C2', messages: 1, latestTs: tsAt(100) },
+    ]);
+    expect(tsAtSecond(after)).toBe(`${after}.000000`);
   });
 });

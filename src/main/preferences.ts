@@ -6,13 +6,14 @@
 import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import type {
+  AiModel,
   AttachmentPolicy,
   PreferencesDTO,
   PreferencesPatch,
   SyncInterval,
   ThemePreference,
 } from '../shared/types';
-import { SYNC_INTERVALS } from '../shared/types';
+import { AI_MODELS, SYNC_INTERVALS } from '../shared/types';
 import { invalid } from './errors';
 import { writeFileAtomicSync } from './fsx';
 
@@ -25,6 +26,7 @@ export const DEFAULT_PREFERENCES: Readonly<PreferencesDTO> = Object.freeze({
   onboardingComplete: false,
   showTrayIcon: true,
   excludedConversationIds: [],
+  aiModel: 'claude-opus-5',
 });
 
 /** App state that isn't a user preference but must survive restarts. */
@@ -133,6 +135,7 @@ function sanitize(p: Partial<PreferencesDTO>): PreferencesDTO {
     onboardingComplete: typeof p.onboardingComplete === 'boolean' ? p.onboardingComplete : d.onboardingComplete,
     showTrayIcon: typeof p.showTrayIcon === 'boolean' ? p.showTrayIcon : d.showTrayIcon,
     excludedConversationIds: conversationIds(p.excludedConversationIds) ?? [],
+    aiModel: AI_MODELS.includes(p.aiModel as AiModel) ? (p.aiModel as AiModel) : d.aiModel,
   };
 }
 
@@ -178,6 +181,10 @@ function validatePatch(patch: unknown): PreferencesPatch {
         out.excludedConversationIds = ids;
         break;
       }
+      case 'aiModel':
+        if (!AI_MODELS.includes(value as AiModel)) throw invalid('Choose a model from the list');
+        out.aiModel = value as AiModel;
+        break;
       default:
         throw invalid(`Unknown setting “${key.slice(0, 40)}”`);
     }

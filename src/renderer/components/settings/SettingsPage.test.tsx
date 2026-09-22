@@ -239,6 +239,62 @@ describe('Settings — sync and attachments', () => {
   });
 });
 
+describe('Settings — Ask AI', () => {
+  const KEY = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123';
+
+  it('says what is sent to Anthropic, and saves a key main has checked', async () => {
+    setup();
+    const ask = await card('Ask AI');
+    expect(within(ask).getByText(/your question and the messages Claude reads/)).toBeTruthy();
+    const save = vi.spyOn(api, 'saveAiKey').mockResolvedValue(makeSettings({ ai: { saved: true, hint: '0123' } }));
+    const input = within(ask).getByLabelText('Anthropic API key') as HTMLInputElement;
+    expect(input.type).toBe('password');
+    fireEvent.change(input, { target: { value: KEY } });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith({ key: KEY }));
+    expect(await within(ask).findByText(/Saved, ending in “0123”/)).toBeTruthy();
+    expect(within(ask).queryByLabelText('Anthropic API key', { selector: 'input' })).toBeNull();
+  });
+
+  it('shows why a key was refused', async () => {
+    setup();
+    const ask = await card('Ask AI');
+    vi.spyOn(api, 'saveAiKey').mockRejectedValue(
+      new ApiError('invalid', 'Anthropic didn’t accept that key. Check that you copied all of it.'),
+    );
+    fireEvent.change(within(ask).getByLabelText('Anthropic API key'), { target: { value: KEY } });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Save' }));
+    expect(await within(ask).findByRole('alert')).toHaveProperty(
+      'textContent',
+      'Anthropic didn’t accept that key. Check that you copied all of it.',
+    );
+  });
+
+  it('removes a saved key only after a confirmation, and chooses the model', async () => {
+    setup(makeSettings({ ai: { saved: true, hint: '0123' } }));
+    const ask = await card('Ask AI');
+    const remove = vi.spyOn(api, 'removeAiKey').mockResolvedValue(makeSettings());
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(remove).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+    await waitFor(() => expect(remove).toHaveBeenCalled());
+    expect(await within(ask).findByLabelText('Anthropic API key')).toBeTruthy();
+
+    const patches = acceptPatches();
+    fireEvent.change(within(ask).getByLabelText('Model'), { target: { value: 'claude-haiku-4-5' } });
+    await waitFor(() => expect(patches).toHaveBeenCalledWith({ aiModel: 'claude-haiku-4-5' }));
+  });
+
+  it('opens the Anthropic Console to create a key', async () => {
+    setup();
+    const ask = await card('Ask AI');
+    const open = vi.spyOn(api, 'openExternal').mockResolvedValue({ ok: true });
+    fireEvent.click(within(ask).getByRole('button', { name: /Anthropic Console/ }));
+    await waitFor(() => expect(open).toHaveBeenCalledWith({ url: 'https://platform.claude.com/settings/keys' }));
+  });
+});
+
 describe('Settings — moving computers', () => {
   it('imports a backup made on another computer through main’s file picker', async () => {
     const restore = vi.spyOn(api, 'importBackup').mockResolvedValueOnce(null).mockResolvedValueOnce({ runId: 4 });

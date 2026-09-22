@@ -2,10 +2,12 @@
  * Secret redaction, applied centrally to everything that is logged, stored as a run log/error,
  * returned over IPC or shown in the UI (PLAN §3.5, pitfall 20). Slack web sessions are an
  * `xoxc-` token plus the `d` cookie (`xoxd-…`, usually URL-encoded, so `%2F`/`%3D` appear in it).
+ * Ask AI's Anthropic API key (`sk-ant-…`) is masked the same way.
  */
 
 // xoxc-, xoxd-, xoxp-, xoxb-, xoxe- … and xapp- tokens, including URL-encoding and base64 characters.
 const SLACK_SECRET_RE = /\b(xox[a-z]|xapp)-[A-Za-z0-9%._~+/=-]+/gi;
+const ANTHROPIC_KEY_RE = /\bsk-ant-[A-Za-z0-9_-]+/g;
 const BEARER_RE = /(Bearer\s+)[A-Za-z0-9._~+/%=-]+/gi;
 const COOKIE_HEADER_RE = /(\bCookie:\s*)[^\r\n]+/gi;
 const COOKIE_D_RE = /(\bd(?:-s)?=)[^;\s"']+/g;
@@ -42,7 +44,8 @@ export function redactSecrets(text: string, secrets: readonly (string | null | u
     .replace(BEARER_RE, '$1[redacted]')
     .replace(COOKIE_HEADER_RE, '$1[redacted]')
     .replace(COOKIE_D_RE, '$1[redacted]')
-    .replace(SLACK_SECRET_RE, (_m, prefix: string) => `${prefix}-[redacted]`);
+    .replace(SLACK_SECRET_RE, (_m, prefix: string) => `${prefix}-[redacted]`)
+    .replace(ANTHROPIC_KEY_RE, 'sk-ant-[redacted]');
 }
 
 /** The message of any thrown value, redacted. */

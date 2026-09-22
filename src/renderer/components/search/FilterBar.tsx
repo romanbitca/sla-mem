@@ -50,7 +50,7 @@ const HAS_META: Record<SearchHas, { label: string; icon: ComponentType<IconProps
 };
 
 /** "#general", "#general +2". */
-function summarize(labels: string[]): string | null {
+export function summarize(labels: string[]): string | null {
   if (labels.length === 0) return null;
   return labels.length === 1 ? labels[0] : `${labels[0]} +${labels.length - 1}`;
 }
@@ -172,7 +172,7 @@ export function FilterBar({ state, effective, data, onChange }: FilterBarProps) 
   );
 }
 
-function ConversationPicker({
+export function ConversationPicker({
   conversations,
   selected,
   onChange,
@@ -215,7 +215,7 @@ function personRank(u: UserDTO): number {
   return u.deleted ? 2 : u.isBot ? 1 : 0;
 }
 
-function PersonPicker({
+export function PersonPicker({
   users,
   selfUserId,
   selected,

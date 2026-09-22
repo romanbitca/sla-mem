@@ -24,13 +24,23 @@ export interface FilterChipProps {
   onClear: () => void;
   children: (props: FilterChipRenderProps) => ReactNode;
   panelClassName?: string;
+  /** Where the panel opens; chips near the bottom of the window open theirs upwards. */
+  placement?: 'below' | 'above';
 }
 
 /**
  * A filter pill that opens an anchored panel. Several toggles while the panel is open count as
  * one history step, so Back undoes the whole edit rather than each checkbox.
  */
-export function FilterChip({ label, value, icon, onClear, children, panelClassName }: FilterChipProps) {
+export function FilterChip({
+  label,
+  value,
+  icon,
+  onClear,
+  children,
+  panelClassName,
+  placement = 'below',
+}: FilterChipProps) {
   const { open, setOpen, toggle, containerRef } = usePopover<HTMLDivElement>();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const edits = useRef(0);
@@ -97,7 +107,8 @@ export function FilterChip({ label, value, icon, onClear, children, panelClassNa
           role="dialog"
           aria-label={`${label} filter`}
           className={clsx(
-            'absolute top-full left-0 z-40 mt-1.5 w-80 max-w-[calc(100vw-2rem)] animate-pop-in rounded-xl border border-line bg-raised shadow-pop',
+            'absolute left-0 z-40 w-80 max-w-[calc(100vw-2rem)] animate-pop-in rounded-xl border border-line bg-raised shadow-pop',
+            placement === 'above' ? 'bottom-full mb-1.5' : 'top-full mt-1.5',
             panelClassName,
           )}
         >

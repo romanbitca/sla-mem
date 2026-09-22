@@ -7,6 +7,7 @@
  *   <dataDir>/logs/main.log              rotating log (never contains credentials)
  *   <dataDir>/config.json                non-secret preferences
  *   <dataDir>/credentials.bin            the Slack session, encrypted with the OS keychain
+ *   <dataDir>/ai-key.bin                 the Anthropic API key for Ask AI, encrypted the same way
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -84,6 +85,7 @@ export interface ArchivePaths {
   tmpDir: string;
   configPath: string;
   credentialsPath: string;
+  aiKeyPath: string;
 }
 
 export function archivePaths(dataDir: string): ArchivePaths {
@@ -96,6 +98,7 @@ export function archivePaths(dataDir: string): ArchivePaths {
     tmpDir: path.join(root, 'tmp'),
     configPath: path.join(root, 'config.json'),
     credentialsPath: path.join(root, 'credentials.bin'),
+    aiKeyPath: path.join(root, 'ai-key.bin'),
   };
 }
 

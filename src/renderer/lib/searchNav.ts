@@ -32,9 +32,9 @@ function subscribe(listener: () => void): () => void {
 
 // ─── back from a conversation ────────────────────────────────────────────────────────────────
 
-/** History state of a conversation opened from search results. */
+/** History state of a conversation opened from search results (or from an Ask AI answer). */
 export interface FromSearchState {
-  /** The search to return to (`/search?…`). */
+  /** The search to return to (`/search?…`), or the Ask AI chat (`/ask?…`). */
   fromSearch: string;
   /** The result that was opened, focused again on return. */
   hit: string;
@@ -42,7 +42,7 @@ export interface FromSearchState {
 
 export function fromSearchOf(state: unknown): FromSearchState | null {
   const s = state as Partial<FromSearchState> | null;
-  if (!s || typeof s.fromSearch !== 'string' || !s.fromSearch.startsWith('/search')) return null;
+  if (!s || typeof s.fromSearch !== 'string' || !/^\/(search|ask)(?:[?#]|$)/.test(s.fromSearch)) return null;
   return { fromSearch: s.fromSearch, hit: typeof s.hit === 'string' ? s.hit : '' };
 }
 

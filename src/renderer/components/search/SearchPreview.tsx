@@ -11,9 +11,14 @@ import { IconButton } from '../ui/IconButton';
 
 export interface SearchPreviewProps {
   target: SearchPreviewTarget;
-  /** This search, preview included (`/search?…`): where the conversation page returns to. */
+  /**
+   * This search, preview included (`/search?…`): where the conversation page returns to. Ask AI
+   * passes its own screen (`/ask?…`).
+   */
   searchUrl: string;
   onClose: () => void;
+  /** Names the region for screen readers. */
+  label?: string;
 }
 
 /** The conversation page showing what the preview shows. */
@@ -30,7 +35,7 @@ export function previewConversationPath(target: SearchPreviewTarget): string {
  * or the thread for a reply. Its own URL keys (`c`, `ts`, `thread`) keep it across back/forward;
  * "Open conversation" goes to the full conversation, which offers the way back here.
  */
-export function SearchPreview({ target, searchUrl, onClose }: SearchPreviewProps) {
+export function SearchPreview({ target, searchUrl, onClose, label = 'Search result preview' }: SearchPreviewProps) {
   const navigate = useNavigate();
   const [, setParams] = useSearchParams();
   const conversation = useDirectory().conversations.get(target.conversationId);
@@ -60,7 +65,7 @@ export function SearchPreview({ target, searchUrl, onClose }: SearchPreviewProps
 
   return (
     <section
-      aria-label="Search result preview"
+      aria-label={label}
       className="flex min-h-0 min-w-0 flex-1 animate-fade-in flex-col border-l border-line bg-canvas"
     >
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line pr-2 pl-4">

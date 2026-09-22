@@ -306,3 +306,13 @@ export const InfoIcon = makeIcon(
   </>,
 );
 export const ArrowRightIcon = makeIcon('ArrowRight', <path d="M5 12h14m0 0-6-6m6 6-6 6" />);
+/** Ask AI: a four-point spark and a small one. */
+export const SparklesIcon = makeIcon(
+  'Sparkles',
+  <>
+    <path d="M10 3.5c.5 4 2.5 6 6.5 6.5-4 .5-6 2.5-6.5 6.5-.5-4-2.5-6-6.5-6.5 4-.5 6-2.5 6.5-6.5z" />
+    <path d="M18 14.5v5M15.5 17h5" />
+  </>,
+);
+export const PlusIcon = makeIcon('Plus', <path d="M12 5v14M5 12h14" />);
+export const StopIcon = makeIcon('Stop', <rect x="7" y="7" width="10" height="10" rx="2" />, { fill: true });

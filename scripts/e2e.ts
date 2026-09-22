@@ -15,7 +15,9 @@
  *   7. a conversation exports to Markdown with every message; a backup imported on a fresh
  *      archive (a new computer) brings every message and attachment;
  *   8. killed mid-sync (SIGKILL): committed messages survive and the next sync completes;
- *   9. quitting right after a sync exits promptly.
+ *   9. quitting right after a sync exits promptly;
+ *  10. Ask AI against a pretend Claude: the key saved in Settings (encrypted), a question asked in
+ *      the chat, a cited message opened; the key never reaches the logs.
  *
  * Usage: npm run build && npm run e2e   (screenshots go to .e2e-data/shots)
  */
@@ -26,6 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright-core';
 import { openDb } from '../src/main/db';
 import type { ArchiveBridge } from '../src/shared/ipc';
+import { startMockAnthropic, type MockAnthropic } from '../test/mock-anthropic/server';
 import { startMockSlack, type MockSlack } from '../test/mock-slack/server';
 
 // Evaluated inside the app's page, where the preload exposes the bridge.
@@ -41,6 +44,10 @@ function log(message: string): void {
   console.log(`[e2e ${String(++step).padStart(2, '0')}] ${message}`);
 }
 
+/** The pretend Claude for Ask AI (development builds honour SLA_MEM_ANTHROPIC_API). */
+let claude: MockAnthropic | null = null;
+const AI_KEY = 'sk-ant-api03-e2e-not-a-real-key-0123456789abcdef';
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(`Assertion failed: ${message}`);
 }
@@ -54,6 +61,7 @@ async function launch(mock: MockSlack, folder = dataDir): Promise<{ app: Electro
       SLA_MEM_DATA_DIR: folder,
       SLA_MEM_SLACK_API: mock.apiBaseUrl,
       SLA_MEM_SLACK_WEB: mock.url,
+      ...(claude ? { SLA_MEM_ANTHROPIC_API: claude.url } : {}),
     },
   });
   const page = await app.firstWindow();
@@ -164,7 +172,8 @@ async function waitForSync(page: Page): Promise<Record<string, unknown>> {
 
 async function main(): Promise<void> {
   const mock = await startMockSlack({ messages: 2_000 });
-  log(`Mock Slack at ${mock.url}; archive folder ${dataDir}`);
+  claude = await startMockAnthropic({ delayMs: 5 });
+  log(`Mock Slack at ${mock.url}, pretend Claude at ${claude.url}; archive folder ${dataDir}`);
   let app: ElectronApplication | null = null;
   try {
     let page: Page;
@@ -383,17 +392,45 @@ async function main(): Promise<void> {
     app = null;
     log('Quit right after a sync: the app exited promptly');
 
+    // Ask AI: the key through Settings, a question through the chat, a citation opened.
+    ({ app, page } = await launch(mock));
+    await page.getByRole('link', { name: 'Settings' }).click();
+    const card = page.locator('#ask-ai');
+    await card.getByLabel('Anthropic API key').fill(AI_KEY);
+    await card.getByRole('button', { name: 'Save' }).click();
+    await card.getByText('Saved, ending in').waitFor();
+    const keyFile = fs.readFileSync(path.join(dataDir, 'ai-key.bin'));
+    assert(!keyFile.includes(AI_KEY), 'the Anthropic key is encrypted at rest');
+    await page.getByRole('navigation', { name: 'Places' }).getByRole('link', { name: 'Ask AI' }).click();
+    const question = page.getByRole('textbox', { name: 'Question' });
+    await question.fill('deploy');
+    await question.press('Enter');
+    const sources = page.getByRole('region', { name: 'Sources' });
+    await sources.waitFor({ timeout: 30_000 });
+    await page.getByText(/tokens · /).waitFor();
+    await page.screenshot({ path: path.join(shots, 'ask-ai.png') });
+    await page.locator('a[data-citation]').first().click();
+    await page.locator('[data-highlighted="true"]').first().waitFor();
+    await page.screenshot({ path: path.join(shots, 'ask-ai-citation.png') });
+    assert(claude.requests >= 3, `the pretend Claude was asked (${claude.requests} requests)`);
+    await quit(app);
+    app = null;
+    log('Ask AI: key saved encrypted, a question answered with sources, a citation opened');
+
     const logs = fs
       .readdirSync(path.join(dataDir, 'logs'))
       .map((f) => fs.readFileSync(path.join(dataDir, 'logs', f), 'utf8'))
       .join('\n');
     assert(!/xox[cd]-(?!\[redacted\])[A-Za-z0-9]/.test(logs), 'no token or cookie in the logs');
     assert(!logs.includes(mock.session.cookie) && !logs.includes(mock.session.token), 'no session values in the logs');
-    log('Logs contain no tokens or cookies');
+    assert(!logs.includes(AI_KEY) && !logs.includes(AI_KEY.slice(14)), 'no Anthropic key in the logs');
+    assert(logs.includes('Ask AI: answered with'), 'the log says an answer was written (not what was asked)');
+    log('Logs contain no tokens, cookies or API keys');
     console.log('\nE2E passed');
   } finally {
     if (app) await quit(app).catch(() => undefined);
     await mock.close();
+    await claude?.close();
     if (!process.env.KEEP_E2E_DATA) fs.rmSync(dataDir, { recursive: true, force: true });
   }
 }

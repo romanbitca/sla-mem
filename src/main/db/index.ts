@@ -70,8 +70,14 @@ export {
   listCustomEmoji,
   normalizeTs,
   FREE_WINDOW_DAYS,
+  tsAtSecond,
+  topLevelInRange,
+  threadReplies,
+  messageRowIds,
+  plainTexts,
+  conversationActivity,
 } from './read';
-export type { GetMessagesQuery } from './read';
+export type { GetMessagesQuery, TopLevelRow, ConversationActivity } from './read';
 
 export {
   search,
@@ -83,8 +89,18 @@ export {
   loadSearchResolvers,
   clampSnippet,
   stripControlChars,
+  parseDay,
+  addDays,
+  localDayStartSeconds,
 } from './search';
-export type { ParsedSearchQuery, SearchResolvers, SearchUser, SearchConversation, SearchBot } from './search';
+export type {
+  ParsedSearchQuery,
+  SearchResolvers,
+  SearchUser,
+  SearchConversation,
+  SearchBot,
+  SearchWithin,
+} from './search';
 
 export {
   normalizeForSearch,
@@ -94,6 +110,13 @@ export {
   blocksToMrkdwn,
   unescapeEntities,
 } from './normalize';
-export { fileToDTO, fileStatusReason, isInlineSafeMime, FILE_URL_PREFIX, THUMB_URL_PREFIX } from './dto';
+export {
+  fileToDTO,
+  fileStatusReason,
+  isInlineSafeMime,
+  hydrateMessages,
+  FILE_URL_PREFIX,
+  THUMB_URL_PREFIX,
+} from './dto';
 export type { NormalizeResolvers } from './normalize';
 export { isTombstone } from './merge';

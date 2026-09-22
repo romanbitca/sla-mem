@@ -403,6 +403,23 @@ export function useUpdatePreferences() {
   });
 }
 
+/** Ask AI's key: main checks it with Anthropic before saving, and answers with the settings. */
+export function useSaveAiKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) => api.saveAiKey({ key }),
+    onSuccess: (settings) => qc.setQueryData(qk.settings, settings),
+  });
+}
+
+export function useRemoveAiKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.removeAiKey(),
+    onSuccess: (settings) => qc.setQueryData(qk.settings, settings),
+  });
+}
+
 export function useCompleteOnboarding() {
   const qc = useQueryClient();
   return useMutation({

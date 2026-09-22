@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type Re
 import { NavLink, useNavigate } from 'react-router';
 import clsx from 'clsx';
 import type { ConversationDTO, SyncStatusDTO } from '../../../shared/types';
+import { isAnswering, useAskChat } from '../../lib/askChat';
 import { useDirectory } from '../../lib/directory';
 import { formatCount } from '../../lib/format';
 import { conversationPath } from '../../lib/links';
@@ -18,6 +19,7 @@ import {
   OverviewIcon,
   SearchIcon,
   SettingsIcon,
+  SparklesIcon,
   UsersIcon,
 } from '../icons';
 import { Avatar } from '../message/Avatar';
@@ -162,6 +164,7 @@ export function Sidebar({ syncStatus, syncError, onClose, className, inert }: Si
           Overview
         </NavLink>
         <SearchNavLink />
+        <AskNavLink />
       </nav>
 
       {/* The conversations start here: set apart from the places above by a line. */}
@@ -289,6 +292,18 @@ function SearchNavLink() {
         <Kbd>{modKeyLabel()}</Kbd>
         <Kbd>K</Kbd>
       </span>
+    </NavLink>
+  );
+}
+
+/** Ask AI, with a spinner while an answer is being written (it keeps going on other screens). */
+function AskNavLink() {
+  const answering = isAnswering(useAskChat());
+  return (
+    <NavLink to="/ask" className={({ isActive }) => primaryNavClass(isActive)}>
+      <SparklesIcon size={16} />
+      <span className="flex-1">Ask AI</span>
+      {answering && <Spinner size={12} label="Writing an answer" className="opacity-70" />}
     </NavLink>
   );
 }
