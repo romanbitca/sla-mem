@@ -24,6 +24,8 @@
   --c-accent-ink: #ffffff;
   --c-accent-soft: #e9edfb;
   --c-accent-text: #3149b8;
+  /* Chart marks: checked against the card surface in each theme (lightness band, 3:1 contrast). */
+  --c-chart: #3d5ad6;
   --c-highlight: #fbefc4;
   --c-mark: #fde68a;
   --c-mark-ink: #3b2f05;
@@ -59,6 +61,7 @@
   --c-accent-ink: #10121f;
   --c-accent-soft: #252a44;
   --c-accent-text: #a2b0ff;
+  --c-chart: #7486f2;
   --c-highlight: #3b331a;
   --c-mark: #6d5a14;
   --c-mark-ink: #fff4cf;
@@ -95,6 +98,7 @@
     --c-accent-ink: #10121f;
     --c-accent-soft: #252a44;
     --c-accent-text: #a2b0ff;
+    --c-chart: #7486f2;
     --c-highlight: #3b331a;
     --c-mark: #6d5a14;
     --c-mark-ink: #fff4cf;
@@ -135,6 +139,7 @@
   --color-accent-ink: var(--c-accent-ink);
   --color-accent-soft: var(--c-accent-soft);
   --color-accent-text: var(--c-accent-text);
+  --color-chart: var(--c-chart);
   --color-highlight: var(--c-highlight);
   --color-danger: var(--c-danger);
   --color-danger-soft: var(--c-danger-soft);

@@ -5,7 +5,7 @@ import type { ConversationDTO, SyncStatusDTO } from '../../../shared/types';
 import { isAnswering, useAskChat } from '../../lib/askChat';
 import { useDirectory } from '../../lib/directory';
 import { formatCount } from '../../lib/format';
-import { conversationPath } from '../../lib/links';
+import { conversationPath, PEOPLE_PATH } from '../../lib/links';
 import { useConversations, useSettings, useWorkspace } from '../../lib/queries';
 import { useLastSearch } from '../../lib/searchNav';
 import { readJsonPref, writeJsonPref } from '../../lib/storage';
@@ -20,6 +20,7 @@ import {
   SearchIcon,
   SettingsIcon,
   SparklesIcon,
+  UserIcon,
   UsersIcon,
 } from '../icons';
 import { Avatar } from '../message/Avatar';
@@ -163,6 +164,10 @@ export function Sidebar({ syncStatus, syncError, onClose, className, inert }: Si
         </NavLink>
         <SearchNavLink />
         <AskNavLink />
+        <NavLink to={PEOPLE_PATH} className={({ isActive }) => primaryNavClass(isActive)}>
+          <UserIcon size={16} />
+          People
+        </NavLink>
       </nav>
 
       {/* The conversations start here: set apart from the places above by a line. */}

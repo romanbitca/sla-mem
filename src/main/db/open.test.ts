@@ -2,8 +2,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import Database from 'better-sqlite3';
 import { getSchemaVersion, migrate, openDb } from './open';
-import { LATEST_SCHEMA_VERSION } from './schema';
+import { LATEST_SCHEMA_VERSION, MIGRATIONS } from './schema';
 import type { DB } from './types';
 
 const tmpDirs: string[] = [];
@@ -104,6 +105,44 @@ describe('openDb', () => {
     db.pragma(`user_version = ${LATEST_SCHEMA_VERSION + 1}`);
     db.close();
     expect(() => openDb(file)).toThrow(/newer than this app supports/);
+  });
+
+  it('upgrades a version 1 archive with the People index, keeping its messages', () => {
+    const file = tmpFile();
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const v1 = new Database(file);
+    v1.exec(MIGRATIONS[0].sql);
+    v1.pragma('user_version = 1');
+    v1.prepare(
+      "INSERT INTO messages (id, conversation_id, ts, time, user_id, raw, source, first_seen_at, updated_at) VALUES (1, 'C1', '1.000000', 1, 'U1', '{}', 'api', 0, 0)",
+    ).run();
+    v1.close();
+    const db = open(file);
+    expect(getSchemaVersion(db)).toBe(LATEST_SCHEMA_VERSION);
+    const index = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'messages_conv_user_time'").get() as {
+      sql: string;
+    };
+    expect(index.sql).toContain('(conversation_id, user_id, time) WHERE user_id IS NOT NULL');
+    expect(db.prepare('SELECT count(*) AS n FROM messages').get()).toEqual({ n: 1 });
+  });
+
+  it('leaves older queries on their indexes; only one author in one conversation takes the People one', () => {
+    const db = open(':memory:');
+    const plan = (sql: string, ...params: unknown[]) =>
+      (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[]).map((p) => p.detail).join(' | ');
+    // A conversation's newest messages come in index order, not sorted afterwards.
+    const byConversation = plan(
+      'SELECT id, time FROM messages WHERE conversation_id = ? ORDER BY time DESC LIMIT 8',
+      'C1',
+    );
+    expect(byConversation).toContain('messages_conv_time');
+    expect(byConversation).not.toContain('TEMP B-TREE');
+    const byAuthor = plan('SELECT id FROM messages WHERE user_id = ? ORDER BY time DESC LIMIT 8', 'U1');
+    expect(byAuthor).toContain('messages_user_time');
+    expect(byAuthor).not.toContain('TEMP B-TREE');
+    expect(plan('SELECT count(*) FROM messages WHERE conversation_id = ? AND user_id = ?', 'C1', 'U1')).toContain(
+      'messages_conv_user_time',
+    );
   });
 
   it('uses the partial top-level index for conversation paging', () => {

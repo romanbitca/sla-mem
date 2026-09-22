@@ -182,6 +182,17 @@ describe('AppShell', () => {
     );
   });
 
+  it('has People in the sidebar, next to Ask AI', async () => {
+    vi.spyOn(api, 'getPeople').mockResolvedValue([]);
+    renderApp();
+    const people = await screen.findByRole('link', { name: 'People' });
+    expect(people.getAttribute('href')).toBe('/people');
+    fireEvent.click(people);
+    await waitFor(() => expect(location?.pathname).toBe('/people'));
+    expect(await screen.findByRole('heading', { level: 1, name: 'People' })).toBeTruthy();
+    expect(people.getAttribute('aria-current')).toBe('page');
+  });
+
   it('leaves the page shortcuts alone while a dialog is open', async () => {
     renderApp();
     await screen.findByRole('link', { name: /^Search/ });

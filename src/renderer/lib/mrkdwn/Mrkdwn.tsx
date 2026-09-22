@@ -197,6 +197,9 @@ function renderReference(node: CodeChildNode, key: number, env: RenderEnv): Reac
     case 'user': {
       const label = userMentionLabel(node, env.ctx);
       const known = env.ctx.userLabel(node.id) !== undefined;
+      const href = known ? env.ctx.userHref?.(node.id) : undefined;
+      const text = <>@{highlightText(label, env.highlight)}</>;
+      if (href) return renderAppLink(href, text, key, env, { 'data-user-id': node.id, title: `@${label}` }, 'user');
       return (
         <span
           key={key}
@@ -204,7 +207,7 @@ function renderReference(node: CodeChildNode, key: number, env: RenderEnv): Reac
           title={known ? `@${label}` : `@${label} (${node.id})`}
           data-user-id={node.id}
         >
-          @{highlightText(label, env.highlight)}
+          {text}
         </span>
       );
     }
@@ -237,7 +240,18 @@ function renderChannel(id: string, label: string, key: number, env: RenderEnv): 
       </span>
     );
   }
-  const href = env.ctx.channelHref(id);
+  return renderAppLink(env.ctx.channelHref(id), text, key, env, { 'data-channel-id': id }, 'channel');
+}
+
+/** A mention that opens a place in the app: a channel, or a person's page. */
+function renderAppLink(
+  href: string,
+  text: ReactNode,
+  key: number,
+  env: RenderEnv,
+  attrs: Record<string, string>,
+  kind: 'channel' | 'user',
+): ReactNode {
   const navigate = env.ctx.navigate;
   const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
     if (!navigate || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -245,13 +259,7 @@ function renderChannel(id: string, label: string, key: number, env: RenderEnv): 
     navigate(href);
   };
   return (
-    <a
-      key={key}
-      className="md-mention md-mention-channel rounded px-0.5"
-      href={href}
-      onClick={onClick}
-      data-channel-id={id}
-    >
+    <a key={key} className={`md-mention md-mention-${kind} rounded px-0.5`} href={href} onClick={onClick} {...attrs}>
       {text}
     </a>
   );

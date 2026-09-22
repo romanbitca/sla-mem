@@ -52,6 +52,9 @@ export const qk = {
   revisions: (conversationId: string, ts: string) => ['revisions', conversationId, ts] as const,
   searchAll: ['search'] as const,
   search: (params: SearchParams) => ['search', normalizeSearchKey(params)] as const,
+  peopleAll: ['people'] as const,
+  people: ['people', 'list'] as const,
+  person: (userId: string) => ['people', 'person', userId] as const,
   syncStatus: ['sync', 'status'] as const,
   settings: ['settings'] as const,
   aiSpending: ['ai', 'spending'] as const,
@@ -111,6 +114,21 @@ export function useConversation(id: string) {
 
 export function useEmoji() {
   return useQuery({ queryKey: qk.emoji, queryFn: ({ signal }) => api.getEmoji(signal), staleTime: Infinity });
+}
+
+// ---------------------------------------------------------------------------------------------
+// People (kept until a sync or import brings something new: see invalidateArchiveData)
+
+export function usePeople() {
+  return useQuery({ queryKey: qk.people, queryFn: ({ signal }) => api.getPeople(signal), staleTime: Infinity });
+}
+
+export function usePerson(userId: string) {
+  return useQuery({
+    queryKey: qk.person(userId),
+    queryFn: ({ signal }) => api.getPerson(userId, signal),
+    staleTime: Infinity,
+  });
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -247,6 +265,7 @@ export function invalidateArchiveData(qc: QueryClient): Promise<void> {
       qk.messagesAll,
       qk.threadsAll,
       qk.searchAll,
+      qk.peopleAll,
     ].map((queryKey) => qc.invalidateQueries({ queryKey })),
   ).then(() => undefined);
 }

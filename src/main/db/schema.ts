@@ -6,7 +6,9 @@
  * v1 is PLAN.md Appendix B (which now reproduces it): the original draft plus `conversation_stats`
  * (sidebar counts without scanning messages), `bots` (so `from:<app>` finds bot messages),
  * `runs.pid` / `runs.problem`, and the file retry columns `skip_reason` / `next_attempt_at`
- * (PLAN §5.6: failed and skipped files must stay retryable).
+ * (PLAN §5.6: failed and skipped files must stay retryable). v2 adds one index for the People
+ * pages. An older app refuses a newer archive (open.ts), and importing a newer backup says to
+ * update first (restore.ts).
  */
 export interface Migration {
   version: number;
@@ -176,8 +178,19 @@ CREATE INDEX files_status_created ON files (download_status, created);
 CREATE INDEX runs_status ON runs (status);
 `;
 
+// v2, People: what one person wrote in one conversation ("where they write", "did you answer in
+// that DM"). Without it, that is one table lookup per message they ever sent: 84 ms for someone
+// with 53k messages in a 488k-message archive, 2 ms with it. Partial on purpose: only a query
+// naming an author (user_id = ?) can use it, so every older query keeps its plan. As a full index
+// SQLite preferred it, being narrower, and sorted: a conversation's newest messages went from
+// reading 8 rows in order to sorting 60k, and author-only queries sorted too.
+const V2_PEOPLE = `
+CREATE INDEX messages_conv_user_time ON messages (conversation_id, user_id, time) WHERE user_id IS NOT NULL;
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, description: 'initial schema', sql: V1_TABLES + V1_TRIGGERS + V1_INDEXES },
+  { version: 2, description: 'index messages by author and conversation (People)', sql: V2_PEOPLE },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

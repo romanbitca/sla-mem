@@ -254,6 +254,98 @@ export interface SearchResponse {
   tookMs: number;
 }
 
+// ─── People ───────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Someone in the People list: they wrote in the archive or share a DM or group DM with the reader.
+ * People only (no apps, not Slackbot), never the reader. Names and avatars come from `UserDTO`.
+ */
+export interface PersonSummaryDTO {
+  userId: string;
+  /** Their title in Slack ("Project Manager"), when set. */
+  title: string | null;
+  /** IANA time zone from their Slack profile ("Africa/Cairo"). */
+  tz: string | null;
+  /** Everything they wrote in the archive. */
+  messageCount: number;
+  /** Their newest message anywhere in the archive (seconds precision). */
+  lastMessageTs: string | null;
+  dmConversationId: string | null;
+  dmMessageCount: number;
+  /** Newest message in the DM or a group DM with them, by anyone. */
+  lastTalkedTs: string | null;
+}
+
+/** A conversation on a person's page. */
+export interface PersonConversationDTO {
+  conversationId: string;
+  /** DM and group DMs: all their messages; channels: the person's own. */
+  messageCount: number;
+  latestTs: string | null;
+}
+
+/** Messages between you in one local week (Monday to Sunday). */
+export interface PersonWeekDTO {
+  /** Unix seconds of the week's first local midnight. */
+  start: number;
+  count: number;
+}
+
+/** A link someone posted, with the message it came in. */
+export interface PersonLinkDTO {
+  url: string;
+  /** The link's text when it isn't just the address ("the spec"). */
+  label: string | null;
+  conversationId: string;
+  ts: string;
+  threadTs: string | null;
+  isReply: boolean;
+}
+
+/**
+ * A person's page. "Between you" means the DM, the group DMs you share, and messages where one of
+ * you mentions the other.
+ */
+export interface PersonDTO {
+  userId: string;
+  /** The reader's own page: what they wrote, nothing "between you". */
+  isSelf: boolean;
+  title: string | null;
+  tz: string | null;
+  /** Slack's name for the zone ("Eastern European Summer Time"). */
+  tzLabel: string | null;
+  email: string | null;
+  /** A guest in the workspace (single- or multi-channel). */
+  isGuest: boolean;
+  /** A larger picture than the directory's, for the page header. */
+  avatarUrl: string | null;
+  /** Everything they wrote in the archive. */
+  messageCount: number;
+  firstMessageTs: string | null;
+  lastMessageTs: string | null;
+  dm: PersonConversationDTO | null;
+  /** Newest first. */
+  groupDms: PersonConversationDTO[];
+  /** Channels they write in, busiest first. */
+  channels: PersonConversationDTO[];
+  /** Newest message between you. */
+  lastTalkedTs: string | null;
+  /** Oldest first, from the first week with a message between you, at most half a year. */
+  weeks: PersonWeekDTO[];
+  /** How far back open questions are looked for. */
+  openQuestionDays: number;
+  /** Their questions and requests to you with no answer in Slack, newest first. */
+  waitingOnYou: MessageDTO[];
+  /** Yours to them with no answer in Slack, newest first. */
+  waitingOnThem: MessageDTO[];
+  /** The newest messages between you, newest first. */
+  recent: MessageDTO[];
+  /** Their newest messages with attachments, newest first. */
+  fileMessages: MessageDTO[];
+  /** Addresses they posted, newest first, each once. */
+  links: PersonLinkDTO[];
+}
+
 // ─── Archive overview ─────────────────────────────────────────────────────────────────────────
 
 export interface WorkspaceDTO {

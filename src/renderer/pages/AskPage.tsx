@@ -3,7 +3,16 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import clsx from 'clsx';
 import type { MessageDTO } from '../../shared/types';
 import { AI_MODEL_INFO } from '../lib/aiModels';
-import { askQuestion, isAnswering, setAskScope, startNewChat, stopAnswer, useAskChat } from '../lib/askChat';
+import {
+  askQuestion,
+  isAnswering,
+  NO_SCOPE,
+  setAskScope,
+  startNewChat,
+  stopAnswer,
+  useAskChat,
+  type AskDraftState,
+} from '../lib/askChat';
 import { useDirectory, type Directory } from '../lib/directory';
 import { formatShortDate } from '../lib/format';
 import { isModalOpen, isTypingTarget, useKeydown, useMediaQuery, useStableCallback } from '../lib/hooks';
@@ -139,6 +148,18 @@ export default function AskPage() {
   useEffect(() => {
     if (!previewOpen && !noKey) inputRef.current?.focus();
   }, [previewOpen, noKey]);
+
+  // A question handed over by another screen (a person's "Brief me"): into the box, not sent. A
+  // fresh chat asks about the whole archive; one under way keeps its limits (they show below).
+  const handedDraft = (location.state as Partial<AskDraftState> | null)?.askDraft;
+  useEffect(() => {
+    if (typeof handedDraft !== 'string' || !handedDraft.trim()) return;
+    if (empty) setAskScope(NO_SCOPE);
+    setDraft(handedDraft);
+    // Once: Back, Forward or a reload must not put it back.
+    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+    inputRef.current?.focus();
+  }, [handedDraft, empty, setDraft, navigate, location.pathname, location.search]);
 
   let body;
   if (noKey && empty) {

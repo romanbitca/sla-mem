@@ -6,7 +6,7 @@
  *     <Mrkdwn text={message.text} />
  *   </MrkdwnProvider>
  *
- * `navigate` (optional, beyond the SPEC interface) lets channel-mention clicks use the router
+ * `navigate` (optional, beyond the SPEC interface) lets mention clicks use the router
  * instead of a full page load. The Unicode emoji map (~60 KB) is a lazy chunk that starts loading
  * when this module is imported in a browser; components re-render when it lands. Await
  * `loadEmojiMap()` before the first render to avoid a brief `:smile:` → 😄 swap.
@@ -26,7 +26,7 @@
  *   md-quote             <blockquote>      > quotes (a <span> + md-quote-inline in inline mode)
  *   md-link              <a target=_blank rel="noopener noreferrer">  external links
  *   md-mention           every mention chip, plus one of:
- *     md-mention-user        <span data-user-id title>        <@U123>
+ *     md-mention-user        <a href=userHref(id) data-user-id title> (a <span> without userHref)  <@U123>
  *     md-mention-channel     <a href=channelHref(id) data-channel-id> (a <span> if not archived)
  *     md-mention-broadcast   <span>            <!here> <!channel> <!everyone>
  *     md-mention-usergroup   <span data-usergroup-id>          <!subteam^S123|@team>

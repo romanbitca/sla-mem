@@ -23,6 +23,13 @@ afterEach(() => {
 
 const TS = '1700000000.000100';
 
+/** The message's own link (its time), among the author's and the mentions'. */
+function timeLink(article: HTMLElement): HTMLElement {
+  return within(article)
+    .getAllByRole('link')
+    .find((a) => a.getAttribute('href')?.startsWith('/c/'))!;
+}
+
 function renderItem(
   props: Partial<Parameters<typeof MessageItem>[0]> & { message: ReturnType<typeof makeMessage> },
   directory = testDirectory(),
@@ -37,9 +44,23 @@ describe('MessageItem', () => {
     expect(within(article).getByText('Alice')).toBeTruthy();
     expect(article.textContent).toContain('@Bob');
     expect(within(article).getByText('this').tagName).toBe('STRONG');
-    const timeLink = within(article).getAllByRole('link')[0];
-    expect(timeLink.getAttribute('href')).toBe(`/c/C1?ts=${TS}`);
+    expect(timeLink(article).getAttribute('href')).toBe(`/c/C1?ts=${TS}`);
     expect(article.querySelector('time')?.getAttribute('datetime')).toBe(new Date(1_700_000_000_000).toISOString());
+  });
+
+  it('opens the author’s page from their name and avatar, and a mentioned person’s from the mention', () => {
+    renderItem({ message: makeMessage({ ts: TS, text: 'hi <@U2>' }) });
+    const article = screen.getByRole('article');
+    // The avatar's link is for the mouse only: the name is the one keyboard and screen readers get.
+    expect(within(article).getByRole('link', { name: 'Alice' }).getAttribute('href')).toBe('/people/U1');
+    expect(article.querySelectorAll('a[href="/people/U1"]')).toHaveLength(2);
+    expect(within(article).getByRole('link', { name: '@Bob' }).getAttribute('href')).toBe('/people/U2');
+  });
+
+  it('gives apps no page to open', () => {
+    renderItem({ message: makeMessage({ ts: TS, userId: 'UBOT', text: 'deployed' }) });
+    const article = screen.getByRole('article');
+    expect(within(article).getByText('Deploy Bot').closest('a')).toBeNull();
   });
 
   it('hides avatar and name for a continuation row', () => {
@@ -50,7 +71,7 @@ describe('MessageItem', () => {
 
   it('links replies to their thread', () => {
     renderItem({ message: makeMessage({ ts: '1700000100.000000', threadTs: TS, isReply: true }) });
-    expect(screen.getAllByRole('link')[0].getAttribute('href')).toBe(`/c/C1?thread=${TS}&ts=1700000100.000000`);
+    expect(timeLink(screen.getByRole('article')).getAttribute('href')).toBe(`/c/C1?thread=${TS}&ts=1700000100.000000`);
   });
 
   it('copies the message’s Slack link (the archive’s own address means nothing elsewhere)', async () => {

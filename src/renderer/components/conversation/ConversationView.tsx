@@ -5,6 +5,7 @@ import { addDays } from 'date-fns';
 import type { ConversationDTO, MessageDTO } from '../../../shared/types';
 import { describeError, isApiError } from '../../lib/api';
 import { isNotesToSelf, useDirectory } from '../../lib/directory';
+import { personPath } from '../../lib/links';
 import { Mrkdwn } from '../../lib/mrkdwn';
 import { FREE_PLAN_WINDOW_DAYS, formatDate, formatDateRange, pluralize } from '../../lib/format';
 import { guessThreadParent } from '../../lib/grouping';
@@ -296,6 +297,13 @@ function ConversationHeader({
   exporter: Exporter;
 }) {
   const about = conversation?.topic || conversation?.purpose;
+  const { selfUserId } = useDirectory();
+  // A DM's name opens that person's page (your notes to yourself have none worth opening).
+  const personId =
+    conversation?.type === 'im' && conversation.dmUserId && !isNotesToSelf(conversation, selfUserId)
+      ? conversation.dmUserId
+      : null;
+  const title = conversation ? conversationTitle(conversation) : ' ';
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
       <SidebarToggle />
@@ -309,7 +317,17 @@ function ConversationHeader({
         )}
         <div className="min-w-0 flex-1">
           <h1 className="flex items-center gap-2 truncate text-[15px] leading-tight font-semibold text-ink">
-            <span className="truncate">{conversation ? conversationTitle(conversation) : ' '}</span>
+            {personId ? (
+              <Link
+                to={personPath(personId)}
+                title={`${title}: everything between you`}
+                className="focus-ring truncate rounded-sm hover:underline"
+              >
+                {title}
+              </Link>
+            ) : (
+              <span className="truncate">{title}</span>
+            )}
             {conversation?.isArchived && (
               <span className="rounded bg-inset px-1.5 py-px text-[10px] font-semibold tracking-wide text-ink-faint uppercase">
                 Archived

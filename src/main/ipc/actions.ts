@@ -28,6 +28,8 @@ type ActionHandlers = Omit<
   | 'getRevisions'
   | 'search'
   | 'getEmoji'
+  | 'getPeople'
+  | 'getPerson'
 >;
 
 export function settingsDTO(s: AppServices): SettingsDTO {

@@ -263,6 +263,13 @@ export const MessageIcon = makeIcon(
   'Message',
   <path d="M5 5h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-8l-5 4v-4H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />,
 );
+export const MailIcon = makeIcon(
+  'Mail',
+  <>
+    <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+    <path d="m4 7.5 8 5.5 8-5.5" />
+  </>,
+);
 export const KeyIcon = makeIcon(
   'Key',
   <>

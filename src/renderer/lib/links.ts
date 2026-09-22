@@ -18,6 +18,12 @@ export function searchPath(q: string): string {
   return `/search?q=${encodeURIComponent(q)}`;
 }
 
+export const PEOPLE_PATH = '/people';
+
+export function personPath(userId: string): string {
+  return `${PEOPLE_PATH}/${encodeURIComponent(userId)}`;
+}
+
 /** Slack's `p` + ts without the dot (six fractional digits): "1712345678.1234" → "p1712345678123400". */
 function permalinkTs(ts: string): string | null {
   const m = /^(\d{9,11})\.(\d{1,6})$/.exec(ts);

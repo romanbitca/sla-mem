@@ -184,6 +184,8 @@ export const api = {
     call('getRevisions', { conversationId, ts }),
   search: (params: SearchParams, _signal?: AbortSignal) => call('search', params),
   getEmoji: (_signal?: AbortSignal) => call('getEmoji'),
+  getPeople: (_signal?: AbortSignal) => call('getPeople'),
+  getPerson: (id: string, _signal?: AbortSignal) => call('getPerson', { id }),
 
   // Sync
   getSyncStatus: (_signal?: AbortSignal) => call('getSyncStatus'),

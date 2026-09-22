@@ -1,5 +1,5 @@
 /**
- * Read-only archive calls: directory, messages, threads, revisions, search, stats.
+ * Read-only archive calls: directory, messages, threads, revisions, search, stats, people.
  */
 import type { WorkspaceDTO } from '../../shared/types';
 import {
@@ -7,11 +7,13 @@ import {
   getConversation,
   getMessageRevisions,
   getMessages,
+  getPerson,
   getStats,
   getThread,
   getWorkspaceMeta,
   listConversations,
   listCustomEmoji,
+  listPeople,
   listUsers,
   search,
   type DB,
@@ -40,6 +42,8 @@ type ArchiveHandlers = Pick<
   | 'getRevisions'
   | 'search'
   | 'getEmoji'
+  | 'getPeople'
+  | 'getPerson'
 >;
 
 export function archiveHandlers(deps: ArchiveDeps): ArchiveHandlers {
@@ -80,5 +84,11 @@ export function archiveHandlers(deps: ArchiveDeps): ArchiveHandlers {
     },
     search: (req) => search(db, searchParams(req)),
     getEmoji: () => listCustomEmoji(db),
+    getPeople: () => listPeople(db),
+    getPerson: (req) => {
+      const person = getPerson(db, slackId(record(req).id, 'person'));
+      if (!person) throw notFound('That person isn’t in the archive.');
+      return person;
+    },
   };
 }

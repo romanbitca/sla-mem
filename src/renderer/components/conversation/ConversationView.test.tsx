@@ -156,7 +156,9 @@ describe('ConversationView', () => {
     const { location } = renderAt('/c/C1');
     await screen.findByText('msg-999');
     const calls = getMessages.mock.calls.length;
-    const timeLink = within(row(950)!).getAllByRole('link')[0];
+    const timeLink = within(row(950)!)
+      .getAllByRole('link')
+      .find((a) => a.getAttribute('href')?.startsWith('/c/'))!;
     fireEvent.click(timeLink);
     await waitFor(() => expect(row(950)!.dataset.highlighted).toBe('true'));
     expect(location.current?.search).toBe(`?ts=${tsAt(950)}`);
@@ -283,6 +285,25 @@ describe('the conversation header', () => {
       '12 messages are older than 90 days (Mar 18 – Jun 18, 2026): Slack Free no longer shows them. They’re kept here.',
     );
     expect(within(facts).queryByText('All still in Slack')).toBeNull();
+  });
+
+  it('opens a DM partner’s page from the name, but not from your notes to yourself', async () => {
+    vi.spyOn(api, 'getConversation').mockResolvedValue(
+      makeConversation('C1', 'Bob', { type: 'im', dmUserId: 'U2', rawName: null }),
+    );
+    renderAt('/c/C1');
+    const title = await screen.findByRole('heading', { level: 1 });
+    const name = await within(title).findByRole('link', { name: 'Bob' });
+    expect(name.getAttribute('href')).toBe('/people/U2');
+    cleanup();
+    // The test directory's reader is U1.
+    vi.spyOn(api, 'getConversation').mockResolvedValue(
+      makeConversation('C1', 'You', { type: 'im', dmUserId: 'U1', rawName: null }),
+    );
+    renderAt('/c/C1');
+    const own = await screen.findByRole('heading', { level: 1 });
+    await waitFor(() => expect(own.textContent).toContain('You'));
+    expect(within(own).queryByRole('link')).toBeNull();
   });
 
   it('says when everything is still in Slack, and when the first message drops out', async () => {

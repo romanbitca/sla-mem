@@ -8,6 +8,8 @@ export interface Author {
   seed: string;
   isBot: boolean;
   deleted: boolean;
+  /** The person whose page the name opens; null for apps and unknown authors. */
+  personId: string | null;
 }
 
 /**
@@ -24,19 +26,29 @@ export function resolveAuthor(message: MessageDTO, dir: Directory): Author {
       seed: message.botId ?? botName,
       isBot: true,
       deleted: false,
+      personId: null,
     };
   }
   if (user) {
+    const isBot = user.isBot || message.botId != null;
     return {
       label: user.label,
       avatarUrl: user.avatarUrl ?? message.botIconUrl ?? null,
       seed: user.id,
-      isBot: user.isBot || message.botId != null,
+      isBot,
       deleted: user.deleted,
+      personId: isBot ? null : user.id,
     };
   }
   if (message.userId) {
-    return { label: message.userId, avatarUrl: null, seed: message.userId, isBot: false, deleted: false };
+    return {
+      label: message.userId,
+      avatarUrl: null,
+      seed: message.userId,
+      isBot: false,
+      deleted: false,
+      personId: null,
+    };
   }
   return {
     label: message.botId ? 'Bot' : 'Unknown',
@@ -44,5 +56,6 @@ export function resolveAuthor(message: MessageDTO, dir: Directory): Author {
     seed: message.botId ?? 'unknown',
     isBot: message.botId != null,
     deleted: false,
+    personId: null,
   };
 }

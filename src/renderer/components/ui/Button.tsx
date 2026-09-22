@@ -25,6 +25,17 @@ const SIZES: Record<ButtonSize, string> = {
   md: 'h-8.5 px-3.5 text-sm gap-2 rounded-lg',
 };
 
+/** A button's look, for a link that acts like one (it goes somewhere rather than doing something). */
+export function buttonClass(variant: ButtonVariant = 'secondary', size: ButtonSize = 'md', className?: string): string {
+  return clsx(
+    'focus-ring inline-flex shrink-0 items-center justify-center font-medium whitespace-nowrap',
+    'transition duration-150 ease-soft active:scale-[0.97]',
+    VARIANTS[variant],
+    SIZES[size],
+    className,
+  );
+}
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
     variant = 'secondary',

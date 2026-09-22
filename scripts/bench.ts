@@ -3,13 +3,14 @@
  * times the hot read paths against the targets.
  *
  * Usage: npm run bench -- [--messages 300000] [--out ./.test-data/bench-300k] [--fresh]
- * Targets: conversation list < 10 ms, message page < 50 ms, typical search < 50 ms, worst < 300 ms.
+ * Targets: conversation list < 10 ms, message page < 50 ms, typical search < 50 ms, worst < 300 ms,
+ * the People list and a person's page < 50 ms.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getMessages, listConversations, openDb, search, type DB } from '../src/main/db';
+import { getMessages, getPerson, listConversations, listPeople, openDb, search, type DB } from '../src/main/db';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -62,6 +63,7 @@ function checks(db: DB): Check[] {
       : undefined;
   const typical = 50;
   const worst = 300;
+  const busiest = [...listPeople(db)].sort((a, b) => b.messageCount - a.messageCount)[0];
   return [
     { name: 'conversation list', run: () => listConversations(db), target: 10 },
     {
@@ -98,6 +100,12 @@ function checks(db: DB): Check[] {
     })),
     { name: 'search newest sort', run: () => search(db, { q: 'deploy', sort: 'newest', limit: 30 }), target: typical },
     { name: 'search page 20', run: () => search(db, { q: 'deploy', limit: 30, offset: 600 }), target: typical },
+    { name: 'people list', run: () => listPeople(db), target: typical },
+    {
+      name: `person page (${busiest.messageCount} messages by them)`,
+      run: () => getPerson(db, busiest.userId),
+      target: typical,
+    },
   ];
 }
 

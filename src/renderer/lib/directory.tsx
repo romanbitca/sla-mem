@@ -9,7 +9,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { ConversationDTO, UserDTO } from '../../shared/types';
 import { MrkdwnProvider, type MrkdwnContext } from './mrkdwn';
 import { useConversations, useEmoji, useUsers, useWorkspace } from './queries';
-import { conversationPath } from './links';
+import { conversationPath, personPath } from './links';
 
 export interface Directory {
   users: ReadonlyMap<string, UserDTO>;
@@ -59,6 +59,11 @@ export function buildMrkdwnContext(dir: Directory): MrkdwnContext {
     // Own-property lookup: an emoji named "constructor" must not hit Object.prototype.
     customEmojiUrl: (name) => (Object.hasOwn(dir.emoji, name) ? dir.emoji[name] : undefined),
     channelHref: (id) => conversationPath(id),
+    // People only: an app's mention stays a chip, as its messages show no page to open.
+    userHref: (id) => {
+      const user = dir.users.get(id);
+      return user && !user.isBot ? personPath(id) : undefined;
+    },
   };
 }
 

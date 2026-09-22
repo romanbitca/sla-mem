@@ -171,6 +171,20 @@ describe('Ask AI', () => {
     expect((askAi.mock.calls[1][0] as AskAiRequest).scope).toBeUndefined();
   });
 
+  it('puts a question handed over by another screen in the box, without sending it', async () => {
+    vi.spyOn(api, 'getSettings').mockResolvedValue(makeSettings({ ai: { saved: true, hint: 'x7Qa' } }));
+    const { location } = renderWithProviders(<AskPage />, {
+      route: { pathname: '/ask', state: { askDraft: 'Brief me on Bob before we talk' } },
+      directory,
+    });
+    const box = (await screen.findByRole('textbox', { name: 'Question' })) as HTMLTextAreaElement;
+    await waitFor(() => expect(box.value).toBe('Brief me on Bob before we talk'));
+    expect(askAi).not.toHaveBeenCalled();
+    // Taken once: going back and forth doesn't put it there again.
+    await waitFor(() => expect(location.current?.state).toBeNull());
+    expect(document.activeElement).toBe(box);
+  });
+
   it('starts a new chat, forgetting the old one', async () => {
     renderAsk();
     await ask('First question');

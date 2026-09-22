@@ -1,11 +1,12 @@
 import { memo } from 'react';
+import { Link } from 'react-router';
 import clsx from 'clsx';
 import type { MessageDTO } from '../../../shared/types';
 import { Mrkdwn } from '../../lib/mrkdwn';
 import { useDirectory } from '../../lib/directory';
 import { hasVisibleBlocks } from '../../lib/blockkit';
 import { isSystemMessage } from '../../lib/grouping';
-import { slackPermalink } from '../../lib/links';
+import { personPath, slackPermalink } from '../../lib/links';
 import { CornerDownRightIcon, ThreadIcon } from '../icons';
 import { IconButton } from '../ui/IconButton';
 import { Attachments } from './Attachments';
@@ -104,6 +105,11 @@ function StandardMessageRow({
             compact
             className="mt-[3px] block text-right text-[10.5px] opacity-0 transition-opacity duration-150 group-hover/msg:opacity-100 group-focus-within/msg:opacity-100"
           />
+        ) : author.personId ? (
+          // The name next to it is the link people tab to; this one is for the mouse.
+          <Link to={personPath(author.personId)} tabIndex={-1} aria-hidden="true" className="block">
+            <Avatar seed={author.seed} label={author.label} src={author.avatarUrl} size={36} className="mt-0.5" />
+          </Link>
         ) : (
           <Avatar seed={author.seed} label={author.label} src={author.avatarUrl} size={36} className="mt-0.5" />
         )}
@@ -112,9 +118,21 @@ function StandardMessageRow({
       <div className="min-w-0 flex-1">
         {!continuation && (
           <header className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 leading-tight">
-            <span className={clsx('text-[15px] font-semibold', author.deleted ? 'text-ink-muted' : 'text-ink')}>
-              {author.label}
-            </span>
+            {author.personId ? (
+              <Link
+                to={personPath(author.personId)}
+                className={clsx(
+                  'focus-ring rounded-sm text-[15px] font-semibold hover:underline',
+                  author.deleted ? 'text-ink-muted' : 'text-ink',
+                )}
+              >
+                {author.label}
+              </Link>
+            ) : (
+              <span className={clsx('text-[15px] font-semibold', author.deleted ? 'text-ink-muted' : 'text-ink')}>
+                {author.label}
+              </span>
+            )}
             {author.isBot && (
               <span className="rounded bg-inset px-1 py-px text-[10px] font-semibold tracking-wide text-ink-faint uppercase">
                 App

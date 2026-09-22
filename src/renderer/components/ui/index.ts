@@ -1,4 +1,4 @@
-export { Button, type ButtonProps, type ButtonVariant, type ButtonSize } from './Button';
+export { Button, buttonClass, type ButtonProps, type ButtonVariant, type ButtonSize } from './Button';
 export { IconButton, type IconButtonProps } from './IconButton';
 export { Spinner, LoadingState } from './Spinner';
 export { EmptyState, ErrorState, type EmptyStateProps, type ErrorStateProps } from './EmptyState';

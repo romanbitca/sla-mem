@@ -80,6 +80,8 @@ export {
 } from './read';
 export type { GetMessagesQuery, TopLevelRow, ConversationActivity } from './read';
 
+export { listPeople, getPerson, looksLikeAsk, extractLinks, weekStart, OPEN_QUESTION_DAYS } from './people';
+
 export {
   search,
   parseSearchQuery,

@@ -88,6 +88,20 @@ describe('<Mrkdwn>', () => {
     expect(chips[0].classList.contains('md-mention')).toBe(true);
   });
 
+  it('links known people to their page with userHref, leaving unknown ones as chips', () => {
+    const navigate = vi.fn();
+    const userHref = (id: string) => (id === 'U1' ? `/people/${id}` : undefined);
+    const { container } = renderMd('<@U1> <@U2> <@U8>', { navigate, userHref });
+    const link = screen.getByRole('link', { name: '@Roman' });
+    expect(link.getAttribute('href')).toBe('/people/U1');
+    expect(link.classList.contains('md-mention-user')).toBe(true);
+    expect(link.getAttribute('data-user-id')).toBe('U1');
+    fireEvent.click(link);
+    expect(navigate).toHaveBeenCalledWith('/people/U1');
+    // Ana has no page (userHref says so); U8 isn't known at all.
+    expect(container.querySelectorAll('span.md-mention-user')).toHaveLength(2);
+  });
+
   it('links archived channels via channelHref and navigates client-side when possible', () => {
     const navigate = vi.fn();
     const { container } = renderMd('<#C1> <#C9|elsewhere>', { navigate });

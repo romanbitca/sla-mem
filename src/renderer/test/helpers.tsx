@@ -21,6 +21,8 @@ import type {
   LoginStatusDTO,
   MessageDTO,
   MessagesPage,
+  PersonDTO,
+  PersonSummaryDTO,
   PreferencesDTO,
   SettingsDTO,
   SlackConnectionDTO,
@@ -90,6 +92,49 @@ export function makeMessage(overrides: Partial<MessageDTO> & { ts: string }): Me
     files: [],
     attachments: [],
     ...overrides,
+  };
+}
+
+export function makePersonSummary(userId: string, extra: Partial<PersonSummaryDTO> = {}): PersonSummaryDTO {
+  return {
+    userId,
+    title: null,
+    tz: null,
+    messageCount: 0,
+    lastMessageTs: null,
+    dmConversationId: null,
+    dmMessageCount: 0,
+    lastTalkedTs: null,
+    ...extra,
+  };
+}
+
+/** Someone's page with nothing between you yet; override what a test needs. */
+export function makePerson(userId: string, extra: Partial<PersonDTO> = {}): PersonDTO {
+  return {
+    userId,
+    isSelf: false,
+    title: null,
+    tz: null,
+    tzLabel: null,
+    email: null,
+    isGuest: false,
+    avatarUrl: null,
+    messageCount: 0,
+    firstMessageTs: null,
+    lastMessageTs: null,
+    dm: null,
+    groupDms: [],
+    channels: [],
+    lastTalkedTs: null,
+    weeks: [],
+    openQuestionDays: 30,
+    waitingOnYou: [],
+    waitingOnThem: [],
+    recent: [],
+    fileMessages: [],
+    links: [],
+    ...extra,
   };
 }
 
@@ -388,7 +433,8 @@ export function testDirectory(conversations: ConversationDTO[] = [makeConversati
 }
 
 export interface RenderOptions {
-  route?: string;
+  /** The starting URL, or a location with router state (e.g. a question handed to Ask AI). */
+  route?: string | Partial<Pick<Location, 'pathname' | 'search' | 'state'>>;
   /** Route pattern the element is mounted under (for useParams). */
   path?: string;
   client?: QueryClient;

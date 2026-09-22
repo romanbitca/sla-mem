@@ -9,6 +9,8 @@ export interface MrkdwnContext {
   customEmojiUrl(name: string): string | undefined;
   /** Build an app link for a channel mention, e.g. `/c/C123`. */
   channelHref(id: string): string;
+  /** Optional: an app link for a user mention (their People page); undefined leaves it a chip. */
+  userHref?(id: string): string | undefined;
   /** Optional: search terms to highlight (case-insensitive) in text nodes. */
   highlight?: string[];
   /**

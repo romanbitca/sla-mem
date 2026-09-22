@@ -44,6 +44,14 @@ export const NO_SCOPE: AiScopeDTO = Object.freeze({
   before: null,
 }) as AiScopeDTO;
 
+/**
+ * Router state that opens Ask AI with a question in its box, ready for the reader to send (a
+ * person's "Brief me"). Nothing is asked until they do: every answer costs them.
+ */
+export interface AskDraftState {
+  askDraft: string;
+}
+
 export function hasScope(scope: AiScopeDTO | null | undefined): scope is AiScopeDTO {
   return !!scope && (scope.conversationIds.length > 0 || scope.userIds.length > 0 || !!scope.after || !!scope.before);
 }

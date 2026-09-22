@@ -22,6 +22,8 @@ import type {
   MessagesPage,
   MessagesQuery,
   OkDTO,
+  PersonDTO,
+  PersonSummaryDTO,
   PreferencesPatch,
   SearchParams,
   SearchResponse,
@@ -51,6 +53,9 @@ export interface ArchiveApi {
   getRevisions(req: { conversationId: string; ts: string }): MessageRevisionDTO[];
   search(req: SearchParams): SearchResponse;
   getEmoji(): Record<string, string>;
+  /** Everyone the reader talks with or reads, most recently in touch first. */
+  getPeople(): PersonSummaryDTO[];
+  getPerson(req: { id: string }): PersonDTO;
 
   // Sync
   getSyncStatus(): SyncStatusDTO;
@@ -143,6 +148,8 @@ export const API_METHODS = [
   'getRevisions',
   'search',
   'getEmoji',
+  'getPeople',
+  'getPerson',
   'getSyncStatus',
   'startSync',
   'cancelSync',
