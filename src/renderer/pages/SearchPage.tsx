@@ -90,7 +90,8 @@ export default function SearchPage() {
   // The sidebar's Search (and ⌘K) come back to this search.
   useEffect(() => rememberSearch(currentUrl), [currentUrl]);
 
-  // ⌘K from another page: the cursor goes in the box, ready to type over the last query.
+  // ⌘K or "/" from another page: the cursor goes in the box, ready to type over the last query.
+  // Opened any other way (the sidebar, a link), the box waits for a click: nothing pops up unasked.
   useEffect(() => {
     if (!arrival?.focusSearch) return;
     inputRef.current?.focus();
@@ -316,7 +317,6 @@ export default function SearchPage() {
             onSubmit={submit}
             source={data}
             inputRef={inputRef}
-            autoFocus={!params}
             onExitDown={focusFirstHit}
             onClear={clear}
           />

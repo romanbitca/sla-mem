@@ -14,7 +14,6 @@ export interface SearchInputProps {
   /** Directory lists for people/conversation suggestions (null while loading). */
   source: AutocompleteSource | null;
   inputRef?: RefObject<HTMLInputElement | null>;
-  autoFocus?: boolean;
   /** ArrowDown with no suggestions open: move focus into the results. */
   onExitDown?: () => void;
   /** The clear button: starts over (without it, the button only empties the box). */
@@ -25,7 +24,9 @@ const NO_SOURCE: AutocompleteSource = { users: [], conversations: [], selfUserId
 
 /**
  * Search box with Slack-style modifier completion (ARIA combobox). Enter searches unless a
- * suggestion is highlighted; Tab or Enter accepts one; Esc dismisses the list.
+ * suggestion is highlighted; Tab or Enter accepts one; Esc dismisses the list. The list opens when
+ * the reader clicks in the box or types, never just because the box has the cursor (⌘K puts it
+ * there, and "Narrow your search" popping up unasked got in the way).
  */
 export function SearchInput({
   value,
@@ -33,7 +34,6 @@ export function SearchInput({
   onSubmit,
   source,
   inputRef,
-  autoFocus,
   onExitDown,
   onClear,
 }: SearchInputProps) {
@@ -142,7 +142,6 @@ export function SearchInput({
         autoCapitalize="off"
         spellCheck={false}
         enterKeyHint="search"
-        autoFocus={autoFocus}
         placeholder="Search messages, or try from:, in:, has:, before:…"
         value={value}
         onChange={(e) => {
@@ -151,7 +150,7 @@ export function SearchInput({
           setOpen(true);
         }}
         onSelect={(e) => setCaret(e.currentTarget.selectionStart ?? value.length)}
-        onFocus={() => setOpen(true)}
+        onClick={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
         className="focus-ring h-11 w-full rounded-xl border border-line bg-raised pr-11 pl-10 text-[15px] text-ink shadow-xs placeholder:text-ink-faint [&::-webkit-search-cancel-button]:hidden"
@@ -166,7 +165,7 @@ export function SearchInput({
             if (onClear) onClear();
             else onChange('');
             setCaret(0);
-            setOpen(true);
+            setOpen(false);
             ref.current?.focus();
           }}
           className="focus-ring absolute top-1/2 right-2.5 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-ink-faint hover:bg-hover hover:text-ink"

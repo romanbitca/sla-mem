@@ -169,6 +169,8 @@ describe('AppShell', () => {
     await waitFor(() => expect(location?.pathname).toBe('/search'));
     const box = await screen.findByRole('combobox', { name: 'Search messages' });
     await waitFor(() => expect(document.activeElement).toBe(box));
+    // Ready to type, without the suggestions popping up before anything is typed.
+    expect(screen.queryByRole('listbox')).toBeNull();
 
     fireEvent.change(box, { target: { value: 'from:@bob deploy' } });
     fireEvent.submit(box.closest('form')!);

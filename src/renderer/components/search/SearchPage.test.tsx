@@ -198,6 +198,23 @@ describe('SearchPage', () => {
     expect(query(location).get('q')).toBe('zzz');
   });
 
+  it('opens without the cursor in the box; clicking it shows the suggestions', async () => {
+    renderAt('/search');
+    const box = input();
+    expect(await screen.findByText('Search everything you’ve archived')).toBeTruthy();
+    expect(document.activeElement).not.toBe(box);
+    expect(screen.queryByRole('listbox')).toBeNull();
+    // The cursor alone (as ⌘K leaves it) doesn't open the list either: a click or typing does.
+    act(() => box.focus());
+    expect(screen.queryByRole('listbox')).toBeNull();
+    fireEvent.click(box);
+    expect(await screen.findByRole('listbox', { name: 'Narrow your search' })).toBeTruthy();
+    fireEvent.keyDown(box, { key: 'Escape' });
+    expect(screen.queryByRole('listbox')).toBeNull();
+    fireEvent.change(box, { target: { value: 'from:ca' } });
+    expect(await screen.findByRole('listbox', { name: 'People' })).toBeTruthy();
+  });
+
   it('autocompletes a modifier and searches on submit', async () => {
     const { location } = renderAt('/search?q=deploy');
     await screen.findByText(/Showing 30/);
@@ -223,7 +240,9 @@ describe('SearchPage', () => {
     expect(screen.getByText('Search everything you’ve archived')).toBeTruthy();
     expect(screen.queryByText(/Showing/)).toBeNull();
     expect(screen.getByRole('button', { name: 'Files' }).getAttribute('aria-pressed')).toBe('false');
+    // The cursor stays in the box for the next search; the suggestions wait for typing or a click.
     expect(document.activeElement).toBe(input());
+    expect(screen.queryByRole('listbox')).toBeNull();
     // Back brings the cleared search back.
     act(() => void navigate(-1));
     await waitFor(() => expect(input().value).toBe('deploy'));
