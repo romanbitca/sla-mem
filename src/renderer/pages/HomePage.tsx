@@ -46,7 +46,7 @@ export default function HomePage() {
     <section className="flex min-h-0 min-w-0 flex-1 animate-page-in flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
         <SidebarToggle />
-        <h1 className="text-[15px] font-semibold text-ink">Archive</h1>
+        <h1 className="text-[15px] font-semibold text-ink">Overview</h1>
       </header>
       <div className="scroll-thin relative min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:py-8">
@@ -75,7 +75,7 @@ export default function HomePage() {
           )}
           {info.data && !info.data.installedProperly && (
             <Callout tone="warn" icon={<AlertIcon size={15} />}>
-              sla-mem is running from the download. Drag it into your Applications folder so it can start by itself and
+              Slamem is running from the download. Drag it into your Applications folder so it can start by itself and
               keep syncing.
             </Callout>
           )}
@@ -108,7 +108,7 @@ function StaleCallout({ status }: { status: SyncStatusDTO }) {
       <p className="font-medium">
         {days != null
           ? `Your last successful sync was ${pluralize(days, 'day')} ago.`
-          : 'sla-mem hasn’t synced in a long time.'}
+          : 'Slamem hasn’t synced in a long time.'}
       </p>
       <p className="text-ink-muted">
         Slack only keeps the last {FREE_PLAN_WINDOW_DAYS} days, so sync soon: anything older than that can’t be fetched

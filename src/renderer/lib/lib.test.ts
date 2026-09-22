@@ -10,6 +10,7 @@ import {
   formatFullDateTime,
   formatShortDate,
   formatTime,
+  formatDateRange,
   formatTsRange,
   formatTsShort,
   isoDateTime,
@@ -170,6 +171,10 @@ describe('format', () => {
   it('describes a covered range', () => {
     expect(formatTsRange(null, '1700000000.0')).toBeNull();
     expect(formatTsRange('1700000000.0', '1700000000.0')).toMatch(/^Nov 1[45], 2023$/);
+    expect(formatDateRange(new Date(2026, 6, 9), new Date(2026, 8, 18, 15))).toBe('Jul 9 – Sep 18, 2026');
+    expect(formatDateRange(new Date(2025, 11, 3), new Date(2026, 1, 1))).toBe('Dec 3, 2025 – Feb 1, 2026');
+    expect(formatDateRange(new Date(2026, 8, 18, 9), new Date(2026, 8, 18, 17))).toBe('Sep 18, 2026');
+    expect(formatDateRange(new Date(NaN), new Date(2026, 8, 18))).toBe('');
   });
 
   it('formats an invalid date as nothing instead of throwing (archived data can be malformed)', () => {

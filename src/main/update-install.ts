@@ -3,7 +3,7 @@
  * as the app quits, then open the new version.
  *
  * Electron's own updater (Squirrel.Mac) refuses unsigned builds, so on macOS this does what a
- * person would: once the app has quit, a small script moves the old sla-mem.app aside, moves the
+ * person would: once the app has quit, a small script moves the old Slamem.app aside, moves the
  * new one into its place and opens it. The download is checked against the SHA-256 GitHub lists for
  * the file, must be this app (bundle id) at the expected version, and its signature must be intact.
  * Downloaded this way the new app carries no quarantine flag, so macOS doesn't block it again.
@@ -142,7 +142,7 @@ function hostOf(url: string): string | null {
 /** A checked download, ready to replace the app. */
 export interface PreparedUpdate {
   version: string;
-  /** macOS: the new sla-mem.app; Windows: the installer. */
+  /** macOS: the new Slamem.app; Windows: the installer. */
   path: string;
 }
 
@@ -202,7 +202,7 @@ export function createInstaller(opts: InstallerOptions): UpdateInstaller | null 
  * without the app. Paths arrive as arguments, never inside the script text.
  */
 export const MAC_INSTALL_SCRIPT = `#!/bin/sh
-# sla-mem's updater, written by the app just before it quits for an update.
+# Slamem's updater, written by the app just before it quits for an update.
 pid=$1 app=$2 new=$3 old=$4 log=$5 seconds=$6 opener=$7
 shift 7
 note() { printf '%s %-5s Updater: %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" "$1" "$2" >>"$log"; }
@@ -212,7 +212,7 @@ tries=$((seconds * 10))
 while kill -0 "$pid" 2>/dev/null; do
   tries=$((tries - 1))
   if [ "$tries" -le 0 ]; then
-    note ERROR "sla-mem didn't quit, so the new version wasn't installed"
+    note ERROR "Slamem didn't quit, so the new version wasn't installed"
     exit 1
   fi
   sleep 0.1
@@ -231,11 +231,11 @@ else
   note ERROR "couldn't move the new version into place, so the current one stays"
 fi
 # -n: a new instance even if macOS still counts the old one as running.
-if [ $# -gt 0 ]; then "$opener" -n "$app" --args "$@"; else "$opener" -n "$app"; fi || note ERROR "couldn't open sla-mem again"
+if [ $# -gt 0 ]; then "$opener" -n "$app" --args "$@"; else "$opener" -n "$app"; fi || note ERROR "couldn't open Slamem again"
 `;
 
 export interface MacInstallerOptions {
-  /** The running sla-mem.app. */
+  /** The running Slamem.app. */
   bundlePath: string;
   spawn?: Spawn;
   execFile?: ExecFile;

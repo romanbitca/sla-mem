@@ -175,7 +175,7 @@ describe('AppShell', () => {
     await waitFor(() => expect(new URLSearchParams(location!.search).get('q')).toBe('from:@bob deploy'));
 
     // From anywhere else, Search comes back to that search.
-    fireEvent.click(screen.getByRole('link', { name: 'Archive' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Overview' }));
     await waitFor(() => expect(location?.pathname).toBe('/'));
     expect(screen.getByRole('link', { name: /^Search/ }).getAttribute('href')).toBe(
       `/search?${new URLSearchParams({ q: 'from:@bob deploy' }).toString()}`,
@@ -223,6 +223,21 @@ describe('AppShell', () => {
 
     fireEvent.keyDown(filter, { key: 'Escape' });
     expect((filter as HTMLInputElement).value).toBe('');
+  });
+
+  it('shows a clear button in the filter for as long as it holds text', async () => {
+    renderApp();
+    await screen.findByRole('link', { name: /general/ });
+    const filter = screen.getByRole('searchbox', { name: 'Filter conversations' }) as HTMLInputElement;
+    expect(screen.queryByRole('button', { name: 'Clear filter' })).toBeNull();
+
+    fireEvent.change(filter, { target: { value: 'gen' } });
+    expect(screen.queryByRole('link', { name: 'Bob' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filter' }));
+    expect(filter.value).toBe('');
+    expect(document.activeElement).toBe(filter);
+    expect(screen.getByRole('link', { name: 'Bob' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Clear filter' })).toBeNull();
   });
 
   it('collapses a section and remembers it', async () => {
@@ -283,7 +298,7 @@ describe('AppShell', () => {
     expect(indicator.getAttribute('href')).toBe('/settings');
     // Screen readers hear the state once, from a live region outside the link.
     expect(screen.getByText('Connect Slack', { selector: '[role="status"]' }).closest('a')).toBeNull();
-    expect(screen.getAllByText('sla-mem').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Slamem').length).toBeGreaterThan(0);
   });
 
   it('shows the workspace name and host', async () => {

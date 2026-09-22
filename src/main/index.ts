@@ -30,7 +30,15 @@ import { createHandlers } from './ipc';
 import { settingsDTO } from './ipc/actions';
 import { registerIpc } from './ipc/register';
 import { applyLaunchAtLogin, wasOpenedAtLogin } from './login-item';
-import { DATA_DIR_NAME, explicitDataDir, LEGACY_DATA_DIR_NAME, moveLegacyDataDir, type LegacyMove } from './paths';
+import { renameOldBundle } from './bundle-rename';
+import {
+  DATA_DIR_NAME,
+  explicitDataDir,
+  LEGACY_DATA_DIR_NAMES,
+  moveLegacyDataDir,
+  oldAppName,
+  type LegacyMove,
+} from './paths';
 import { ARCHIVE_SCHEME, serveArchiveFile } from './protocol';
 import { denyPermissions, hardenWebContents, openExternalSafe } from './security';
 import { createTray, IDLE_TRAY_STATE, type TrayController, type TrayState } from './tray';
@@ -41,23 +49,45 @@ const rendererDevUrl = isDev ? process.env.ELECTRON_RENDERER_URL : undefined;
 const rendererFile = path.join(__dirname, '../renderer/index.html');
 const USER_GUIDE_URL = 'https://github.com/romanbitca/sla-mem/blob/main/docs/INSTALL.md';
 
+// The app is called Slamem, but Electron's own name for it stays "sla-mem" (its name until
+// 0.3.2): macOS keeps the key that protects the saved Slack sign-in in a keychain item named after
+// it ("sla-mem Safe Storage"), so another name would sign everyone out. Users never see it.
 app.setName('sla-mem');
+
+// A copy updated in place from before the rename is still "sla-mem.app": it renames itself and
+// opens again from there (bundle-rename.ts). Exiting this early leaves nothing half done.
+const reopening =
+  app.isPackaged &&
+  process.platform === 'darwin' &&
+  renameOldBundle({ execPath: process.execPath, pid: process.pid, args: process.argv.slice(1) });
+if (reopening) {
+  // Whatever Chromium writes on the way out goes to a scratch folder, never to the archive's old
+  // or new folder (an early "Slamem" folder would look like an archive already moved).
+  app.setPath('userData', path.join(app.getPath('temp'), `Slamem-rename-${process.pid}`));
+  app.exit(0);
+}
+
 // Development runs keep their own data, far from a real archive in the same user account. An
-// archive from before the app was renamed ("Slack Archive") moves to the new folder once.
+// archive from before the app was renamed ("sla-mem", "Slack Archive") moves to the new folder once.
 const dataDirOverride = explicitDataDir(process.argv, process.env, process.cwd());
-let legacyMove: LegacyMove = 'none';
-if (dataDirOverride) {
+let legacyMove: LegacyMove = { outcome: 'none', from: null };
+if (reopening) {
+  // Exiting: nothing to set up.
+} else if (dataDirOverride) {
   app.setPath('userData', dataDirOverride);
 } else {
   const appData = app.getPath('appData');
   const kind = isDev ? 'development' : 'production';
   const target = path.join(appData, DATA_DIR_NAME[kind]);
-  const legacy = path.join(appData, LEGACY_DATA_DIR_NAME[kind]);
-  legacyMove = moveLegacyDataDir(legacy, target);
+  legacyMove = moveLegacyDataDir(
+    LEGACY_DATA_DIR_NAMES[kind].map((name) => path.join(appData, name)),
+    target,
+  );
   // A folder that couldn't move is used where it is; while the old app runs, nothing is touched
   // (see the check before start below) and this run only needs a scratch folder.
-  if (legacyMove === 'failed') app.setPath('userData', legacy);
-  else if (legacyMove === 'in-use') app.setPath('userData', path.join(app.getPath('temp'), `sla-mem-${process.pid}`));
+  if (legacyMove.outcome === 'failed' && legacyMove.from) app.setPath('userData', legacyMove.from);
+  else if (legacyMove.outcome === 'in-use')
+    app.setPath('userData', path.join(app.getPath('temp'), `Slamem-${process.pid}`));
   else app.setPath('userData', target);
 }
 if (process.platform === 'win32') app.setAppUserModelId('com.9h.sla-mem');
@@ -120,7 +150,7 @@ function createMainWindow(s: AppServices): BrowserWindow {
     minWidth: 760,
     minHeight: 480,
     show: false,
-    title: 'sla-mem',
+    title: 'Slamem',
     autoHideMenuBar: true,
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#161617' : '#fbfbfa',
     webPreferences: {
@@ -148,7 +178,7 @@ function createMainWindow(s: AppServices): BrowserWindow {
     win.hide();
     if (process.platform === 'win32' && tray && !s.prefs.getInternal().trayHintShown) {
       tray.showBalloonOnce(
-        'sla-mem is still running',
+        'Slamem is still running',
         'It keeps archiving in the background. Use the tray icon to open it or quit.',
       );
       s.prefs.setInternal({ trayHintShown: true });
@@ -225,6 +255,7 @@ function platformHooks(s: AppServices): PlatformHooks {
       }
       // Windows can't pick "a file or a folder" in one dialog.
       const choice = await dialog.showMessageBox(parent!, {
+        title: 'Import a Slack export',
         type: 'question',
         message: 'Is your Slack export a .zip file or a folder?',
         buttons: ['A .zip file', 'A folder', 'Cancel'],
@@ -240,7 +271,7 @@ function platformHooks(s: AppServices): PlatformHooks {
     },
     async chooseBackupFolder() {
       const r = await dialog.showOpenDialog(mainWindow!, {
-        title: 'Back up sla-mem',
+        title: 'Back up Slamem',
         message: 'Choose where to save the backup',
         buttonLabel: 'Save backup here',
         properties: ['openDirectory', 'createDirectory'],
@@ -251,10 +282,10 @@ function platformHooks(s: AppServices): PlatformHooks {
     async chooseBackupFile() {
       const r = await dialog.showOpenDialog(mainWindow!, {
         title: 'Import a backup',
-        message: 'Choose the sla-mem backup (.zip) made on your other computer',
+        message: 'Choose the Slamem backup (.zip) made on your other computer',
         buttonLabel: 'Import',
         properties: ['openFile'],
-        filters: [{ name: 'sla-mem backup', extensions: ['zip'] }],
+        filters: [{ name: 'Slamem backup', extensions: ['zip'] }],
         defaultPath: app.getPath('documents'),
       });
       return r.canceled ? null : (r.filePaths[0] ?? null);
@@ -355,7 +386,7 @@ function wireStatus(s: AppServices): () => void {
       syncBlocker = null;
       const problem = s.runs.status().problem;
       if (problem?.kind === 'signed_out' && (!mainWindow || !mainWindow.isVisible()))
-        notify('Slack signed you out', 'Open sla-mem and click Reconnect to keep archiving.');
+        notify('Slack signed you out', 'Open Slamem and click Reconnect to keep archiving.');
     }
   });
   s.connection.on('changed', () => {
@@ -402,17 +433,18 @@ function buildMenu(s: AppServices): void {
     ...(mac
       ? [
           {
-            label: 'sla-mem',
+            label: 'Slamem',
+            // Labelled here: the roles' own labels use Electron's name for the app (see setName).
             submenu: [
-              { role: 'about' },
+              { role: 'about', label: 'About Slamem' },
               { type: 'separator' },
               { label: 'Settings…', accelerator: 'Cmd+,', click: () => showMainWindow('/settings') },
               { type: 'separator' },
-              { role: 'hide' },
+              { role: 'hide', label: 'Hide Slamem' },
               { role: 'hideOthers' },
               { role: 'unhide' },
               { type: 'separator' },
-              { role: 'quit' },
+              { role: 'quit', label: 'Quit Slamem' },
             ],
           } as MenuItemConstructorOptions,
         ]
@@ -492,7 +524,7 @@ async function offerMoveToApplications(s: AppServices): Promise<void> {
   if (process.platform !== 'darwin' || !app.isPackaged || app.isInApplicationsFolder()) return;
   const { response } = await dialog.showMessageBox({
     type: 'question',
-    message: 'Move sla-mem to your Applications folder?',
+    message: 'Move Slamem to your Applications folder?',
     detail: 'It needs to live in Applications to start at login and to update properly.',
     buttons: ['Move to Applications', 'Not now'],
     defaultId: 0,
@@ -536,10 +568,11 @@ async function start(): Promise<void> {
   });
   services = s;
   appLog = s.log;
-  s.log.info(`sla-mem ${app.getVersion()} starting (${process.platform} ${process.arch}), data in ${s.paths.dataDir}`);
-  if (legacyMove === 'moved') s.log.info('Moved the archive here from its folder under the old name (Slack Archive)');
-  if (legacyMove === 'failed')
-    s.log.warn('Couldn’t move the archive from its folder under the old name; using it there');
+  s.log.info(`Slamem ${app.getVersion()} starting (${process.platform} ${process.arch}), data in ${s.paths.dataDir}`);
+  if (legacyMove.outcome === 'moved')
+    s.log.info(`Moved the archive here from its folder under the old name (${legacyMove.from})`);
+  if (legacyMove.outcome === 'failed')
+    s.log.warn(`Couldn’t move the archive from its folder under the old name; using it there (${legacyMove.from})`);
   const interrupted = s.runs.init();
   if (interrupted) s.log.info(`Marked ${interrupted} interrupted run(s) from the last session`);
   void refreshSearchTextIfOutdated(s.db, { log: (line) => s.log.info(line) }).catch((err: unknown) =>
@@ -556,7 +589,7 @@ async function start(): Promise<void> {
   wireServices(s, hooks);
   buildMenu(s);
   app.setAboutPanelOptions({
-    applicationName: 'sla-mem',
+    applicationName: 'Slamem',
     applicationVersion: app.getVersion(),
     copyright: '© 2026 Roman Bitca',
   });
@@ -591,7 +624,9 @@ process.on('uncaughtException', (err) => {
   else console.error(err);
 });
 
-if (!app.requestSingleInstanceLock()) {
+if (reopening) {
+  // Renamed: the copy that opens from the new name does everything.
+} else if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', () => {
@@ -600,21 +635,19 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   void app.whenReady().then(() => {
-    if (legacyMove === 'in-use') {
+    if (legacyMove.outcome === 'in-use') {
+      const oldName = oldAppName(legacyMove.from ?? '');
       dialog.showErrorBox(
-        'Quit Slack Archive first',
-        'sla-mem is the new name of Slack Archive. Quit the old app (its menu bar icon → Quit), then open ' +
-          'sla-mem again: your archive moves over by itself.',
+        `Quit ${oldName} first`,
+        `Slamem is the new name of ${oldName}. Quit the old app (its menu bar icon → Quit), then open ` +
+          'Slamem again: your archive moves over by itself.',
       );
       app.exit(0);
       return;
     }
     return start().catch((err: unknown) => {
       services?.log.error('Startup failed', err);
-      dialog.showErrorBox(
-        'sla-mem couldn’t start',
-        `Something went wrong while opening the archive.\n\n${String(err)}`,
-      );
+      dialog.showErrorBox('Slamem couldn’t start', `Something went wrong while opening the archive.\n\n${String(err)}`);
       app.exit(1);
     });
   });

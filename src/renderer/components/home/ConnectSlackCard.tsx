@@ -10,7 +10,7 @@ import type { ConnectPrompt } from './runs';
 const COPY: Record<ConnectPrompt, { title: string; body: string; action: string }> = {
   'first-run': {
     title: 'Connect Slack to start your archive',
-    body: 'You’ll sign in to Slack in a window, just like in your browser. sla-mem then keeps your channels, direct messages and files, even after Slack hides them.',
+    body: 'You’ll sign in to Slack in a window, just like in your browser. Slamem then keeps your channels, direct messages and files, even after Slack hides them.',
     action: 'Connect Slack',
   },
   'not-connected': {

@@ -101,7 +101,7 @@ export interface RunJobs {
   runApiSync(opts: ApiSyncOptions): Promise<JobStats>;
   runFileDownloads(opts: Omit<ApiSyncOptions, 'conversationIds'>): Promise<JobStats>;
   importSlackExport(opts: ImportSlackExportOptions): Promise<JobStats>;
-  /** Whether a chosen zip or folder is an sla-mem backup (restored) rather than a Slack export. */
+  /** Whether a chosen zip or folder is a Slamem backup (restored) rather than a Slack export. */
   isArchiveBackup(path: string): Promise<boolean>;
   restoreBackup(opts: RestoreBackupOptions): Promise<JobStats>;
 }
@@ -156,7 +156,7 @@ export const SYNC_LOCK = 'sync';
 export const STATUS_LOG_LINES = 50;
 export const NOT_CONNECTED_REASON = 'Connect Slack to start archiving.';
 /** Automatic syncs wait until onboarding asked what to archive (a sync started by hand still runs). */
-export const ONBOARDING_REASON = 'Finish setting up sla-mem to start archiving.';
+export const ONBOARDING_REASON = 'Finish setting up Slamem to start archiving.';
 const STALE_AFTER_MS = 30 * 86_400_000;
 const SYNC_KINDS: readonly RunKind[] = ['sync'];
 const FAILURE_KINDS: readonly RunKind[] = ['sync', 'files'];
@@ -246,7 +246,7 @@ export class RunManager {
     return this.launch('files', 'attachment download', (ctx) => this.runSlackJob(ctx, 'files'));
   }
 
-  /** Imports a Slack export, or restores an sla-mem backup (moving from another computer). */
+  /** Imports a Slack export, or restores a Slamem backup (moving from another computer). */
   startImport(exportPath: string): number {
     const resolved = resolveImportPath(exportPath);
     return this.launch('import', `import of ${path.basename(resolved)}`, async (ctx) => {
@@ -432,7 +432,7 @@ export class RunManager {
   // ─── lifecycle ──────────────────────────────────────────────────────────────────────────────
 
   private launch(kind: RunKind, description: string, job: Job): number {
-    if (this.closed) throw blocked('sla-mem is closing.');
+    if (this.closed) throw blocked('Slamem is closing.');
     if (this.active) throw conflict(`${RUN_LABEL[this.active.kind]} is already running.`);
     this.acquireLock();
     let id: number;
@@ -459,7 +459,7 @@ export class RunManager {
       throw conflict('The archive is busy. Try again in a moment.');
     }
     if (!acquired || readLock(this.db, SYNC_LOCK)?.owner !== this.owner) {
-      throw conflict('Another copy of sla-mem is updating this archive. Try again when it finishes.');
+      throw conflict('Another copy of Slamem is updating this archive. Try again when it finishes.');
     }
   }
 

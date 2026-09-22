@@ -104,7 +104,7 @@ describe('backup', () => {
         destDir: dest,
         now: new Date(2026, 8, 21, 9, 5),
       });
-      expect(path.basename(result.path)).toBe('sla-mem backup 2026-09-21 0905.zip');
+      expect(path.basename(result.path)).toBe('Slamem backup 2026-09-21 0905.zip');
       const entries = await unzip(result.path, path.join(dest, 'restored'));
       expect(entries.sort()).toEqual(['README.txt', 'archive.db', 'config.json', 'files/F1/photo.png']);
       const restored = openDb(path.join(dest, 'restored', 'archive.db'));
@@ -118,7 +118,7 @@ describe('backup', () => {
         destDir: dest,
         now: new Date(2026, 8, 21, 9, 5),
       });
-      expect(path.basename(second.path)).toBe('sla-mem backup 2026-09-21 0905 (2).zip');
+      expect(path.basename(second.path)).toBe('Slamem backup 2026-09-21 0905 (2).zip');
     } finally {
       fs.rmSync(dest, { recursive: true, force: true });
     }
@@ -149,19 +149,19 @@ async function unzip(zipPath: string, into: string): Promise<string[]> {
 describe('updates', () => {
   const assets = [
     {
-      name: 'sla-mem-1.2.0-arm64.dmg',
-      browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/sla-mem-1.2.0-arm64.dmg',
+      name: 'Slamem-1.2.0-arm64.dmg',
+      browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/Slamem-1.2.0-arm64.dmg',
     },
     {
-      name: 'sla-mem-1.2.0.dmg',
-      browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/sla-mem-1.2.0.dmg',
+      name: 'Slamem-1.2.0.dmg',
+      browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/Slamem-1.2.0.dmg',
     },
     {
-      name: 'sla-mem-setup-1.2.0.exe',
-      browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/sla-mem-setup-1.2.0.exe',
+      name: 'Slamem-setup-1.2.0.exe',
+      browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/Slamem-setup-1.2.0.exe',
     },
     {
-      name: 'sla-mem-setup-1.2.0.exe.blockmap',
+      name: 'Slamem-setup-1.2.0.exe.blockmap',
       browser_download_url: 'https://github.com/o/r/releases/download/v1.2.0/x.blockmap',
     },
   ];
@@ -175,7 +175,7 @@ describe('updates', () => {
   it('picks the installer for this computer', () => {
     expect(pickAsset(assets, 'darwin', 'arm64')).toMatch(/arm64\.dmg$/);
     expect(pickAsset(assets, 'darwin', 'x64')).toMatch(/1\.2\.0\.dmg$/);
-    expect(pickAsset(assets, 'win32', 'x64')).toMatch(/sla-mem-setup-1\.2\.0\.exe$/);
+    expect(pickAsset(assets, 'win32', 'x64')).toMatch(/Slamem-setup-1\.2\.0\.exe$/);
     expect(pickAsset(assets, 'linux', 'x64')).toBeNull();
   });
 
@@ -210,22 +210,22 @@ describe('updates', () => {
     const base = 'https://github.com/o/r/releases/download/v1.2.0';
     const digest = (c: string) => `sha256:${c.repeat(64)}`;
     const files = [
-      { name: 'sla-mem-1.2.0-arm64-mac.zip', browser_download_url: `${base}/a.zip`, size: 10, digest: digest('a') },
-      { name: 'sla-mem-1.2.0-x64-mac.zip', browser_download_url: `${base}/b.zip`, size: 11, digest: digest('b') },
-      { name: 'sla-mem-1.2.0-arm64-mac.zip.blockmap', browser_download_url: `${base}/c`, size: 1, digest: digest('c') },
-      { name: 'sla-mem-setup-1.2.0.exe', browser_download_url: `${base}/d.exe`, size: 12, digest: digest('D') },
-      { name: 'sla-mem-setup-1.2.0.exe.blockmap', browser_download_url: `${base}/e`, size: 1, digest: digest('e') },
+      { name: 'Slamem-1.2.0-arm64-mac.zip', browser_download_url: `${base}/a.zip`, size: 10, digest: digest('a') },
+      { name: 'Slamem-1.2.0-x64-mac.zip', browser_download_url: `${base}/b.zip`, size: 11, digest: digest('b') },
+      { name: 'Slamem-1.2.0-arm64-mac.zip.blockmap', browser_download_url: `${base}/c`, size: 1, digest: digest('c') },
+      { name: 'Slamem-setup-1.2.0.exe', browser_download_url: `${base}/d.exe`, size: 12, digest: digest('D') },
+      { name: 'Slamem-setup-1.2.0.exe.blockmap', browser_download_url: `${base}/e`, size: 1, digest: digest('e') },
     ];
     expect(pickPackage(files, 'darwin', 'arm64', '1.2.0')).toEqual({
       version: '1.2.0',
-      name: 'sla-mem-1.2.0-arm64-mac.zip',
+      name: 'Slamem-1.2.0-arm64-mac.zip',
       url: `${base}/a.zip`,
       size: 10,
       sha256: 'a'.repeat(64),
     });
-    expect(pickPackage(files, 'darwin', 'x64', '1.2.0')?.name).toBe('sla-mem-1.2.0-x64-mac.zip');
+    expect(pickPackage(files, 'darwin', 'x64', '1.2.0')?.name).toBe('Slamem-1.2.0-x64-mac.zip');
     expect(pickPackage(files, 'win32', 'x64', '1.2.0')).toMatchObject({
-      name: 'sla-mem-setup-1.2.0.exe',
+      name: 'Slamem-setup-1.2.0.exe',
       sha256: 'd'.repeat(64),
     });
     expect(pickPackage(files, 'linux', 'x64', '1.2.0')).toBeNull();

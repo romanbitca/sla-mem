@@ -35,13 +35,13 @@ export function trayStatus(state: TrayState, now: number): string {
 
 export function trayMenu(state: TrayState, now: number): TrayMenuItem[] {
   return [
-    { label: 'Open sla-mem', enabled: true, action: 'open' },
+    { label: 'Open Slamem', enabled: true, action: 'open' },
     // While syncing, the progress line says it all; "Sync now" comes back when it's done.
     ...(state.syncing ? [] : [{ label: 'Sync now', enabled: state.connected, action: 'syncNow' as const }]),
     { label: trayStatus(state, now), enabled: false, action: null },
     { separator: true },
     { label: 'Settings…', enabled: true, action: 'settings' },
-    { label: 'Quit sla-mem', enabled: true, action: 'quit' },
+    { label: 'Quit Slamem', enabled: true, action: 'quit' },
   ];
 }
 

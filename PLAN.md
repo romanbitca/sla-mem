@@ -1,4 +1,4 @@
-# sla-mem — Desktop App: Complete Build Plan
+# Slamem — Desktop App: Complete Build Plan
 
 **Document version:** 1.1 · **Date:** 21 September 2026
 **Audience:** an AI coding agent (plus the human who commissioned it) building this from an empty repository.
@@ -88,14 +88,19 @@ sla-mem/                 github.com/romanbitca/sla-mem
 
 Each item is also corrected where it belongs in this document.
 
-- **Name:** the product is **sla-mem** (the draft called it "Slack Archive"): app, installers
-  (`sla-mem-<version>-<arch>.dmg`, `sla-mem-setup-<version>.exe`), app id `com.9h.sla-mem`, data
-  folder `sla-mem`. An archive in a folder under the old name moves to the new one on first
-  start; its saved Slack sign-in doesn't survive the move (the Keychain key belongs to the old
-  name), so Slack is connected once more. A saved sign-in that can't be unlocked (the rename, a
-  copied archive folder, a Keychain entry that's gone) is noticed at start-up and shown like a
-  signed-out session: "sign in to Slack again", Reconnect, and Sync now held back. (0.2.0 still
-  called itself connected, and Sync now failed without a word.)
+- **Name:** the product is **Slamem** (the draft called it "Slack Archive", and it was sla-mem
+  until 0.3.2): app, installers (`Slamem-<version>-<arch>.dmg`, `Slamem-Setup-<version>.exe`),
+  data folder `Slamem`. An archive in a folder under an older name moves to the new one on first
+  start. The first rename (Slack Archive → sla-mem) cost the saved Slack sign-in, because macOS
+  names the Keychain item holding its key after Electron's name for the app; so since then that
+  name stays `sla-mem` (`app.setName`, the item _sla-mem Safe Storage_), as do the app id
+  `com.9h.sla-mem` (Update and restart only installs a download with the same id), the repository
+  and the `SLA_MEM_*` variables. On a Mac, a copy that Update and restart put where sla-mem.app
+  was renames itself Slamem.app at its first start and opens again (`bundle-rename.ts`); menus
+  that Electron would label with its name are labelled Slamem. A saved sign-in that can't be
+  unlocked (a rename, a copied archive folder, a Keychain entry that's gone) is noticed at
+  start-up and shown like a signed-out session: "sign in to Slack again", Reconnect, and Sync now
+  held back. (0.2.0 still called itself connected, and Sync now failed without a word.)
 
 - **Toolchain (§3.1):** Electron 44, TypeScript 6.0 (typescript-eslint supports < 6.1), Vite 7
   (electron-vite 5 requires ≤ 7), Vitest 5 with jsdom 29, Playwright for the E2E run.
@@ -129,7 +134,7 @@ Each item is also corrected where it belongs in this document.
   the archive numbers appear after the first sync. Block Kit is drawn read-only: buttons and
   inputs are inert, `markdown` blocks show as text, and images on Slack's private file URLs are
   not shown. A thread panel draws 200 replies at a time.
-- **Search as a place (added, §8.2):** the sidebar has a **Search** item next to Archive instead
+- **Search as a place (added, §8.2):** the sidebar has a **Search** item next to Overview instead
   of a search box; it (and ⌘K / Ctrl+K, and "/") opens the search screen with the last search,
   the cursor in its box. In a window at least 1200 px wide a result opens beside the list (the
   conversation at that message, or the thread for a reply), the list staying where it is with the
@@ -150,7 +155,7 @@ Each item is also corrected where it belongs in this document.
   refused.
 - **Menu bar icon (added):** can be turned off in Settings → App; the app then keeps syncing in
   the background and is reopened like any app. While syncing, its menu shows one progress line.
-- **Settings → App (added, §8.4):** "Start sla-mem when I log in" and the menu bar icon are about
+- **Settings → App (added, §8.4):** "Start Slamem when I log in" and the menu bar icon are about
   the app, not syncing, so they have their own card after Sync. "Last successful sync" (Settings
   and Home) also says how many new messages that sync brought in.
 - **Faster incremental syncs (added, §5.2):** quiet threads are re-checked from their parents'
@@ -158,8 +163,25 @@ Each item is also corrected where it belongs in this document.
   workspace a sync with nothing new went from 178 API calls (about 3 minutes) to about 117 (about
   2 minutes). Every conversation is still read on every sync: 0.2.x also skipped unchanged ones
   using the Slack app's own unread summary (`client.counts`, down to about 20 calls), but that
-  call is not part of Slack's documented API, so it was removed to keep sla-mem on the published
+  call is not part of Slack's documented API, so it was removed to keep Slamem on the published
   API only (the owner's decision, 2026-09-22).
+- **Overview (0.3.2, §8.2):** the home page and its sidebar item are called **Overview** (a
+  dashboard icon), not Archive: everything in the app is the archive. Its **Archive covers** card
+  starts where the steady history starts when a handful of messages reach much further back. Slack
+  still shows some messages past its 90 days (notes to yourself, thread starters with recent
+  replies), so the first sync of the real workspace found five notes from March while everything
+  else began on Jun 24, and "Mar 18 – Sep 22, 189 days" described it badly. The card then reads
+  "Jun 24, 2026 – Sep 22, 2026 · 91 days · plus 7 older messages, back to Mar 18, 2026", the date
+  linking to the oldest message. Main finds the start from the point all but the oldest 1% of
+  messages follow, back through messages less than four days apart, and only says it when the few
+  older ones stretch the range by over a month and over a quarter (`getStats` → `mainStart`).
+- **Conversation header (0.3.2, §8.3):** the line under the name gives the total ("1,057 messages
+  · Mar 6 – Sep 21, 2026") and, set apart, how many of them Slack Free no longer shows, with their
+  dates ("522 no longer in Slack · Mar 6 – Jun 18, 2026"), or "All still in Slack" (the tooltip says
+  when the first one drops out). Older than 90 days is the same rule as the Overview's count. The
+  details give way as the header narrows (a thread open), and the tooltips keep them.
+- **Sidebar filter (0.3.2):** "Filter conversations" is a bordered box with a filter icon, set apart
+  from Overview and Search by a line, and its clear button shows whenever it holds text.
 - **Export conversation (Stage 8 nicety):** built as Markdown only (day headings, threads as
   quotes, edits, deletions, attachments and reactions noted). Markdown opens in any editor and
   renders in most viewers, so the HTML variant was left out.
@@ -246,9 +268,9 @@ borrow freely from the projects below.
 | [slackclaw](https://github.com/pooriaarab/slackclaw) | Reads the **Slack Desktop app's local cache** (IndexedDB → Snappy → V8 deserialize) into SQLite + FTS5. No token at all | Genuinely clever, but CLI-only, 0★, no releases, no continuous sync, no Windows. Cache-only coverage |
 | [SlackBackup](https://github.com/jcolag/SlackBackup) | An **Electron** app: downloads Slack to Markdown, fuzzy search, some analytics | Closest in form factor. 6★, manual token paste, no automatic sync, effectively dormant |
 | [slack-history-archiver](https://github.com/ordigital/slack-history-archiver) | Scripts → SQLite, small Flask/Vue UI, cron'd daily, uses browser token+cookie | Same concept as ours, but 1★/8 commits — scripts, not a product |
-| [felixrieseberg/sla-mem](https://github.com/felixrieseberg/sla-mem) | Generates static HTML archives with basic search | One-shot snapshots, not a living archive |
+| [felixrieseberg/slack-archive](https://github.com/felixrieseberg/slack-archive) | Generates static HTML archives with basic search | One-shot snapshots, not a living archive |
 | [slack-export-viewer](https://github.com/hfaran/slack-export-viewer), [slack-vuesualizer](https://github.com/4350pChris/slack-vuesualizer) | Browse/search an existing Slack export | Viewers only — they fetch nothing |
-| [sla-mem-bot](https://github.com/docmarionum1/sla-mem-bot) | A bot that archives messages and makes them searchable | Requires a bot **installed by an admin** — blocked for us (§1.4) |
+| [slack-archive-bot](https://github.com/docmarionum1/slack-archive-bot) | A bot that archives messages and makes them searchable | Requires a bot **installed by an admin** — blocked for us (§1.4) |
 | Commercial (Backupery, Mimecast, Smarsh, compliance vendors) | Backup / retention / eDiscovery | Admin- or Enterprise-only, and/or paid. Nothing targets an individual on a Free plan |
 
 **Conclusion: the gap is real.** Nobody ships an installable, cross-platform desktop app that
@@ -552,8 +574,8 @@ Use Electron's `app.getPath('userData')`, which resolves per-OS:
 
 | OS | Path |
 |---|---|
-| macOS | `~/Library/Application Support/sla-mem/` |
-| Windows | `C:\Users\<name>\AppData\Roaming\sla-mem\` |
+| macOS | `~/Library/Application Support/Slamem/` |
+| Windows | `C:\Users\<name>\AppData\Roaming\Slamem\` |
 
 ```
 <userData>/
@@ -571,7 +593,7 @@ Secrets are **not** stored here in plaintext — see §3.5.
 
 As built, `--data-dir=<path>` or `SLA_MEM_DATA_DIR` points the app at another folder (demo
 data, tests, a second account's archive). Unpackaged development builds default to
-`sla-mem (dev)` so they never touch a real archive.
+`Slamem (dev)` so they never touch a real archive.
 
 Show this folder path in Settings with a **"Show in Finder / Show in Explorer"** button
 (`shell.showItemInFolder`), so users can back it up.
@@ -720,7 +742,7 @@ A sync run:
      paced `conversations.history` call (about 2 minutes for 111 conversations), and the documented
      Web API has no call that says which conversations changed. 0.2.x skipped unchanged ones with
      the Slack app's own unread summary (`client.counts`); it isn't part of the documented API, so
-     it was taken out: sla-mem uses only published Web API methods.
+     it was taken out: Slamem uses only published Web API methods.
    - *(As built)* **Quiet threads.** An active thread (reply within 21 days) whose parent is older
      than the history window used to cost one `conversations.replies` call every sync. When its
      latest reply is older than the overlap, history is instead read back to its parent if that
@@ -911,14 +933,14 @@ app notifications were effectively unreadable and unsearchable. Also render lega
 
 A short, friendly, 3-screen flow. No jargon. No settings required.
 
-1. **Welcome** — "sla-mem keeps a private copy of your Slack history on this computer, so you
+1. **Welcome** — "Slamem keeps a private copy of your Slack history on this computer, so you
    can still read and search it after Slack hides it. Your data never leaves your machine."
 2. **Connect Slack** — one big button. Explain in one line: "You'll sign in to Slack in a window,
    just like in your browser." Recommend the **email code** option (§2.4). Handle: multiple
    workspaces → picker; cancel; failure → plain-language retry with the alternative methods.
 3. **Getting your history** — the first sync runs with a real progress bar ("Fetching #general —
    1,240 messages so far"). Explain once: "Slack only lets us see the last 90 days. From now on,
-   everything we fetch is kept forever." Offer the "Start sla-mem when I log in" checkbox
+   everything we fetch is kept forever." Offer the "Start Slamem when I log in" checkbox
    (default **on**) and finish.
 
 ### 8.2 Main window
@@ -926,14 +948,17 @@ A short, friendly, 3-screen flow. No jargon. No settings required.
 Familiar to anyone who has used Slack, but clearly a *reader*:
 
 - **Sidebar**: workspace name; a search box (⌘K / Ctrl+K); Channels, Direct messages, Group DMs, each
-  collapsible with a filter box; message counts; archived channels dimmed. *(As built: a Search
-  item opens the search screen instead of a box in the sidebar; see §0.3.)*
+  collapsible with a filter box; message counts; archived channels dimmed. *(As built: Overview
+  and a Search item that opens the search screen instead of a box in the sidebar, then one filter
+  box for all the conversations, with a clear button while it holds text; see §0.3.)*
 - **Conversation view**: day dividers (sticky, opaque — must not overlap message content),
   consecutive messages from the same author within 5 minutes grouped, avatars, timestamps with full
   date on hover, "(edited)" with a revisions popover, "deleted in Slack" badge, reactions with
   hover names, attachments (image grid + lightbox; file cards with icon/size/open/reveal; a clear
   "not archived" state for stubs), unfurl cards, and thread summaries ("6 replies · last reply
-  today") opening a thread panel.
+  today") opening a thread panel. *(As built: the header gives the conversation's total and date
+  range and, set apart, how many of its messages Slack no longer shows, and from when to when;
+  see §0.3.)*
 - **Infinite scroll both directions** with correct scroll anchoring when prepending older messages,
   a "jump to date" control, and deep links to a specific message (highlight it briefly).
 - **Search page**: the query box with hints/autocomplete for `from:`/`in:`/`has:`, editable filter
@@ -941,11 +966,13 @@ Familiar to anyone who has used Slack, but clearly a *reader*:
   flat, "load more", and click-through to the message in context.
 - **Archive home**: how many messages/conversations/files, the date range covered, how much disk is
   used, when the last sync ran, a **Sync now** button, and prominently: **"N messages older than 90
-  days — no longer visible in Slack"**, which is the payoff.
+  days — no longer visible in Slack"**, which is the payoff. *(As built: called **Overview**; when a
+  few old messages reach much further back than the rest, the range starts where the steady
+  history does and names them; see §0.3.)*
 
 ### 8.3 Tray / background
 
-- Tray icon with: Open sla-mem, Sync now, Last synced <time>, Settings, Quit.
+- Tray icon with: Open Slamem, Sync now, Last synced <time>, Settings, Quit.
 - Closing the window **hides** to the tray (it keeps syncing); Quit actually exits. On macOS follow
   the usual dock behaviour.
 - A subtle badge/indicator while syncing.
@@ -996,7 +1023,7 @@ the target platform's binary. Verified by opening the database from the packaged
 
 ### 9.2 App identity
 
-- App name: **sla-mem** · appId e.g. `com.9h.sla-mem` · a proper icon set
+- App name: **Slamem** · appId `com.9h.sla-mem` (kept from the old name, see §0.3) · a proper icon set
   (`.icns`, `.ico`, tray icons @1x/@2x, and a light/dark-appropriate tray template image on macOS).
 - Keep the name/icon clearly distinct from Slack's own branding to avoid implying affiliation.
 - *As built:* `build/icon.icns` and `build/icon.png` (electron-builder makes the Windows `.ico`
@@ -1073,7 +1100,7 @@ Squirrel or electron-updater (`src/main/update-install.ts`, `update-service.ts`)
 3. A sync, attachment download or import that is under way finishes first (no new one starts);
    then the app quits the normal way.
 4. As it exits it hands over. macOS: a small script waits for the process to end, moves the old
-   `sla-mem.app` aside, moves the new one into its place (putting the old one back if that fails)
+   app aside, moves the new one into its place (putting the old one back if that fails)
    and opens whichever is there with `open -n`, with the same `--data-dir`. Windows: the NSIS
    installer runs with `--updated /S --force-run`, as electron-updater does: it waits for the app
    to exit, installs silently and starts it.
@@ -1625,27 +1652,27 @@ search and rendering layers transfer essentially unchanged.
 
 ## Appendix E — Install guide for colleagues (ready to send)
 
-> **Installing sla-mem**
+> **Installing Slamem**
 >
-> sla-mem keeps a private copy of your Slack history on your own computer, so you can still
+> Slamem keeps a private copy of your Slack history on your own computer, so you can still
 > read and search it after Slack hides older messages. Nothing is uploaded anywhere.
 >
 > **1. Download**
 > Go to **<release page link>** and download:
-> - **Mac:** `sla-mem-<version>.dmg` (choose *Apple Silicon* for M1/M2/M3/M4 Macs, or *Intel*)
-> - **Windows:** `sla-mem-setup-<version>.exe`
+> - **Mac:** `Slamem-<version>-<arch>.dmg` (choose *arm64* for Apple Silicon Macs, M1/M2/M3/M4, or *x64* for Intel)
+> - **Windows:** `Slamem-Setup-<version>.exe`
 >
 > **2. Install**
-> - **Mac:** open the `.dmg` and drag **sla-mem** into your **Applications** folder.
+> - **Mac:** open the `.dmg` and drag **Slamem** into your **Applications** folder.
 > - **Windows:** run the `.exe` and follow the installer.
 >
 > **3. The first time you open it, your computer will warn you.**
 > This is normal — it happens because the app isn't registered with Apple/Microsoft, which costs a
 > yearly fee we haven't paid. The app is safe and was built in-house.
 >
-> - **Mac:** double-click sla-mem. You'll see *"sla-mem cannot be opened because the
+> - **Mac:** double-click Slamem. You'll see *"Slamem cannot be opened because the
 >   developer cannot be verified."* Click **Done**. Then open
->   **System Settings → Privacy & Security**, scroll down to where it says *"sla-mem was
+>   **System Settings → Privacy & Security**, scroll down to where it says *"Slamem was
 >   blocked"*, and click **Open Anyway**. Confirm with **Open**. You only do this once.
 > - **Windows:** you'll see a blue *"Windows protected your PC"* box. Click **More info**, then
 >   **Run anyway**. You only do this once.

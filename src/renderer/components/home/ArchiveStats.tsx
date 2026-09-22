@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router';
 import clsx from 'clsx';
 import { differenceInCalendarDays } from 'date-fns';
 import type { StatsDTO, StorageDTO } from '../../../shared/types';
 import { FREE_PLAN_WINDOW_DAYS, formatBytes, formatDate, pluralize } from '../../lib/format';
+import { conversationPath } from '../../lib/links';
 import { tsToDate } from '../../lib/ts';
 import { ArchiveIcon, CalendarIcon, DatabaseIcon, FileIcon, HashIcon, MessageIcon } from '../icons';
 import { ErrorState } from '../ui/EmptyState';
@@ -111,10 +113,16 @@ function FilesCard({ stats, filesBytes }: { stats: StatsDTO; filesBytes: number 
   );
 }
 
+/**
+ * The period the archive covers. When a handful of messages reach months further back than the
+ * rest (Slack still shows notes to yourself and threads with recent replies past its 90 days), the
+ * range starts where most of the history does, and those few are named, with a link to the oldest.
+ */
 function RangeCard({ stats }: { stats: StatsDTO }) {
-  const oldest = tsToDate(stats.oldestTs ?? '');
+  const main = stats.mainStart;
+  const start = tsToDate(main?.ts ?? stats.oldestTs ?? '');
   const newest = tsToDate(stats.newestTs ?? '');
-  const from = formatDate(oldest, 'MMM d, yyyy');
+  const from = formatDate(start, 'MMM d, yyyy');
   const to = formatDate(newest, 'MMM d, yyyy');
   if (!from || !to) {
     return (
@@ -127,14 +135,33 @@ function RangeCard({ stats }: { stats: StatsDTO }) {
       />
     );
   }
-  const days = differenceInCalendarDays(newest, oldest) + 1;
+  const days = pluralize(differenceInCalendarDays(newest, start) + 1, 'day');
+  const oldest = formatDate(tsToDate(stats.oldestTs ?? ''), 'MMM d, yyyy');
   return (
     <StatCard
       className="lg:col-span-3"
       icon={<CalendarIcon size={16} />}
       label="Archive covers"
       value={<span className="text-xl">{`${from} – ${to}`}</span>}
-      detail={`${pluralize(days, 'day')} of history`}
+      detail={
+        main && oldest ? (
+          <span title="Slack still showed these past its 90 days, for example notes to yourself or threads with recent replies.">
+            {days} · plus {pluralize(main.olderCount, 'older message')}, back to{' '}
+            {stats.oldestConversationId && stats.oldestTs ? (
+              <Link
+                to={`${conversationPath(stats.oldestConversationId)}?ts=${stats.oldestTs}`}
+                className="text-accent-text hover:underline"
+              >
+                {oldest}
+              </Link>
+            ) : (
+              oldest
+            )}
+          </span>
+        ) : (
+          `${days} of history`
+        )
+      }
     />
   );
 }
@@ -172,8 +199,8 @@ export function FreeWindowHero({ stats }: { stats: StatsDTO }) {
               Everything archived is still inside Slack’s {FREE_PLAN_WINDOW_DAYS}-day window
             </p>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
-              From day {FREE_PLAN_WINDOW_DAYS + 1}, messages disappear from Slack but stay here. Keep sla-mem syncing
-              and nothing is lost.
+              From day {FREE_PLAN_WINDOW_DAYS + 1}, messages disappear from Slack but stay here. Keep Slamem syncing and
+              nothing is lost.
             </p>
           </>
         )}

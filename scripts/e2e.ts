@@ -122,7 +122,7 @@ async function signIn(app: ElectronApplication, page: Page): Promise<void> {
 
 /** First run through the real onboarding screens: Welcome → Connect Slack → Getting your history. */
 async function onboardThroughUi(app: ElectronApplication, page: Page): Promise<void> {
-  await page.getByRole('heading', { name: 'Welcome to sla-mem' }).waitFor();
+  await page.getByRole('heading', { name: 'Welcome to Slamem' }).waitFor();
   await page.screenshot({ path: path.join(shots, 'onboarding-welcome.png') });
   await page.getByRole('button', { name: 'Get started' }).click();
   await page.getByRole('heading', { name: 'Connect Slack' }).waitFor();
@@ -209,7 +209,7 @@ async function main(): Promise<void> {
     await panel.getByRole('button', { name: 'Close thread' }).click();
 
     await page
-      .getByRole('navigation', { name: 'Archive' })
+      .getByRole('navigation', { name: 'Places' })
       .getByRole('link', { name: /^Search/ })
       .click();
     const box = page.getByRole('combobox', { name: 'Search messages' });

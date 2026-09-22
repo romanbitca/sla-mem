@@ -249,3 +249,49 @@ describe('ConversationView', () => {
     await screen.findByText('msg-999');
   });
 });
+
+describe('the conversation header', () => {
+  const seconds = (d: Date) => d.getTime() / 1000;
+  const conversation = (beyondFreeWindow?: { count: number; oldest: number | null; newest: number | null }) =>
+    makeConversation('C1', 'general', {
+      messageCount: 1234,
+      oldestTs: `${seconds(new Date(2026, 2, 18, 10))}.000000`,
+      latestTs: `${seconds(new Date(2026, 8, 18, 15))}.000000`,
+      beyondFreeWindow,
+    });
+  async function header(): Promise<HTMLElement> {
+    const title = await screen.findByRole('heading', { level: 1, name: '#general' });
+    return title.closest('header')!;
+  }
+
+  it('gives the total, then how many messages Slack no longer shows and from when to when', async () => {
+    vi.spyOn(api, 'getConversation').mockResolvedValue(
+      conversation({
+        count: 12,
+        oldest: seconds(new Date(2026, 2, 18, 10)),
+        newest: seconds(new Date(2026, 5, 18, 9)),
+      }),
+    );
+    renderAt('/c/C1');
+    const facts = await header();
+    await waitFor(() =>
+      expect(facts.textContent).toContain(`${(1234).toLocaleString()} messages · Mar 18 – Sep 18, 2026`),
+    );
+    const hidden = within(facts).getByText(/12 no longer in Slack/);
+    expect(hidden.textContent).toBe('12 no longer in Slack · Mar 18 – Jun 18, 2026');
+    expect(hidden.getAttribute('title')).toBe(
+      '12 messages are older than 90 days (Mar 18 – Jun 18, 2026): Slack Free no longer shows them. They’re kept here.',
+    );
+    expect(within(facts).queryByText('All still in Slack')).toBeNull();
+  });
+
+  it('says when everything is still in Slack, and when the first message drops out', async () => {
+    vi.spyOn(api, 'getConversation').mockResolvedValue(conversation({ count: 0, oldest: null, newest: null }));
+    renderAt('/c/C1');
+    const still = await within(await header()).findByText('All still in Slack');
+    expect(still.getAttribute('title')).toBe(
+      'Slack Free shows the last 90 days. The oldest message here drops out of Slack on Jun 16, 2026; it stays in your archive.',
+    );
+    expect(screen.queryByText(/no longer in Slack/)).toBeNull();
+  });
+});

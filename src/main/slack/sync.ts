@@ -351,7 +351,7 @@ interface HistoryRun {
  * quiet threads from their parents (conversation-sync.ts), one paced history read each at least.
  * Slack's documented Web API has no call that says which conversations changed; the Slack app's
  * own summary (`client.counts`, which 0.2.x used to skip unchanged ones) is not part of it, and
- * sla-mem only uses the published API.
+ * Slamem only uses the published API.
  */
 async function syncHistories(ctx: SyncContext, listed: SlackConversation[]): Promise<void> {
   const targets = orderTargets(ctx, selectTargets(ctx, listed));

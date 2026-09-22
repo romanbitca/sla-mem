@@ -1,7 +1,7 @@
 /**
  * Update check (PLAN §9.5): ask GitHub Releases for the latest version, compare it with this
  * build, and find what this computer needs from it: the installer people download by hand, and
- * the package sla-mem installs by itself (Update and restart, see update-install.ts).
+ * the package Slamem installs by itself (Update and restart, see update-install.ts).
  *
  * GitHub answers 404 for private repositories without a token; embedding a token in a shipped app
  * is not acceptable, so the releases must live in a public repository (see README, "Releases").
@@ -157,7 +157,7 @@ export function pickAsset(assets: ReleaseAsset[], platform: NodeJS.Platform, arc
 }
 
 /**
- * What sla-mem installs by itself: on macOS the .zip of the app for this architecture (never the
+ * What Slamem installs by itself: on macOS the .zip of the app for this architecture (never the
  * other one: an Apple Silicon Mac would end up running the Intel build), on Windows the installer.
  * Only with GitHub's SHA-256 of the file, so a damaged download is never installed.
  */

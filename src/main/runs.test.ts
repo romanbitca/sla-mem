@@ -211,7 +211,7 @@ describe('RunManager', () => {
   });
 
   it('a saved sign-in that can’t be read shows Reconnect with its reason, not a Sync now that does nothing', async () => {
-    const reason = 'sla-mem needs you to sign in to Slack again. Reconnect to keep archiving.';
+    const reason = 'Slamem needs you to sign in to Slack again. Reconnect to keep archiving.';
     const m = manager({}, connection({ expired: true, unreadable: true, error: reason }), { onboardingComplete: true });
     expect(m.status()).toMatchObject({
       blockedReason: reason,

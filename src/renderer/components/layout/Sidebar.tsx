@@ -10,11 +10,12 @@ import { useLastSearch } from '../../lib/searchNav';
 import { readJsonPref, writeJsonPref } from '../../lib/storage';
 import { workspaceHost } from '../../lib/workspaceName';
 import {
-  ArchiveIcon,
   ChevronDownIcon,
   CloseIcon,
+  FilterIcon,
   HashIcon,
   LockIcon,
+  OverviewIcon,
   SearchIcon,
   SettingsIcon,
   UsersIcon,
@@ -70,6 +71,7 @@ export function Sidebar({ syncStatus, syncError, onClose, className, inert }: Si
   const [activeIndex, setActiveIndex] = useState(-1);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => readJsonPref(COLLAPSE_KEY, {}));
   const listRef = useRef<HTMLElement>(null);
+  const filterRef = useRef<HTMLInputElement>(null);
 
   const filtering = filter.trim() !== '';
   // Conversations left out of the archive show only while they still hold older messages.
@@ -122,7 +124,7 @@ export function Sidebar({ syncStatus, syncError, onClose, className, inert }: Si
   };
 
   let navIndex = 0;
-  const teamName = workspace?.teamName || 'sla-mem';
+  const teamName = workspace?.teamName || 'Slamem';
   const host = workspaceHost(workspace?.teamDomain);
   // No Slack session saved: the footer points at Settings → Connect Slack.
   const needsConnection = workspace != null && !workspace.connected;
@@ -154,26 +156,49 @@ export function Sidebar({ syncStatus, syncError, onClose, className, inert }: Si
         )}
       </div>
 
-      <nav className="flex flex-col gap-px px-2 pb-1" aria-label="Archive">
+      <nav className="flex flex-col gap-px px-2 pb-3" aria-label="Places">
         <NavLink to="/" end className={({ isActive }) => primaryNavClass(isActive)}>
-          <ArchiveIcon size={16} />
-          Archive
+          <OverviewIcon size={16} />
+          Overview
         </NavLink>
         <SearchNavLink />
       </nav>
 
-      <div className="px-3 pt-1 pb-2">
-        <input
-          type="search"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          onKeyDown={onFilterKeyDown}
-          placeholder="Filter conversations"
-          aria-label="Filter conversations"
-          aria-controls="sidebar-conversations"
-          aria-activedescendant={activeIndex >= 0 ? `sidebar-item-${activeIndex}` : undefined}
-          className="focus-ring h-8 w-full rounded-md border border-transparent bg-hover/70 px-2.5 text-[13px] text-ink placeholder:text-ink-faint focus:border-line focus:bg-raised"
-        />
+      {/* The conversations start here: set apart from the places above by a line. */}
+      <div className="mx-3 border-t border-line pt-3 pb-2">
+        <div className="relative">
+          <FilterIcon
+            size={14}
+            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-muted"
+          />
+          <input
+            ref={filterRef}
+            type="search"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            onKeyDown={onFilterKeyDown}
+            placeholder="Filter conversations"
+            aria-label="Filter conversations"
+            aria-controls="sidebar-conversations"
+            aria-activedescendant={activeIndex >= 0 ? `sidebar-item-${activeIndex}` : undefined}
+            className="focus-ring h-8 w-full rounded-md border border-line-strong bg-raised pr-8 pl-8 text-[13px] text-ink shadow-xs placeholder:text-ink-muted [&::-webkit-search-cancel-button]:hidden"
+          />
+          {filter && (
+            <button
+              type="button"
+              aria-label="Clear filter"
+              title="Clear"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setFilter('');
+                filterRef.current?.focus();
+              }}
+              className="focus-ring absolute top-1/2 right-1 flex size-6 -translate-y-1/2 items-center justify-center rounded text-ink-muted hover:bg-hover hover:text-ink"
+            >
+              <CloseIcon size={13} />
+            </button>
+          )}
+        </div>
       </div>
 
       <nav
@@ -251,7 +276,7 @@ function primaryNavClass(isActive: boolean): string {
 }
 
 /**
- * Search is a place, like Archive: it opens the search screen with the last search (its results,
+ * Search is a place, like Overview: it opens the search screen with the last search (its results,
  * filters and open message), or an empty one. ⌘K does the same from anywhere.
  */
 function SearchNavLink() {

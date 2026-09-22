@@ -127,7 +127,7 @@ export function actionHandlers(s: AppServices, hooks: PlatformHooks): ActionHand
       if (!s.prefs.get().excludedConversationIds.includes(id)) {
         throw invalid('Choose not to archive this conversation first.');
       }
-      if (s.runs.isRunning()) throw conflict('sla-mem is busy syncing. Try again when it has finished.');
+      if (s.runs.isRunning()) throw conflict('Slamem is busy syncing. Try again when it has finished.');
       const removed = deleteConversationData(s.db, id);
       for (const fileId of removed.fileIds) {
         // Stored ids are Slack's (F…); anything else is never turned into a path.

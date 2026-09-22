@@ -40,7 +40,7 @@ export function AboutCard() {
     <Card id="about" title="About" icon={<InfoIcon size={15} />}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <p className="text-[13.5px] text-ink">
-          <span className="font-semibold">sla-mem</span>{' '}
+          <span className="font-semibold">Slamem</span>{' '}
           {info.data ? (
             <span className="text-ink-muted tabular-nums">version {info.data.version}</span>
           ) : info.isError ? (
@@ -58,12 +58,12 @@ export function AboutCard() {
       )}
       {result?.noRelease && (
         <p role="status" className="text-[13px] text-ink-muted">
-          No version of sla-mem has been published yet, so there’s nothing newer to download.
+          No version of Slamem has been published yet, so there’s nothing newer to download.
         </p>
       )}
       {result?.error && (
         <p role="status" className="text-[13px] text-ink-muted">
-          Couldn’t check for updates right now. sla-mem tries again by itself later.
+          Couldn’t check for updates right now. Slamem tries again by itself later.
         </p>
       )}
       {update && (
@@ -77,7 +77,7 @@ export function AboutCard() {
       )}
       {info.data && !info.data.installedProperly && (
         <Callout tone="warn" icon={<AlertIcon size={15} />}>
-          sla-mem is running from the download. Drag it into your Applications folder so it can start by itself and keep
+          Slamem is running from the download. Drag it into your Applications folder so it can start by itself and keep
           syncing.
         </Callout>
       )}

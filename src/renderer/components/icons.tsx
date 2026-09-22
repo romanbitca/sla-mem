@@ -55,6 +55,17 @@ export const SearchIcon = makeIcon(
     <path d="m20 20-3.5-3.5" />
   </>,
 );
+/** A dashboard: the Overview page. */
+export const OverviewIcon = makeIcon(
+  'Overview',
+  <>
+    <rect x="3.5" y="3.5" width="7" height="9" rx="1.5" />
+    <rect x="13.5" y="3.5" width="7" height="5" rx="1.5" />
+    <rect x="13.5" y="11.5" width="7" height="9" rx="1.5" />
+    <rect x="3.5" y="15.5" width="7" height="5" rx="1.5" />
+  </>,
+);
+export const FilterIcon = makeIcon('Filter', <path d="M4 6.5h16M7 12h10M10 17.5h4" />);
 export const HomeIcon = makeIcon(
   'Home',
   <>

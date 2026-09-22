@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getWorkspaceMeta, setMeta } from './meta';
 import {
+  conversationBeyondFreeWindow,
   getConversation,
   getMessageRevisions,
   getMessages,
@@ -423,6 +424,9 @@ describe('stats and workspace meta', () => {
       filesBytes: 1000,
       oldestTs: tsAt(1),
       newestTs: `${BASE_SECONDS + 200 * 86400}.000000`,
+      oldestConversationId: 'C1',
+      // 14 messages: too few to talk about where "most of" the archive starts.
+      mainStart: null,
       beyondFreeWindowCount: 13,
     });
     expect(stats.dbBytes).toBeGreaterThan(0);
@@ -434,9 +438,81 @@ describe('stats and workspace meta', () => {
       messageCount: 0,
       oldestTs: null,
       newestTs: null,
+      oldestConversationId: null,
+      mainStart: null,
       beyondFreeWindowCount: 0,
       filesBytes: 0,
     });
+  });
+
+  const day = 86400;
+  const at = (seconds: number) => `${seconds}.000000`;
+  /** `count` messages six hours apart from `from` on, in C1. */
+  function steadyHistory(db: DB, from: number, count = 300): void {
+    upsertMessages(
+      db,
+      'C1',
+      Array.from({ length: count }, (_, i) => msg(at(from + i * 6 * 3600), `m${i}`)),
+      'api',
+    );
+  }
+  const localMidnight = (seconds: number) => {
+    const d = new Date(seconds * 1000);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() / 1000;
+  };
+
+  it('says where most of the archive starts when a few messages reach far further back', () => {
+    const db = seededDb();
+    const bulk = localMidnight(BASE_SECONDS + 200 * day) + 12 * 3600; // noon
+    steadyHistory(db, bulk);
+    // Old notes to yourself Slack still showed: months before everything else.
+    upsertMessages(
+      db,
+      'D1',
+      [msg(at(BASE_SECONDS + 3 * 3600), 'note'), msg(at(BASE_SECONDS + 50 * day), 'note 2')],
+      'api',
+    );
+    const stats = getStats(db, { now: (bulk + 80 * day) * 1000 });
+    expect(stats.oldestTs).toBe(at(BASE_SECONDS + 3 * 3600));
+    expect(stats.oldestConversationId).toBe('D1');
+    expect(stats.mainStart).toEqual({ ts: at(localMidnight(bulk)), olderCount: 2 });
+  });
+
+  it('starts that range on the first day of the steady history, not days into it', () => {
+    const db = seededDb();
+    const bulk = localMidnight(BASE_SECONDS + 200 * day) + 12 * 3600;
+    // 1,000 messages: the oldest 1% reaches two days into the steady history.
+    steadyHistory(db, bulk, 1000);
+    upsertMessages(db, 'D1', [msg(at(BASE_SECONDS), 'note'), msg(at(BASE_SECONDS + 9 * day), 'note 2')], 'api');
+    expect(getStats(db).mainStart).toEqual({ ts: at(localMidnight(bulk)), olderCount: 2 });
+  });
+
+  it('keeps the plain range when the oldest messages are part of the steady history', () => {
+    const db = seededDb();
+    steadyHistory(db, localMidnight(BASE_SECONDS + 200 * day) + 12 * 3600);
+    expect(getStats(db).mainStart).toBeNull();
+    // A single message a week before the rest doesn't stretch the range enough to mention.
+    upsertMessages(db, 'D1', [msg(at(BASE_SECONDS + 193 * day), 'a week before')], 'api');
+    expect(getStats(db).mainStart).toBeNull();
+  });
+
+  it('counts one conversation’s messages older than 90 days, replies included, with their dates', () => {
+    const db = threadedDb(); // C1: minutes 1–10 and replies at 31–33, from BASE_SECONDS on
+    upsertMessages(db, 'C1', [msg(at(BASE_SECONDS + 150 * day), 'recent')], 'api');
+    const now = (BASE_SECONDS + 150 * day) * 1000;
+    expect(conversationBeyondFreeWindow(db, 'C1', now)).toEqual({
+      count: 13,
+      oldest: BASE_SECONDS + 60,
+      newest: BASE_SECONDS + 33 * 60,
+    });
+    // Everything still inside the window, or nothing archived: none.
+    expect(conversationBeyondFreeWindow(db, 'C1', (BASE_SECONDS + 10 * day) * 1000)).toEqual({
+      count: 0,
+      oldest: null,
+      newest: null,
+    });
+    expect(conversationBeyondFreeWindow(db, 'C404', now)).toEqual({ count: 0, oldest: null, newest: null });
   });
 
   it('reads workspace meta', () => {

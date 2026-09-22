@@ -37,7 +37,7 @@ function groups(conversations: readonly ConversationDTO[], filter: string): Grou
 }
 
 /**
- * Which conversations to archive: every one is ticked by default; unticking one means sla-mem
+ * Which conversations to archive: every one is ticked by default; unticking one means Slamem
  * never fetches its messages, threads or attachments. Grouped like the sidebar, with a filter and
  * All / None per group.
  */

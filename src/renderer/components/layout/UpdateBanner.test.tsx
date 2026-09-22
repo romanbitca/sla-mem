@@ -52,7 +52,7 @@ describe('UpdateBanner', () => {
     expect(within(banner).getByText(/Version 1\.3\.0 is available/)).toBeTruthy();
     expect(
       within(banner).getByText(
-        'Quit sla-mem, then open the download and drag sla-mem to Applications, replacing the old one.',
+        'Quit Slamem, then open the download and drag Slamem to Applications, replacing the old one.',
       ),
     ).toBeTruthy();
     fireEvent.click(within(banner).getByRole('button', { name: 'Download' }));
@@ -63,7 +63,7 @@ describe('UpdateBanner', () => {
     expect(updateInstruction('win32')).toMatch(/^Run the installer/);
   });
 
-  it('updates and restarts with one click when sla-mem can install it itself', async () => {
+  it('updates and restarts with one click when Slamem can install it itself', async () => {
     installFakeBridge(() => undefined, 'darwin');
     const installable = { ...available, canInstall: true };
     vi.spyOn(api, 'getUpdateInfo').mockResolvedValue(installable);
@@ -76,7 +76,7 @@ describe('UpdateBanner', () => {
     const banner = await screen.findByRole('region', { name: 'Update available' });
     expect(
       within(banner).getByText(
-        'sla-mem restarts to finish. If your Mac then asks whether it may use the keychain, click Always Allow.',
+        'Slamem restarts to finish. If your Mac then asks whether it may use the keychain, click Always Allow.',
       ),
     ).toBeTruthy();
     expect(within(banner).queryByRole('button', { name: 'Download' })).toBeNull();
@@ -117,7 +117,7 @@ describe('UpdateBanner', () => {
       install: { state: 'waiting', progress: null, waitingFor: 'sync', error: null },
     });
     expect(await within(banner).findByText('Version 1.3.0 is ready')).toBeTruthy();
-    expect(within(banner).getByText('sla-mem restarts as soon as the sync finishes.')).toBeTruthy();
+    expect(within(banner).getByText('Slamem restarts as soon as the sync finishes.')).toBeTruthy();
     bridge.emit('update', {
       ...available,
       canInstall: true,
@@ -155,15 +155,15 @@ describe('UpdateBanner', () => {
     // Downloading by hand: the steps for that.
     expect(
       await within(banner).findByText(
-        'Quit sla-mem, then open the download and drag sla-mem to Applications, replacing the old one.',
+        'Quit Slamem, then open the download and drag Slamem to Applications, replacing the old one.',
       ),
     ).toBeTruthy();
     fireEvent.click(within(banner).getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(install).toHaveBeenCalledTimes(1));
   });
 
-  it('says what happens when sla-mem installs the update itself on Windows', () => {
-    expect(updateInstruction('win32', true)).toBe('sla-mem restarts to finish. Your archive stays where it is.');
+  it('says what happens when Slamem installs the update itself on Windows', () => {
+    expect(updateInstruction('win32', true)).toBe('Slamem restarts to finish. Your archive stays where it is.');
   });
 
   it('shows the release notes as text in a small dialog', async () => {

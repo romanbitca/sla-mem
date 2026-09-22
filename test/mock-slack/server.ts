@@ -231,7 +231,7 @@ function signInPage(notice = ''): string {
   return `<!doctype html><html><head><title>Sign in | Slack (mock)</title></head>
 <body style="${PAGE_STYLE}">
   <h1>Sign in to ${TEAM_NAME}</h1>
-  <p style="color:#616061">Mock Slack for testing sla-mem. ${notice}</p>
+  <p style="color:#616061">Mock Slack for testing Slamem. ${notice}</p>
   <form method="post" action="/_web/login"><button id="signin" type="submit"
     style="font-size:16px;padding:12px 24px;background:#4a154b;color:#fff;border:0;border-radius:6px">Sign in with email</button></form>
 </body></html>`;

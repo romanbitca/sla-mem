@@ -160,7 +160,7 @@ function BackupRow() {
       <p className="text-[13.5px] font-medium text-ink">Back up</p>
       <p className="text-xs leading-relaxed text-ink-muted">
         Saves a copy of the whole archive as one file in a folder you choose, for example on an external drive. It’s
-        also how you move sla-mem to another computer.
+        also how you move Slamem to another computer.
       </p>
       <div>
         <Button icon={<ArchiveIcon size={14} />} loading={backup.isPending} onClick={() => backup.mutate()}>

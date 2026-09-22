@@ -62,6 +62,7 @@ export {
   listUsers,
   listConversations,
   getConversation,
+  conversationBeyondFreeWindow,
   getMessages,
   getThread,
   getMessageRevisions,

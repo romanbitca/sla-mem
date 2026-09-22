@@ -99,6 +99,6 @@ jobs:
           if [[ -n "$existing" ]]; then
             gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" "${files[@]}" --draft --verify-tag --title "sla-mem ${GITHUB_REF_NAME#v}" \
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" --draft --verify-tag --title "Slamem ${GITHUB_REF_NAME#v}" \
               --notes "Write what's new for non-technical readers (the app shows it as plain text), then publish."
           fi

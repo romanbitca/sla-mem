@@ -11,31 +11,48 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** The data folder's name, and the names it had before the app was renamed (PLAN §0.3). */
-export const DATA_DIR_NAME = { production: 'sla-mem', development: 'sla-mem (dev)' } as const;
-export const LEGACY_DATA_DIR_NAME = { production: 'Slack Archive', development: 'Slack Archive (dev)' } as const;
+/** The data folder's name, and the names it had before the app was renamed (PLAN §0.3), newest first. */
+export const DATA_DIR_NAME = { production: 'Slamem', development: 'Slamem (dev)' } as const;
+export const LEGACY_DATA_DIR_NAMES = {
+  production: ['sla-mem', 'Slack Archive'],
+  development: ['sla-mem (dev)', 'Slack Archive (dev)'],
+} as const;
 
-export type LegacyMove = 'none' | 'moved' | 'in-use' | 'failed';
+export interface LegacyMove {
+  outcome: 'none' | 'moved' | 'in-use' | 'failed';
+  /** The old folder it concerns ('none': null). */
+  from: string | null;
+}
 
 /**
- * An archive kept under the app's old name moves to the new folder once, on first start, so the
- * rename never strands anyone's history. Nothing happens when the new folder already exists or
- * the old one holds no archive. While the old app still runs, its folder stays put ('in-use'):
- * moving it out from under a running copy would split the archive.
+ * An archive kept under one of the app's old names moves to the new folder once, on first start,
+ * so a rename never strands anyone's history. Nothing happens when the new folder already holds an
+ * archive or no old one does; of several, the newest name moves. While the old app still runs, its
+ * folder stays put ('in-use'): moving it out from under a running copy would split the archive.
+ * A new folder without an archive (something created it early) doesn't block the move: an empty
+ * one is replaced, and otherwise the move fails and the old folder is used where it is ('failed'),
+ * never an empty archive in its place.
  */
 export function moveLegacyDataDir(
-  legacyDir: string,
+  legacyDirs: readonly string[],
   targetDir: string,
   pidAlive: (pid: number) => boolean = isProcessAlive,
 ): LegacyMove {
-  if (fs.existsSync(targetDir) || !fs.existsSync(path.join(legacyDir, 'archive.db'))) return 'none';
-  if (folderInUse(legacyDir, pidAlive)) return 'in-use';
+  const hasArchive = (dir: string) => fs.existsSync(path.join(dir, 'archive.db'));
+  const from = hasArchive(targetDir) ? undefined : legacyDirs.find(hasArchive);
+  if (!from) return { outcome: 'none', from: null };
+  if (folderInUse(from, pidAlive)) return { outcome: 'in-use', from };
   try {
-    fs.renameSync(legacyDir, targetDir);
-    return 'moved';
+    fs.renameSync(from, targetDir);
+    return { outcome: 'moved', from };
   } catch {
-    return 'failed';
+    return { outcome: 'failed', from };
   }
+}
+
+/** "sla-mem" for ".../Application Support/sla-mem (dev)": what the app was called there. */
+export function oldAppName(legacyDir: string): string {
+  return path.basename(legacyDir).replace(/ \(dev\)$/, '');
 }
 
 /** Chromium links `SingletonLock` to "<host>-<pid>" for as long as an app uses the folder. */

@@ -105,7 +105,7 @@ describe('exportConversationMarkdown', () => {
       [
         '# #general',
         '',
-        `Exported from sla-mem on ${DATE.format(now)} · ${DATE.format(at(tsAt(0)))} – ${DATE.format(at(tsAt(140)))}`,
+        `Exported from Slamem on ${DATE.format(now)} · ${DATE.format(at(tsAt(0)))} – ${DATE.format(at(tsAt(140)))}`,
         '',
         '> **Topic:** Company-wide',
         '>',

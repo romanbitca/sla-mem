@@ -1,6 +1,6 @@
 {
   "name": "sla-mem",
-  "productName": "sla-mem",
+  "productName": "Slamem",
   "version": "0.3.1",
   "private": true,
   "description": "Keeps a permanent, private, searchable copy of your own Slack history on your computer.",

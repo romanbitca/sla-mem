@@ -130,7 +130,7 @@ export function describeError(error: unknown, opts: DescribeOptions = {}): strin
 // ---------------------------------------------------------------------------------------------
 // Transport
 
-const NO_BRIDGE_MESSAGE = 'sla-mem didn’t start properly. Quit it and open it again.';
+const NO_BRIDGE_MESSAGE = 'Slamem didn’t start properly. Quit it and open it again.';
 
 type CallArgs<M extends ApiMethod> = ApiRequest<M> extends void ? [] : [ApiRequest<M>];
 

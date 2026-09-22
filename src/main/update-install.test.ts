@@ -30,13 +30,13 @@ afterEach(() => {
 });
 
 const sha256 = (data: Buffer) => createHash('sha256').update(data).digest('hex');
-const bytes = Buffer.from('the new version of sla-mem '.repeat(8_000));
+const bytes = Buffer.from('the new version of Slamem '.repeat(8_000));
 
 function pkg(overrides: Partial<UpdatePackage> = {}): UpdatePackage {
   return {
     version: '1.3.0',
-    name: 'sla-mem-1.3.0-arm64-mac.zip',
-    url: 'https://github.com/o/r/releases/download/v1.3.0/sla-mem-1.3.0-arm64-mac.zip',
+    name: 'Slamem-1.3.0-arm64-mac.zip',
+    url: 'https://github.com/o/r/releases/download/v1.3.0/Slamem-1.3.0-arm64-mac.zip',
     size: bytes.length,
     sha256: sha256(bytes),
     ...overrides,
@@ -77,9 +77,9 @@ describe('downloading an update', () => {
   it('saves the package, reporting progress, once it matches the release', async () => {
     const progress: number[] = [];
     const file = await downloadPackage(pkg(), dir, { fetch: serve(bytes), onProgress: (p) => progress.push(p) });
-    expect(file).toBe(path.join(dir, 'sla-mem-1.3.0-arm64-mac.zip'));
+    expect(file).toBe(path.join(dir, 'Slamem-1.3.0-arm64-mac.zip'));
     expect(fs.readFileSync(file).equals(bytes)).toBe(true);
-    expect(fs.readdirSync(dir)).toEqual(['sla-mem-1.3.0-arm64-mac.zip']);
+    expect(fs.readdirSync(dir)).toEqual(['Slamem-1.3.0-arm64-mac.zip']);
     expect(progress.length).toBeGreaterThan(3);
     expect(progress).toEqual([...progress].sort((a, b) => a - b));
     expect(progress.at(-1)).toBe(1);
@@ -143,9 +143,9 @@ const versionOf = (app: string) => fs.readFileSync(path.join(app, 'Contents', 'v
 
 describe.skipIf(process.platform === 'win32')('the macOS install script', () => {
   const apps = () => path.join(dir, 'Applications');
-  const app = () => path.join(apps(), 'sla-mem.app');
+  const app = () => path.join(apps(), 'Slamem.app');
   const work = () => path.join(dir, 'update');
-  const newApp = () => path.join(work(), 'new', 'sla-mem.app');
+  const newApp = () => path.join(work(), 'new', 'Slamem.app');
   const log = () => path.join(dir, 'main.log');
   const opened = () => path.join(dir, 'opened');
 
@@ -211,22 +211,22 @@ describe.skipIf(process.platform === 'win32')('the macOS install script', () => 
     expect(versionOf(app())).toBe('1.2.0');
     expect(versionOf(newApp())).toBe('1.3.0');
     expect(fs.existsSync(opened())).toBe(false);
-    expect(fs.readFileSync(log(), 'utf8')).toContain("sla-mem didn't quit, so the new version wasn't installed");
+    expect(fs.readFileSync(log(), 'utf8')).toContain("Slamem didn't quit, so the new version wasn't installed");
   });
 });
 
 describe.skipIf(process.platform === 'win32')('whether this Mac copy can replace itself', () => {
   it('only from an app bundle it may change, and not from macOS’s read-only copy of a download', () => {
     const parent = path.join(dir, 'Applications');
-    const bundle = path.join(parent, 'sla-mem.app');
+    const bundle = path.join(parent, 'Slamem.app');
     fs.mkdirSync(bundle, { recursive: true });
     expect(macInstaller({ bundlePath: bundle }).unavailableReason()).toBeNull();
-    expect(macInstaller({ bundlePath: path.join(dir, 'sla-mem') }).unavailableReason()).toMatch(
+    expect(macInstaller({ bundlePath: path.join(dir, 'Slamem') }).unavailableReason()).toMatch(
       /not running from an app/,
     );
     expect(
       macInstaller({
-        bundlePath: '/private/var/folders/x/AppTranslocation/1234/d/sla-mem.app',
+        bundlePath: '/private/var/folders/x/AppTranslocation/1234/d/Slamem.app',
       }).unavailableReason(),
     ).toMatch(/read-only/);
     if (process.getuid?.() !== 0) {
@@ -243,13 +243,13 @@ describe.skipIf(process.platform === 'win32')('whether this Mac copy can replace
     const child = { unref: vi.fn() };
     const spawnMock = vi.fn(() => child);
     const work = path.join(dir, 'update');
-    fs.mkdirSync(path.join(work, 'new', 'sla-mem.app'), { recursive: true });
+    fs.mkdirSync(path.join(work, 'new', 'Slamem.app'), { recursive: true });
     const installer = macInstaller({
-      bundlePath: '/Applications/sla-mem.app',
+      bundlePath: '/Applications/Slamem.app',
       spawn: spawnMock as unknown as typeof spawn,
     });
     installer.apply(
-      { version: '1.3.0', path: path.join(work, 'new', 'sla-mem.app') },
+      { version: '1.3.0', path: path.join(work, 'new', 'Slamem.app') },
       { pid: 4242, args: ['--data-dir=/x'], logFile: '/logs/main.log' },
     );
     const script = path.join(work, 'install.sh');
@@ -259,8 +259,8 @@ describe.skipIf(process.platform === 'win32')('whether this Mac copy can replace
       [
         script,
         '4242',
-        '/Applications/sla-mem.app',
-        path.join(work, 'new', 'sla-mem.app'),
+        '/Applications/Slamem.app',
+        path.join(work, 'new', 'Slamem.app'),
         path.join(work, 'old.app'),
         '/logs/main.log',
         '60',
@@ -278,7 +278,7 @@ describe.runIf(process.platform === 'darwin')('preparing a macOS update', () => 
     `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-<key>CFBundleExecutable</key><string>sla-mem</string>
+<key>CFBundleExecutable</key><string>Slamem</string>
 <key>CFBundleIdentifier</key><string>${id}</string>
 <key>CFBundleShortVersionString</key><string>${version}</string>
 <key>CFBundlePackageType</key><string>APPL</string>
@@ -287,10 +287,10 @@ describe.runIf(process.platform === 'darwin')('preparing a macOS update', () => 
 
   /** A tiny app bundle, signed ad hoc like the release builds. */
   function bundle(root: string, version: string, id = 'com.9h.sla-mem'): string {
-    const app = path.join(root, 'sla-mem.app');
+    const app = path.join(root, 'Slamem.app');
     fs.mkdirSync(path.join(app, 'Contents', 'MacOS'), { recursive: true });
     fs.mkdirSync(path.join(app, 'Contents', 'Resources'), { recursive: true });
-    fs.copyFileSync('/usr/bin/true', path.join(app, 'Contents', 'MacOS', 'sla-mem'));
+    fs.copyFileSync('/usr/bin/true', path.join(app, 'Contents', 'MacOS', 'Slamem'));
     fs.writeFileSync(path.join(app, 'Contents', 'Resources', 'app.asar'), `app ${version}`);
     fs.writeFileSync(path.join(app, 'Contents', 'Info.plist'), plist(id, version));
     execFileSync('/usr/bin/codesign', ['--force', '--sign', '-', app], { stdio: 'ignore' });
@@ -310,7 +310,7 @@ describe.runIf(process.platform === 'darwin')('preparing a macOS update', () => 
     const zip = zipOf(bundle(path.join(dir, 'build'), '1.3.0'), 'new.zip');
     const work = path.join(dir, 'update');
     const prepared = await installer.prepare(zip, pkg(), work);
-    expect(prepared).toEqual({ version: '1.3.0', path: path.join(work, 'new', 'sla-mem.app') });
+    expect(prepared).toEqual({ version: '1.3.0', path: path.join(work, 'new', 'Slamem.app') });
     expect(fs.readFileSync(path.join(prepared.path, 'Contents', 'Resources', 'app.asar'), 'utf8')).toBe('app 1.3.0');
     expect(fs.existsSync(zip)).toBe(false); // not needed any more
   });
@@ -340,20 +340,20 @@ describe.runIf(process.platform === 'darwin')('preparing a macOS update', () => 
 
 describe('the Windows installer', () => {
   it('only where the installer put the app (its uninstaller is next to it)', () => {
-    const exe = path.join(dir, 'sla-mem.exe');
+    const exe = path.join(dir, 'Slamem.exe');
     const installer = windowsInstaller({ execPath: exe });
-    expect(installer.unavailableReason()).toBe('not installed by the installer (no Uninstall sla-mem.exe)');
-    fs.writeFileSync(path.join(dir, 'Uninstall sla-mem.exe'), '');
+    expect(installer.unavailableReason()).toBe('not installed by the installer (no Uninstall Slamem.exe)');
+    fs.writeFileSync(path.join(dir, 'Uninstall Slamem.exe'), '');
     expect(installer.unavailableReason()).toBeNull();
   });
 
   it('installs silently once the app has exited, then starts it', async () => {
     const child = { unref: vi.fn() };
     const spawnMock = vi.fn(() => child);
-    const installer = windowsInstaller({ execPath: 'C:\\sla-mem.exe', spawn: spawnMock as unknown as typeof spawn });
-    const prepared = await installer.prepare('C:\\update\\sla-mem-setup-1.3.0.exe', pkg(), 'C:\\update');
+    const installer = windowsInstaller({ execPath: 'C:\\Slamem.exe', spawn: spawnMock as unknown as typeof spawn });
+    const prepared = await installer.prepare('C:\\update\\Slamem-setup-1.3.0.exe', pkg(), 'C:\\update');
     installer.apply(prepared, { pid: 1, args: [], logFile: 'x' });
-    expect(spawnMock).toHaveBeenCalledWith('C:\\update\\sla-mem-setup-1.3.0.exe', ['--updated', '/S', '--force-run'], {
+    expect(spawnMock).toHaveBeenCalledWith('C:\\update\\Slamem-setup-1.3.0.exe', ['--updated', '/S', '--force-run'], {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,
@@ -365,16 +365,14 @@ describe('the Windows installer', () => {
 describe('which installer', () => {
   it('none for development builds or Linux', () => {
     expect(createInstaller({ platform: 'darwin', execPath: '/x/Electron', isPackaged: false })).toBeNull();
-    expect(createInstaller({ platform: 'linux', execPath: '/opt/sla-mem/sla-mem', isPackaged: true })).toBeNull();
+    expect(createInstaller({ platform: 'linux', execPath: '/opt/Slamem/Slamem', isPackaged: true })).toBeNull();
     expect(
       createInstaller({
         platform: 'darwin',
-        execPath: '/Applications/sla-mem.app/Contents/MacOS/sla-mem',
+        execPath: '/Applications/Slamem.app/Contents/MacOS/Slamem',
         isPackaged: true,
       }),
     ).not.toBeNull();
-    expect(
-      createInstaller({ platform: 'win32', execPath: 'C:\\sla-mem\\sla-mem.exe', isPackaged: true }),
-    ).not.toBeNull();
+    expect(createInstaller({ platform: 'win32', execPath: 'C:\\Slamem\\Slamem.exe', isPackaged: true })).not.toBeNull();
   });
 });

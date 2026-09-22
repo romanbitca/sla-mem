@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
+import { addDays } from 'date-fns';
 import type { ConversationDTO, MessageDTO } from '../../../shared/types';
 import { describeError, isApiError } from '../../lib/api';
 import { Mrkdwn } from '../../lib/mrkdwn';
-import { formatCount, formatTsRange, pluralize } from '../../lib/format';
+import { FREE_PLAN_WINDOW_DAYS, formatDate, formatDateRange, pluralize } from '../../lib/format';
 import { guessThreadParent } from '../../lib/grouping';
 import { useStableCallback } from '../../lib/hooks';
 import { qk, useConversation, useExportConversation, useMessages, useSettings } from '../../lib/queries';
 import { fromSearchOf, useSearchParamsKeepingState, type ReturnToSearchState } from '../../lib/searchNav';
-import { compareTs, parseTsParam } from '../../lib/ts';
+import { compareTs, parseTsParam, tsToDate } from '../../lib/ts';
 import {
   AlertIcon,
   ArchiveIcon,
@@ -17,6 +18,7 @@ import {
   ChevronLeftIcon,
   CloseIcon,
   DownloadIcon,
+  EyeOffIcon,
   HashIcon,
   InfoIcon,
 } from '../icons';
@@ -250,7 +252,7 @@ export function ConversationView({ conversationId, header }: ConversationViewPro
         >
           <InfoIcon size={15} className="shrink-0" />
           <span className="flex-1">
-            sla-mem doesn’t archive this conversation any more: these are messages from before.{' '}
+            Slamem doesn’t archive this conversation any more: these are messages from before.{' '}
             <Link to="/settings#what-to-archive" className="font-medium text-accent-text hover:underline">
               What to archive
             </Link>
@@ -289,19 +291,19 @@ function ConversationHeader({
   onJump: (ts: string) => void;
   exporter: Exporter;
 }) {
-  const range = conversation ? formatTsRange(conversation.oldestTs, conversation.latestTs) : null;
   const about = conversation?.topic || conversation?.purpose;
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
       <SidebarToggle />
       <BackToSearch />
-      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+      {/* A size container: the facts line drops its details as the header narrows (thread open). */}
+      <div className="@container flex min-w-0 flex-1 items-center gap-2.5">
         {conversation && (
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset text-ink-muted">
             <ConversationIcon conversation={conversation} size={16} />
           </span>
         )}
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="flex items-center gap-2 truncate text-[15px] leading-tight font-semibold text-ink">
             <span className="truncate">{conversation ? conversationTitle(conversation) : ' '}</span>
             {conversation?.isArchived && (
@@ -310,19 +312,12 @@ function ConversationHeader({
               </span>
             )}
           </h1>
-          <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-ink-muted">
+          <p className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-ink-muted">
+            {conversation && <ConversationFacts conversation={conversation} />}
             {about && (
-              <span className="min-w-0 truncate" title={about}>
+              <span className="hidden min-w-0 truncate @3xl:inline" title={about}>
                 <Mrkdwn text={about} inline />
               </span>
-            )}
-            {about && range && <span aria-hidden="true">·</span>}
-            {range && <span className="shrink-0">{range}</span>}
-            {conversation && conversation.messageCount > 0 && (
-              <>
-                <span aria-hidden="true">·</span>
-                <span className="shrink-0">{formatCount(conversation.messageCount)} messages</span>
-              </>
             )}
           </p>
         </div>
@@ -340,6 +335,63 @@ function ConversationHeader({
         onClick={() => exporter.mutate(conversationId)}
       />
     </header>
+  );
+}
+
+/**
+ * The conversation in numbers: how many messages the archive holds and over which dates, then,
+ * set apart, how many of them Slack Free no longer shows (older than 90 days) and from when to
+ * when. Details drop out as the header narrows; the tooltips keep them.
+ */
+function ConversationFacts({ conversation }: { conversation: ConversationDTO }) {
+  if (conversation.messageCount === 0) return null;
+  const oldest = tsToDate(conversation.oldestTs ?? '');
+  const range = formatDateRange(oldest, tsToDate(conversation.latestTs ?? ''));
+  const hidden = conversation.beyondFreeWindow;
+  return (
+    <span className="flex shrink-0 items-center gap-2">
+      <span
+        className="shrink-0"
+        title={range ? `${pluralize(conversation.messageCount, 'message')}, ${range}` : undefined}
+      >
+        {pluralize(conversation.messageCount, 'message')}
+        {range && <span className="hidden @sm:inline"> · {range}</span>}
+      </span>
+      {hidden && hidden.count > 0 && (
+        <NoLongerInSlack count={hidden.count} oldest={hidden.oldest} newest={hidden.newest} />
+      )}
+      {hidden && hidden.count === 0 && <StillInSlack oldest={oldest} />}
+    </span>
+  );
+}
+
+function NoLongerInSlack({ count, oldest, newest }: { count: number; oldest: number | null; newest: number | null }) {
+  const range =
+    oldest != null && newest != null ? formatDateRange(new Date(oldest * 1000), new Date(newest * 1000)) : '';
+  const one = count === 1;
+  const words = `${pluralize(count, 'message')} ${one ? 'is' : 'are'} older than ${FREE_PLAN_WINDOW_DAYS} days`;
+  return (
+    <span
+      className="flex shrink-0 items-center gap-1 rounded-full bg-accent-soft px-2 py-px font-medium text-accent-text"
+      title={`${words}${range ? ` (${range})` : ''}: Slack Free no longer shows ${one ? 'it' : 'them'}. ${one ? 'It’s' : 'They’re'} kept here.`}
+    >
+      <EyeOffIcon size={12} className="shrink-0" />
+      {count.toLocaleString()} no longer in Slack
+      {range && <span className="hidden font-normal @xl:inline"> · {range}</span>}
+    </span>
+  );
+}
+
+function StillInSlack({ oldest }: { oldest: Date }) {
+  const leaves = formatDate(addDays(oldest, FREE_PLAN_WINDOW_DAYS), 'MMM d, yyyy');
+  return (
+    <span
+      className="hidden shrink-0 items-center gap-1 rounded-full bg-inset px-2 py-px text-ink-faint @md:flex"
+      title={`Slack Free shows the last ${FREE_PLAN_WINDOW_DAYS} days.${leaves ? ` The oldest message here drops out of Slack on ${leaves}; it stays in your archive.` : ''}`}
+    >
+      <CheckIcon size={12} className="shrink-0" />
+      All still in Slack
+    </span>
   );
 }
 

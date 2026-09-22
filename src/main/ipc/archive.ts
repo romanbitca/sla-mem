@@ -3,6 +3,7 @@
  */
 import type { WorkspaceDTO } from '../../shared/types';
 import {
+  conversationBeyondFreeWindow,
   getConversation,
   getMessageRevisions,
   getMessages,
@@ -53,7 +54,10 @@ export function archiveHandlers(deps: ArchiveDeps): ArchiveHandlers {
     getStats: () => getStats(db, { dbPath: deps.paths.dbPath }),
     getUsers: () => listUsers(db),
     getConversations: () => listConversations(db),
-    getConversation: (req) => requireConversation(record(req).id),
+    getConversation: (req) => {
+      const conversation = requireConversation(record(req).id);
+      return { ...conversation, beyondFreeWindow: conversationBeyondFreeWindow(db, conversation.id) };
+    },
     getMessages: (req) => {
       const r = record(req);
       return getMessages(db, {

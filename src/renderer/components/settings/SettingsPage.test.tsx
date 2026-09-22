@@ -152,7 +152,7 @@ describe('Settings — Slack connection', () => {
   });
 
   it('says why when the saved sign-in can’t be used any more', async () => {
-    const reason = 'sla-mem needs you to sign in to Slack again. Reconnect to keep archiving.';
+    const reason = 'Slamem needs you to sign in to Slack again. Reconnect to keep archiving.';
     setup(makeSettings({ connection: makeConnection({ expired: true, error: reason }) }));
     const connection = await card('Slack connection');
     const alert = within(connection).getByRole('alert');
@@ -191,7 +191,7 @@ describe('Settings — sync and attachments', () => {
     // Starting at login is about the app, not syncing: it lives in the App card.
     expect(within(sync).queryByRole('switch')).toBeNull();
     const app = await card('App');
-    const login = within(app).getByRole('switch', { name: 'Start sla-mem when I log in' }) as HTMLInputElement;
+    const login = within(app).getByRole('switch', { name: 'Start Slamem when I log in' }) as HTMLInputElement;
     expect(login.checked).toBe(true);
     fireEvent.click(login);
     await waitFor(() => expect(update).toHaveBeenCalledWith({ launchAtLogin: false }));
@@ -205,7 +205,7 @@ describe('Settings — sync and attachments', () => {
     setup();
     const app = await card('App');
     const icon = within(app).getByRole('switch', {
-      name: /^Show sla-mem in the (menu bar|system tray)$/,
+      name: /^Show Slamem in the (menu bar|system tray)$/,
     }) as HTMLInputElement;
     expect(icon.checked).toBe(true);
     fireEvent.click(icon);
@@ -322,7 +322,7 @@ describe('Settings — storage', () => {
     expect(within(storage).getByText('340 MB')).toBeTruthy();
     expect(within(storage).getByText('880 MB')).toBeTruthy();
     expect(within(storage).getByText('200 GB')).toBeTruthy();
-    expect(within(storage).getByText('/Users/me/Library/Application Support/sla-mem')).toBeTruthy();
+    expect(within(storage).getByText('/Users/me/Library/Application Support/Slamem')).toBeTruthy();
     fireEvent.click(within(storage).getByRole('button', { name: 'Show in Finder' }));
     await waitFor(() => expect(show).toHaveBeenCalledTimes(1));
   });
@@ -357,10 +357,10 @@ describe('Settings — storage', () => {
     fireEvent.click(within(storage).getByRole('button', { name: 'Back up now' }));
     await waitFor(() => expect(backup).toHaveBeenCalledTimes(1));
     expect(within(storage).queryByText(/Backup saved/)).toBeNull();
-    backup.mockResolvedValueOnce({ path: '/Volumes/Backup/sla-mem 2026-09-21.zip', bytes: 1.2 * 1024 ** 3 });
+    backup.mockResolvedValueOnce({ path: '/Volumes/Backup/Slamem 2026-09-21.zip', bytes: 1.2 * 1024 ** 3 });
     fireEvent.click(within(storage).getByRole('button', { name: 'Back up now' }));
     expect(
-      await within(storage).findByText('Backup saved (1.2 GB): /Volumes/Backup/sla-mem 2026-09-21.zip'),
+      await within(storage).findByText('Backup saved (1.2 GB): /Volumes/Backup/Slamem 2026-09-21.zip'),
     ).toBeTruthy();
   });
 });
@@ -389,14 +389,14 @@ describe('Settings — about', () => {
     fireEvent.click(within(about).getByRole('button', { name: 'Check for updates' }));
     expect(
       await within(about).findByText(
-        'No version of sla-mem has been published yet, so there’s nothing newer to download.',
+        'No version of Slamem has been published yet, so there’s nothing newer to download.',
       ),
     ).toBeTruthy();
     expect(within(about).queryByText('You have the latest version.')).toBeNull();
     expect(within(about).queryByText(/tries again by itself later/)).toBeNull();
   });
 
-  it('offers the download when a newer version exists and sla-mem can’t install it itself', async () => {
+  it('offers the download when a newer version exists and Slamem can’t install it itself', async () => {
     vi.spyOn(api, 'checkForUpdates').mockResolvedValue(
       makeUpdateInfo({ available: true, latestVersion: '1.3.0', downloadUrl: 'https://example.com/a.dmg' }),
     );
@@ -434,7 +434,7 @@ describe('Settings — about', () => {
       ...available,
       install: { state: 'waiting', progress: null, waitingFor: 'import', error: null },
     });
-    expect(await within(about).findByText('sla-mem restarts as soon as the import finishes.')).toBeTruthy();
+    expect(await within(about).findByText('Slamem restarts as soon as the import finishes.')).toBeTruthy();
   });
 
   it('switches the theme at once and saves it in main', async () => {

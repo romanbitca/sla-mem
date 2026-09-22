@@ -1,7 +1,9 @@
 # Packaging (PLAN §9): unsigned builds for macOS (dmg + zip, Apple Silicon and Intel) and Windows
 # (NSIS installer), published to GitHub Releases by .github/workflows/release.yml.
+# The id keeps the app's old name (sla-mem, until 0.3.2): Update and restart only installs a
+# download with this id, and Windows finds the installed copy to replace by it.
 appId: com.9h.sla-mem
-productName: sla-mem
+productName: Slamem
 copyright: Copyright © 2026 Roman Bitca
 
 directories:
@@ -47,7 +49,7 @@ mac:
   identity: '-'
   hardenedRuntime: false
   # The zip (for update downloads); the dmg sets its own name below.
-  artifactName: sla-mem-${version}-${arch}-mac.${ext}
+  artifactName: Slamem-${version}-${arch}-mac.${ext}
   gatekeeperAssess: false
   target:
     - target: dmg
@@ -63,8 +65,8 @@ mac:
     - '!node_modules/better-sqlite3/prebuilds/{linux-*,linuxmusl-*,win32-*}.node'
 
 dmg:
-  artifactName: sla-mem-${version}-${arch}.${ext}
-  title: sla-mem ${version}
+  artifactName: Slamem-${version}-${arch}.${ext}
+  title: Slamem ${version}
 
 win:
   icon: build/icon.png
@@ -83,8 +85,8 @@ nsis:
   # One click, per user, no administrator rights: the simplest install for non-technical colleagues.
   oneClick: true
   perMachine: false
-  artifactName: sla-mem-setup-${version}.${ext}
-  shortcutName: sla-mem
+  artifactName: Slamem-Setup-${version}.${ext}
+  shortcutName: Slamem
   createDesktopShortcut: true
   createStartMenuShortcut: true
   runAfterFinish: true

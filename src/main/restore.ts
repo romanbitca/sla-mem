@@ -1,5 +1,5 @@
 /**
- * "Import a backup" — moving to another computer. Merges an sla-mem backup (the zip that
+ * "Import a backup" — moving to another computer. Merges a Slamem backup (the zip that
  * "Back up now" writes, or the folder it was unzipped into) into this computer's archive:
  *
  *  - nothing already here is lost or duplicated: messages merge row by row, keeping the
@@ -49,7 +49,7 @@ export type RestoreStats = Record<string, number>;
 
 const BATCH = 1_000;
 
-/** Whether `p` (a zip or a folder) is an sla-mem backup rather than a Slack export. */
+/** Whether `p` (a zip or a folder) is a Slamem backup rather than a Slack export. */
 export async function isArchiveBackup(p: string): Promise<boolean> {
   let source: ExportSource;
   try {
@@ -80,7 +80,7 @@ export async function restoreBackup(opts: RestoreBackupOptions): Promise<Restore
   const source = await openExportSource(opts.path);
   const work = path.join(opts.tmpDir, `restore-${process.pid}-${Date.now()}`);
   try {
-    if (!source.entries.has('archive.db')) throw new Error('This isn’t an sla-mem backup (it has no archive.db).');
+    if (!source.entries.has('archive.db')) throw new Error('This isn’t a Slamem backup (it has no archive.db).');
     await fs.promises.mkdir(work, { recursive: true });
     progress('Opening the backup…');
     const backupDb = path.join(work, 'archive.db');
@@ -126,7 +126,7 @@ function upgradeBackup(file: string): void {
     openDb(file).close();
   } catch (err) {
     if (/newer/i.test(err instanceof Error ? err.message : '')) {
-      throw new Error('This backup was made by a newer version of sla-mem. Update sla-mem on this computer first.', {
+      throw new Error('This backup was made by a newer version of Slamem. Update Slamem on this computer first.', {
         cause: err,
       });
     }

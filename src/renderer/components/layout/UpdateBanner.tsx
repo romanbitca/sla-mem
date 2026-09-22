@@ -12,19 +12,19 @@ import { IconButton } from '../ui/IconButton';
 const DISMISSED_PREF = 'update.dismissed';
 
 /**
- * The one line that goes with an update (PLAN §9.5): what happens when sla-mem installs it itself,
+ * The one line that goes with an update (PLAN §9.5): what happens when Slamem installs it itself,
  * or the step that follows the download when it can't.
  */
 export function updateInstruction(platform: Platform, canInstall = false): string {
   if (canInstall) {
     // Each version is signed anew, so macOS asks once before the new one may read the sign-in.
     return platform === 'darwin'
-      ? 'sla-mem restarts to finish. If your Mac then asks whether it may use the keychain, click Always Allow.'
-      : 'sla-mem restarts to finish. Your archive stays where it is.';
+      ? 'Slamem restarts to finish. If your Mac then asks whether it may use the keychain, click Always Allow.'
+      : 'Slamem restarts to finish. Your archive stays where it is.';
   }
   // Finder won't replace an app that is running; the Windows installer closes it by itself.
   if (platform === 'darwin')
-    return 'Quit sla-mem, then open the download and drag sla-mem to Applications, replacing the old one.';
+    return 'Quit Slamem, then open the download and drag Slamem to Applications, replacing the old one.';
   if (platform === 'win32') return 'Run the installer. Your archive stays where it is.';
   return 'Install the new version the same way you installed this one.';
 }
@@ -118,7 +118,7 @@ export function UpdateDetail({ info, actions }: { info: UpdateInfoDTO; actions: 
   const { state, waitingFor, error } = info.install;
   let line = null;
   if (state === 'waiting') {
-    line = <p className="text-ink-muted">sla-mem restarts as soon as {RUN_NAME[waitingFor ?? 'sync']} finishes.</p>;
+    line = <p className="text-ink-muted">Slamem restarts as soon as {RUN_NAME[waitingFor ?? 'sync']} finishes.</p>;
   } else if (state === 'failed') {
     line = <p className="text-danger">{error}</p>;
   } else if (state === 'idle') {

@@ -9,19 +9,19 @@ describe('tray menu (PLAN §8.3)', () => {
 
   it('offers Sync now and says when the archive last synced', () => {
     expect(labels(trayMenu(connected, NOW))).toEqual([
-      'Open sla-mem',
+      'Open Slamem',
       'Sync now',
       'Last synced 5 minutes ago',
       '—',
       'Settings…',
-      'Quit sla-mem',
+      'Quit Slamem',
     ]);
   });
 
   it('says "Syncing…" once while a sync runs, with how far it has got', () => {
     const syncing = { ...connected, syncing: true, progress: { current: 12, total: 111 } };
     const items = labels(trayMenu(syncing, NOW));
-    expect(items).toEqual(['Open sla-mem', 'Syncing… 12 of 111', '—', 'Settings…', 'Quit sla-mem']);
+    expect(items).toEqual(['Open Slamem', 'Syncing… 12 of 111', '—', 'Settings…', 'Quit Slamem']);
     expect(labels(trayMenu({ ...syncing, progress: null }, NOW)).filter((l) => l.startsWith('Syncing'))).toEqual([
       'Syncing…',
     ]);

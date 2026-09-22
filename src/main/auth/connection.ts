@@ -56,7 +56,7 @@ export interface ConnectionServiceOptions {
 
 export const SIGNED_OUT_MESSAGE = 'Slack signed you out. Reconnect to keep archiving.';
 /** The saved sign-in exists but can't be unlocked on this computer (see getCredentials). */
-export const SIGN_IN_AGAIN_MESSAGE = 'sla-mem needs you to sign in to Slack again. Reconnect to keep archiving.';
+export const SIGN_IN_AGAIN_MESSAGE = 'Slamem needs you to sign in to Slack again. Reconnect to keep archiving.';
 const UNREACHABLE_MESSAGE = 'Can’t reach Slack right now. Check your internet connection and try again.';
 
 export class ConnectionService extends EventEmitter {

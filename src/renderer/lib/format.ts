@@ -67,6 +67,14 @@ export function formatTsRange(oldestTs: string | null, latestTs: string | null):
   return from === to ? from : `${from} – ${to}`;
 }
 
+/** Compact range for headers: "Jul 9 – Sep 18, 2026", "Dec 3, 2025 – Feb 1, 2026", "Sep 18, 2026". */
+export function formatDateRange(from: Date, to: Date): string {
+  if (!isValidDate(from) || !isValidDate(to)) return '';
+  const end = format(to, 'MMM d, yyyy');
+  if (format(from, 'MMM d, yyyy') === end) return end;
+  return `${format(from, isSameYear(from, to) ? 'MMM d' : 'MMM d, yyyy')} – ${end}`;
+}
+
 export function isBeyondFreeWindow(date: Date, now: Date = new Date()): boolean {
   return differenceInCalendarDays(now, date) > FREE_PLAN_WINDOW_DAYS;
 }

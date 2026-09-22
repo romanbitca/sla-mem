@@ -9,7 +9,7 @@ import { Card } from '../ui/Card';
 import { FieldError, SettingRow, Switch } from './fields';
 
 /**
- * How sla-mem itself behaves on this computer: whether it starts at login and whether it keeps
+ * How Slamem itself behaves on this computer: whether it starts at login and whether it keeps
  * an icon in the menu bar / tray (saved on change). Syncing has its own card.
  */
 export function AppSettingsCard({ preferences }: { preferences: PreferencesDTO }) {
@@ -36,7 +36,7 @@ export function AppSettingsCard({ preferences }: { preferences: PreferencesDTO }
     >
       <div className="flex flex-col divide-y divide-line">
         <SettingRow
-          label="Start sla-mem when I log in"
+          label="Start Slamem when I log in"
           labelId={ids.login}
           description="Recommended. Slack only keeps the last 90 days, so regular syncing is what keeps your history."
           descriptionId={ids.loginHint}
@@ -49,12 +49,12 @@ export function AppSettingsCard({ preferences }: { preferences: PreferencesDTO }
           />
         </SettingRow>
         <SettingRow
-          label={`Show sla-mem in the ${trayPlaceName()}`}
+          label={`Show Slamem in the ${trayPlaceName()}`}
           labelId={ids.tray}
           description={
             preferences.showTrayIcon
-              ? 'Shows sync progress and opens sla-mem at any time.'
-              : `sla-mem keeps syncing in the background. Open it from ${reopenHint()} to see it again.`
+              ? 'Shows sync progress and opens Slamem at any time.'
+              : `Slamem keeps syncing in the background. Open it from ${reopenHint()} to see it again.`
           }
           descriptionId={ids.trayHint}
         >

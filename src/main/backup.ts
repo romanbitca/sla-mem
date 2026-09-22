@@ -14,17 +14,17 @@ import type { DB } from './db';
 import { renameReplacing } from './fsx';
 import type { ArchivePaths } from './paths';
 
-export const RESTORE_README = `sla-mem backup
+export const RESTORE_README = `Slamem backup
 ==============
 
-This zip is a complete copy of an sla-mem archive:
+This zip is a complete copy of a Slamem archive:
 
   archive.db    all archived messages, edit history, people and conversations
   files/        downloaded attachments
   config.json   your settings
 
 To move your archive to another computer (or bring it back on this one):
-  1. Install sla-mem on that computer.
+  1. Install Slamem on that computer.
   2. On its first screen click "Moving from another computer? Import a backup",
      or later choose Settings → Storage → Import a backup.
   3. Choose this zip. Nothing already archived there is lost or duplicated.
@@ -43,7 +43,7 @@ export interface BackupOptions {
 
 export async function backupArchive(opts: BackupOptions): Promise<BackupResultDTO> {
   const stamp = timestamp(opts.now ?? new Date());
-  const zipPath = uniquePath(path.join(opts.destDir, `sla-mem backup ${stamp}.zip`));
+  const zipPath = uniquePath(path.join(opts.destDir, `Slamem backup ${stamp}.zip`));
   const snapshot = path.join(opts.paths.tmpDir, `backup-${process.pid}-${Date.now()}.db`);
   const partial = `${zipPath}.part`;
   await fs.promises.mkdir(opts.paths.tmpDir, { recursive: true });

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import type {
+  BeyondFreeWindowDTO,
   ConversationDTO,
   ConversationType,
   MessageRevisionDTO,
@@ -325,11 +326,30 @@ export function getMessageRevisions(db: DB, conversationId: string, ts: string):
 /** Slack Free hides messages older than this. */
 export const FREE_WINDOW_DAYS = 90;
 
+/** Unix seconds before which a message is older than Slack Free's window. */
+function freeWindowCutoff(now: number): number {
+  return Math.floor(now / 1000) - FREE_WINDOW_DAYS * 86400;
+}
+
+/** One conversation's messages Slack Free no longer shows (the conversation header's count). */
+export function conversationBeyondFreeWindow(db: DB, conversationId: string, now = Date.now()): BeyondFreeWindowDTO {
+  // min/max of `time` come straight from the (conversation_id, time) index.
+  const row = stmt<{ n: number; oldest: number | null; newest: number | null }>(
+    db,
+    'SELECT count(*) AS n, min(time) AS oldest, max(time) AS newest FROM messages WHERE conversation_id = ? AND time < ?',
+  ).get(conversationId, freeWindowCutoff(now))!;
+  return { count: row.n, oldest: row.oldest, newest: row.newest };
+}
+
 export function getStats(db: DB, opts: { filesDir?: string; dbPath?: string; now?: number } = {}): StatsDTO {
   const agg = stmt<{ messages: number; oldest: string | null; newest: string | null }>(
     db,
     'SELECT COALESCE(SUM(message_count), 0) AS messages, MIN(oldest_ts) AS oldest, MAX(latest_ts) AS newest FROM conversation_stats',
   ).get()!;
+  const oldestConversation = stmt<{ id: string }>(
+    db,
+    'SELECT conversation_id AS id FROM conversation_stats WHERE oldest_ts IS NOT NULL ORDER BY oldest_ts LIMIT 1',
+  ).get();
   const files = stmt<{ total: number; done: number; bytes: number }>(
     db,
     `SELECT count(*) AS total, COALESCE(SUM(download_status = 'done'), 0) AS done,
@@ -345,6 +365,8 @@ export function getStats(db: DB, opts: { filesDir?: string; dbPath?: string; now
     dbBytes: databaseBytes(db, opts.dbPath),
     oldestTs: agg.oldest,
     newestTs: agg.newest,
+    oldestConversationId: oldestConversation?.id ?? null,
+    mainStart: mainStart(db, agg.messages, agg.oldest, agg.newest),
     beyondFreeWindowCount: beyondFreeWindow(db, agg.messages, opts.now ?? Date.now()),
   };
 }
@@ -355,8 +377,48 @@ function count(db: DB, sql: string, ...params: unknown[]): number {
 
 /** Counted as total minus the (small) recent window, so the time index scans only 90 days. */
 function beyondFreeWindow(db: DB, total: number, now: number): number {
-  const cutoff = Math.floor(now / 1000) - FREE_WINDOW_DAYS * 86400;
-  return total - count(db, 'SELECT count(*) AS n FROM messages WHERE time >= ?', cutoff);
+  return total - count(db, 'SELECT count(*) AS n FROM messages WHERE time >= ?', freeWindowCutoff(now));
+}
+
+/** Too few messages for "most of the archive" to mean anything. */
+const MAIN_START_MIN_MESSAGES = 200;
+/** "Most of the archive": everything but its oldest 1%. */
+const MAIN_START_TAIL = 0.01;
+/** Walking back from there, a quiet spell this long (longer than a weekend) ends the steady history. */
+const MAIN_START_GAP_SECONDS = 4 * 86400;
+
+/**
+ * Slack still shows a few messages past its 90 days (notes to yourself, thread starters with
+ * recent replies), so a first sync can reach months further back for a handful of messages. Then
+ * "Mar 18 – Sep 22" would describe the archive badly. This finds where the steady history starts:
+ * from the point all but the oldest 1% of messages follow, back through messages that follow each
+ * other closely, to the local day of the first of them. It says so only when the few older ones
+ * stretch the range by over a month and over a quarter.
+ */
+function mainStart(db: DB, total: number, oldestTs: string | null, newestTs: string | null): StatsDTO['mainStart'] {
+  if (total < MAIN_START_MIN_MESSAGES || !oldestTs || !newestTs) return null;
+  const oldest = Math.floor(Number(oldestTs));
+  const newest = Math.floor(Number(newestTs));
+  if (!Number.isFinite(oldest) || !Number.isFinite(newest)) return null;
+  const tail = Math.floor(total * MAIN_START_TAIL);
+  const row = stmt<{ time: number }>(db, 'SELECT time FROM messages ORDER BY time LIMIT 1 OFFSET ?').get(tail);
+  if (!row) return null;
+  let first = row.time;
+  // At most the oldest 1%: few rows, read newest first until the first long silence.
+  for (const { time } of stmt<{ time: number }>(
+    db,
+    'SELECT time FROM messages WHERE time < ? ORDER BY time DESC LIMIT ?',
+  ).all(first, tail)) {
+    if (first - time >= MAIN_START_GAP_SECONDS) break;
+    first = time;
+  }
+  const day = new Date(first * 1000);
+  day.setHours(0, 0, 0, 0);
+  const start = Math.floor(day.getTime() / 1000);
+  const stretch = start - oldest;
+  if (stretch < 30 * 86400 || stretch < (newest - oldest) / 4) return null;
+  const olderCount = count(db, 'SELECT count(*) AS n FROM messages WHERE time < ?', start);
+  return olderCount > 0 ? { ts: `${start}.000000`, olderCount } : null;
 }
 
 function databaseBytes(db: DB, dbPath?: string): number {

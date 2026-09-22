@@ -35,7 +35,7 @@ export function createTray(
 
   const render = () => {
     const now = Date.now();
-    tray.setToolTip(`sla-mem — ${trayStatus(state, now)}`);
+    tray.setToolTip(`Slamem — ${trayStatus(state, now)}`);
     tray.setContextMenu(
       Menu.buildFromTemplate(
         trayMenu(state, now).map((item): MenuItemConstructorOptions =>

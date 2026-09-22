@@ -51,6 +51,19 @@ export interface ConversationDTO {
   oldestTs: string | null;
   /** Last per-conversation sync problem (e.g. "not_in_channel"), for diagnostics. */
   syncError: string | null;
+  /**
+   * Its messages Slack Free no longer shows (older than 90 days). Only the single-conversation
+   * read (`getConversation`) fills this in; lists leave it out.
+   */
+  beyondFreeWindow?: BeyondFreeWindowDTO;
+}
+
+/** Messages (replies included) older than Slack Free's 90 days: kept only in the archive. */
+export interface BeyondFreeWindowDTO {
+  count: number;
+  /** Unix seconds of the oldest and the newest of them (null when there are none). */
+  oldest: number | null;
+  newest: number | null;
 }
 
 // ─── Messages ─────────────────────────────────────────────────────────────────────────────────
@@ -256,6 +269,14 @@ export interface StatsDTO {
   dbBytes: number;
   oldestTs: string | null;
   newestTs: string | null;
+  /** The conversation that holds the oldest message. */
+  oldestConversationId: string | null;
+  /**
+   * When the oldest messages are a thin trickle long before the rest (say, old notes to yourself
+   * that Slack still showed): the day most of the archive starts (local midnight, as a ts) and how
+   * many messages are older. Null when the archive simply starts at its oldest message.
+   */
+  mainStart: { ts: string; olderCount: number } | null;
   /** Messages older than 90 days: history Slack Free no longer shows. */
   beyondFreeWindowCount: number;
 }
@@ -496,7 +517,7 @@ export interface UpdateInfoDTO {
    */
   noRelease: boolean;
   /**
-   * sla-mem can install this version itself: download it, replace the app and reopen. False when
+   * Slamem can install this version itself: download it, replace the app and reopen. False when
    * the release has no package for this computer, or this copy can't be replaced where it runs
    * (straight from the disk image, a folder it may not change, a development build); Download
    * remains.
@@ -509,7 +530,7 @@ export interface UpdateInfoDTO {
 /**
  *  - idle: not started
  *  - downloading: fetching the new version (`progress`)
- *  - waiting: downloaded; sla-mem restarts once the run in `waitingFor` finishes
+ *  - waiting: downloaded; Slamem restarts once the run in `waitingFor` finishes
  *  - restarting: quitting to replace the app, then opening the new version
  *  - failed: `error` says why; Try again and Download remain
  */

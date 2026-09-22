@@ -195,6 +195,22 @@ describe('HomePage', () => {
     expect(screen.queryByRole('button', { name: 'Connect Slack' })).toBeNull(); // connected: no prompt
   });
 
+  it('starts the range where most of the history does when a few messages reach much further back', async () => {
+    const seconds = (d: Date) => `${Math.floor(d.getTime() / 1000)}.000000`;
+    setup(idle, {
+      stats: makeStats({
+        oldestTs: seconds(new Date(2026, 2, 18, 10, 19)),
+        newestTs: seconds(new Date(2026, 8, 22, 12, 0)),
+        oldestConversationId: 'D1',
+        mainStart: { ts: seconds(new Date(2026, 5, 24)), olderCount: 7 },
+      }),
+    });
+    expect(await screen.findByText('Jun 24, 2026 – Sep 22, 2026')).toBeTruthy();
+    expect(screen.getByText(/91 days · plus 7 older messages, back to/)).toBeTruthy();
+    const oldest = screen.getByRole('link', { name: 'Mar 18, 2026' });
+    expect(oldest.getAttribute('href')).toBe(`/c/D1?ts=${seconds(new Date(2026, 2, 18, 10, 19))}`);
+  });
+
   it('shows when the last sync ran and the next one will, and syncs now', async () => {
     const startSync = vi.spyOn(api, 'startSync').mockResolvedValue({ runId: 5 });
     setup();

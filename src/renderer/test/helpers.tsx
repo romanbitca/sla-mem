@@ -272,6 +272,8 @@ export function makeStats(overrides: Partial<StatsDTO> = {}): StatsDTO {
     dbBytes: 340 * MB,
     oldestTs: '1709500000.000100',
     newestTs: `${Math.floor(Date.now() / 1000)}.000100`,
+    oldestConversationId: 'C1',
+    mainStart: null,
     beyondFreeWindowCount: 31_337,
     ...overrides,
   };
@@ -279,7 +281,7 @@ export function makeStats(overrides: Partial<StatsDTO> = {}): StatsDTO {
 
 export function makeStorage(overrides: Partial<StorageDTO> = {}): StorageDTO {
   return {
-    dataDir: '/Users/me/Library/Application Support/sla-mem',
+    dataDir: '/Users/me/Library/Application Support/Slamem',
     databaseBytes: 340 * MB,
     attachmentsBytes: 880 * MB,
     logsBytes: 2 * MB,
@@ -297,8 +299,8 @@ export function makeAppInfo(overrides: Partial<AppInfoDTO> = {}): AppInfoDTO {
     platform: 'darwin',
     arch: 'arm64',
     isPackaged: true,
-    dataDir: '/Users/me/Library/Application Support/sla-mem',
-    logsDir: '/Users/me/Library/Application Support/sla-mem/logs',
+    dataDir: '/Users/me/Library/Application Support/Slamem',
+    logsDir: '/Users/me/Library/Application Support/Slamem/logs',
     installedProperly: true,
     ...overrides,
   };

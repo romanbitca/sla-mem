@@ -15,7 +15,7 @@ const NAMES_SHOWN = 5;
 
 /**
  * Settings → What to archive: conversations can be left out (a channel, or the DMs with someone),
- * and sla-mem then never fetches their messages, threads or attachments. What was archived
+ * and Slamem then never fetches their messages, threads or attachments. What was archived
  * before stays unless the reader chooses to delete it, which is asked, never assumed.
  */
 export function WhatToArchiveCard({ excludedIds }: { excludedIds: readonly string[] }) {
@@ -82,7 +82,7 @@ export function WhatToArchiveCard({ excludedIds }: { excludedIds: readonly strin
         open={draft != null}
         onClose={() => setDraft(null)}
         title="What to archive"
-        description="Untick a conversation to stop archiving it: sla-mem won’t fetch its messages, threads or attachments."
+        description="Untick a conversation to stop archiving it: Slamem won’t fetch its messages, threads or attachments."
         returnFocusRef={openerRef}
         className="max-w-xl"
         footer={
@@ -105,7 +105,7 @@ export function WhatToArchiveCard({ excludedIds }: { excludedIds: readonly strin
         title="Delete what’s already archived?"
         description={`${joinNames(offered.map(conversationTitle), NAMES_SHOWN)} already ${
           offered.length === 1 ? 'has' : 'have'
-        } ${pluralize(offeredMessages, 'message', 'messages')} in the archive. sla-mem won’t add to ${
+        } ${pluralize(offeredMessages, 'message', 'messages')} in the archive. Slamem won’t add to ${
           offered.length === 1 ? 'it' : 'them'
         } any more. Delete what’s there too? This can’t be undone.`}
         confirmLabel="Delete"

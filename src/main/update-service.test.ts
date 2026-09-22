@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 const sha256 = (data: Buffer) => createHash('sha256').update(data).digest('hex');
-const zip = Buffer.from('sla-mem 1.3.0 for Apple silicon '.repeat(5_000));
+const zip = Buffer.from('Slamem 1.3.0 for Apple silicon '.repeat(5_000));
 
 function release(overrides: Partial<GithubRelease> = {}): GithubRelease {
   const base = 'https://github.com/o/r/releases/download/v1.3.0';
@@ -42,12 +42,12 @@ function release(overrides: Partial<GithubRelease> = {}): GithubRelease {
     body: 'Syncs are faster.',
     assets: [
       {
-        name: 'sla-mem-1.3.0-arm64-mac.zip',
-        browser_download_url: `${base}/sla-mem-1.3.0-arm64-mac.zip`,
+        name: 'Slamem-1.3.0-arm64-mac.zip',
+        browser_download_url: `${base}/Slamem-1.3.0-arm64-mac.zip`,
         size: zip.length,
         digest: `sha256:${sha256(zip)}`,
       },
-      { name: 'sla-mem-1.3.0-arm64.dmg', browser_download_url: `${base}/sla-mem-1.3.0-arm64.dmg`, size: 1 },
+      { name: 'Slamem-1.3.0-arm64.dmg', browser_download_url: `${base}/Slamem-1.3.0-arm64.dmg`, size: 1 },
     ],
     ...overrides,
   };
@@ -150,7 +150,7 @@ describe('Update and restart', () => {
     expect(s.installUpdate().install).toEqual({ state: 'downloading', progress: 0, waitingFor: null, error: null });
     const prepared = await ready;
 
-    expect(downloads).toEqual(['https://github.com/o/r/releases/download/v1.3.0/sla-mem-1.3.0-arm64-mac.zip']);
+    expect(downloads).toEqual(['https://github.com/o/r/releases/download/v1.3.0/Slamem-1.3.0-arm64-mac.zip']);
     expect(installer.prepared).toHaveLength(1);
     expect(fs.readFileSync(installer.prepared[0].file).equals(zip)).toBe(true);
     expect(progress.at(-1)).toBe(1);
@@ -213,7 +213,7 @@ describe('Update and restart', () => {
       waitingFor: null,
       error: DOWNLOAD_DAMAGED,
     });
-    expect(lines.some((l) => l.startsWith('Update 1.3.0 failed: download of sla-mem-1.3.0-arm64-mac.zip doesn'))).toBe(
+    expect(lines.some((l) => l.startsWith('Update 1.3.0 failed: download of Slamem-1.3.0-arm64-mac.zip doesn'))).toBe(
       true,
     );
     await vi.waitFor(() => expect(fs.existsSync(workDir())).toBe(false));
@@ -251,7 +251,7 @@ describe('Update and restart', () => {
 
   it('after the restart, says in the log whether the update took, and shows it when it didn’t', async () => {
     const note = (from: string, to: string) => {
-      fs.mkdirSync(path.join(workDir(), 'new', 'sla-mem.app'), { recursive: true });
+      fs.mkdirSync(path.join(workDir(), 'new', 'Slamem.app'), { recursive: true });
       fs.writeFileSync(path.join(workDir(), 'pending.json'), JSON.stringify({ from, to, at: 1 }));
     };
 
