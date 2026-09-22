@@ -179,6 +179,7 @@ export function actionHandlers(s: AppServices, hooks: PlatformHooks): ActionHand
       await hooks.openExternal(url);
       return ok;
     },
+    installUpdate: () => s.updates.installUpdate(),
   };
 }
 

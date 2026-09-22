@@ -5,6 +5,7 @@
  * sign-in surface factory, so the whole graph can be built in tests with a temporary folder.
  */
 import fs from 'node:fs';
+import path from 'node:path';
 import type { AppInfoDTO, AttachmentPolicy, LoginStatusDTO, PreferencesDTO, ThemePreference } from '../shared/types';
 import {
   ConnectionService,
@@ -19,7 +20,8 @@ import { archivePaths, type ArchivePaths } from './paths';
 import { Preferences } from './preferences';
 import { RunManager, type RunJobs } from './runs';
 import { Scheduler } from './scheduler';
-import { UpdateService } from './update-service';
+import type { UpdateInstaller } from './update-install';
+import { restartWhenIdle, UpdateService } from './update-service';
 
 /** The GitHub repository whose releases the update check reads ("owner/repo", PLAN §9.5). */
 export const UPDATE_REPO = 'romanbitca/sla-mem';
@@ -43,6 +45,8 @@ export interface PlatformHooks {
   /** Shows or removes the menu bar / tray icon. */
   applyTrayIcon(visible: boolean): void;
   appInfo(): AppInfoDTO;
+  /** Quits so the downloaded update is installed (UpdateService.applyPrepared), then reopens. */
+  quitForUpdate(): void;
 }
 
 export interface AppContext {
@@ -73,6 +77,8 @@ export interface ServicesOptions {
   fetch?: typeof fetch;
   jobs?: Partial<RunJobs>;
   version: string;
+  /** Update and restart; null or absent where updates are downloaded by hand. */
+  installer?: UpdateInstaller | null;
 }
 
 export function createContext(opts: { dataDir: string; echoLogs?: boolean }): AppContext {
@@ -126,6 +132,8 @@ export function createServices(opts: ServicesOptions): AppServices {
     arch: process.arch,
     fetch: opts.fetch,
     log: (line) => ctx.log.info(line),
+    installer: opts.installer ?? null,
+    workDir: path.join(ctx.paths.tmpDir, 'update'),
   });
   return { ...ctx, connection, login, runs, scheduler, updates };
 }
@@ -140,10 +148,11 @@ const POLICY_RANK: Record<AttachmentPolicy, number> = { none: 0, standard: 1, ev
  *  - Disconnecting stops a running Slack sync (its session is gone).
  *  - Preferences apply their side effects: theme, login item, and a looser attachment setting
  *    downloads the newly allowed files now rather than at the next scheduled sync.
+ *  - A downloaded update restarts the app once no run is under way.
  */
 export function wireServices(
   s: AppServices,
-  hooks: Pick<PlatformHooks, 'applyTheme' | 'applyLaunchAtLogin' | 'applyTrayIcon'>,
+  hooks: Pick<PlatformHooks, 'applyTheme' | 'applyLaunchAtLogin' | 'applyTrayIcon' | 'quitForUpdate'>,
 ): () => void {
   let prefs: PreferencesDTO = s.prefs.get();
   const onConnected = () => {
@@ -184,13 +193,18 @@ export function wireServices(
       }
     }
   };
+  const onUpdateReady = () => {
+    void restartWhenIdle({ runs: s.runs, scheduler: s.scheduler, updates: s.updates, quit: hooks.quitForUpdate });
+  };
   s.connection.on('connected', onConnected);
   s.connection.on('disconnected', onDisconnected);
   s.prefs.on('changed', onPrefs);
+  s.updates.on('ready', onUpdateReady);
   return () => {
     s.connection.off('connected', onConnected);
     s.connection.off('disconnected', onDisconnected);
     s.prefs.off('changed', onPrefs);
+    s.updates.off('ready', onUpdateReady);
   };
 }
 

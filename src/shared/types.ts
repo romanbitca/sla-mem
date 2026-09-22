@@ -495,6 +495,34 @@ export interface UpdateInfoDTO {
    * that retrying fixes.
    */
   noRelease: boolean;
+  /**
+   * sla-mem can install this version itself: download it, replace the app and reopen. False when
+   * the release has no package for this computer, or this copy can't be replaced where it runs
+   * (straight from the disk image, a folder it may not change, a development build); Download
+   * remains.
+   */
+  canInstall: boolean;
+  /** Where "Update and restart" has got to. */
+  install: UpdateInstallDTO;
+}
+
+/**
+ *  - idle: not started
+ *  - downloading: fetching the new version (`progress`)
+ *  - waiting: downloaded; sla-mem restarts once the run in `waitingFor` finishes
+ *  - restarting: quitting to replace the app, then opening the new version
+ *  - failed: `error` says why; Try again and Download remain
+ */
+export type UpdateInstallState = 'idle' | 'downloading' | 'waiting' | 'restarting' | 'failed';
+
+export interface UpdateInstallDTO {
+  state: UpdateInstallState;
+  /** 0–1 while downloading. */
+  progress: number | null;
+  /** While waiting: the sync, attachment download or import that finishes first. */
+  waitingFor: RunKind | null;
+  /** Plain-language reason when the update failed. */
+  error: string | null;
 }
 
 /** Response of calls that only acknowledge. */

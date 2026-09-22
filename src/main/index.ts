@@ -34,6 +34,7 @@ import { DATA_DIR_NAME, explicitDataDir, LEGACY_DATA_DIR_NAME, moveLegacyDataDir
 import { ARCHIVE_SCHEME, serveArchiveFile } from './protocol';
 import { denyPermissions, hardenWebContents, openExternalSafe } from './security';
 import { createTray, IDLE_TRAY_STATE, type TrayController, type TrayState } from './tray';
+import { createInstaller } from './update-install';
 
 const isDev = !app.isPackaged;
 const rendererDevUrl = isDev ? process.env.ELECTRON_RENDERER_URL : undefined;
@@ -80,6 +81,8 @@ let tray: TrayController | null = null;
 /** What the tray shows, kept so the icon can be turned off and on again in Settings. */
 let trayState: TrayState = IDLE_TRAY_STATE;
 let quitting = false;
+/** Quitting for Update and restart: the new version is installed and opened as the app exits. */
+let restartingForUpdate = false;
 let syncBlocker: number | null = null;
 let stopStatus: (() => void) | null = null;
 let appLog: AppServices['log'] | null = null;
@@ -286,6 +289,11 @@ function platformHooks(s: AppServices): PlatformHooks {
       logsDir: s.paths.logsDir,
       installedProperly: process.platform !== 'darwin' || !app.isPackaged || app.isInApplicationsFolder(),
     }),
+    quitForUpdate: () => {
+      restartingForUpdate = true;
+      quitting = true;
+      app.quit();
+    },
   };
 }
 
@@ -524,6 +532,7 @@ async function start(): Promise<void> {
     apiBaseUrl: slackOverrides.apiBaseUrl,
     webOrigin: slackOverrides.webOrigin,
     version: app.getVersion(),
+    installer: createInstaller({ platform: process.platform, execPath: process.execPath, isPackaged: app.isPackaged }),
   });
   services = s;
   appLog = s.log;
@@ -629,7 +638,24 @@ if (!app.requestSingleInstanceLock()) {
     stopStatus?.();
     stopStatus = null;
     tray?.destroy();
-    s.log.info('Quitting');
-    void closeServices(s).finally(() => app.exit(0));
+    s.log.info(restartingForUpdate ? 'Quitting to install an update' : 'Quitting');
+    void closeServices(s).finally(() => {
+      if (restartingForUpdate) installUpdateOnExit(s);
+      app.exit(0);
+    });
   });
+}
+
+/**
+ * Hands over to the updater, which replaces the app once this process has exited and opens the
+ * new version (with the same archive folder). If it can't start, this version reopens instead:
+ * clicking Update and restart never leaves the app closed.
+ */
+function installUpdateOnExit(s: AppServices): void {
+  const started = s.updates.applyPrepared({
+    pid: process.pid,
+    args: dataDirOverride ? [`--data-dir=${dataDirOverride}`] : [],
+    logFile: s.log.file,
+  });
+  if (!started) app.relaunch();
 }

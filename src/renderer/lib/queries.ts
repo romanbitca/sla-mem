@@ -658,6 +658,15 @@ export function useOpenUpdateDownload() {
   return useMutation({ mutationFn: () => api.openUpdateDownload() });
 }
 
+/** Update and restart; progress then arrives as `update` events. */
+export function useInstallUpdate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.installUpdate(),
+    onSuccess: (info) => qc.setQueryData(qk.updateInfo, info),
+  });
+}
+
 export function useOpenExternal() {
   return useMutation({ mutationFn: (url: string) => api.openExternal({ url }) });
 }

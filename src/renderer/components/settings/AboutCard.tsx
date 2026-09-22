@@ -2,19 +2,18 @@ import { useId } from 'react';
 import clsx from 'clsx';
 import type { ThemePreference } from '../../../shared/types';
 import { describeError } from '../../lib/api';
-import { currentPlatform } from '../../lib/bridge';
 import {
   useAppInfo,
   useCheckForUpdates,
   useOpenExternal,
-  useOpenUpdateDownload,
   useSettings,
   useShowLogs,
+  useUpdateInfo,
   useUpdatePreferences,
 } from '../../lib/queries';
 import { THEME_LABELS } from '../../lib/theme';
 import { GUIDE_URL } from '../connect/connection';
-import { updateInstruction } from '../layout/UpdateBanner';
+import { isInstalling, UpdateButtons, UpdateDetail, UpdateHeadline, useUpdateActions } from '../layout/UpdateBanner';
 import { AlertIcon, CheckIcon, ExternalLinkIcon, InfoIcon, MonitorIcon, MoonIcon, SunIcon, SyncIcon } from '../icons';
 import { Button } from '../ui/Button';
 import { Callout } from '../ui/Callout';
@@ -28,11 +27,14 @@ const THEMES: ThemePreference[] = ['system', 'light', 'dark'];
 export function AboutCard() {
   const info = useAppInfo();
   const check = useCheckForUpdates();
-  const download = useOpenUpdateDownload();
+  const live = useUpdateInfo().data;
+  const actions = useUpdateActions();
   const openGuide = useOpenExternal();
   const showLogs = useShowLogs();
   const result = check.data;
-  const error = check.error ?? download.error ?? openGuide.error ?? showLogs.error;
+  // A newer version (found now or by the daily check) and how its update is getting on.
+  const update = live?.latestVersion && (live.available || isInstalling(live)) ? live : null;
+  const error = check.error ?? openGuide.error ?? showLogs.error;
 
   return (
     <Card id="about" title="About" icon={<InfoIcon size={15} />}>
@@ -49,7 +51,7 @@ export function AboutCard() {
           Check for updates
         </Button>
       </div>
-      {result && !result.available && !result.error && !result.noRelease && (
+      {result && !result.available && !result.error && !result.noRelease && !update && (
         <p role="status" className="flex items-center gap-1.5 text-[13px] text-success">
           <CheckIcon size={14} /> You have the latest version.
         </p>
@@ -64,14 +66,12 @@ export function AboutCard() {
           Couldn’t check for updates right now. sla-mem tries again by itself later.
         </p>
       )}
-      {result?.available && (
+      {update && (
         <Callout tone="info" icon={<InfoIcon size={15} />} role="status">
-          <p className="font-medium">Version {result.latestVersion} is available.</p>
-          <p className="text-ink-muted">{updateInstruction(currentPlatform())}</p>
-          <div className="mt-2">
-            <Button size="sm" variant="primary" loading={download.isPending} onClick={() => download.mutate()}>
-              Download
-            </Button>
+          <UpdateHeadline info={update} />
+          <UpdateDetail info={update} actions={actions} />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <UpdateButtons info={update} actions={actions} />
           </div>
         </Callout>
       )}

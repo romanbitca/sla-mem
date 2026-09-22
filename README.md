@@ -9,7 +9,8 @@ channels, direct messages and group DMs in the background, and keeps **everythin
 seen, forever**, even after Slack hides it.
 
 - **Local-first.** One computer, no server, no cloud, no account, no telemetry. The only network
-  traffic is between the app and Slack (plus a check for new versions on GitHub).
+  traffic is between the app and Slack (plus a check for new versions on GitHub, and the download
+  of one when you click Update and restart).
 - **Only your own view.** It archives the conversations _you_ are in, using your own Slack login.
   Nobody else's DMs or private channels, no workspace admin needed.
 - **Read-only against Slack.** It never posts, edits, reacts or deletes anything in Slack.
@@ -93,9 +94,13 @@ tests, or a second archive for a different account. Unpackaged builds default to
    [docs/INSTALL.md](docs/INSTALL.md), and **Publish**. Drafts are invisible to everyone else.
 4. From then on every installed sla-mem sees the new version within a day (it checks on start and
    daily, or at once with Settings → About → Check for updates) and shows a banner with your notes
-   and a Download button. Nothing installs by itself: the unsigned macOS app can't replace itself
-   (PLAN §9.5), so people download and replace it (docs/INSTALL.md → Updating). The archive is
-   never touched by an update.
+   and **Update and restart**. That one click downloads the new version, checks it against the
+   release (GitHub's SHA-256 of the file, and on macOS the app's identity, version and signature),
+   replaces the app and reopens it (PLAN §9.5). Nothing installs without the click. A copy that
+   can't replace itself (run from the disk image, a folder it may not change) shows a Download
+   button and the steps in docs/INSTALL.md → Updating instead. The archive is never touched by an
+   update. Update and restart downloads the release's `sla-mem-<version>-<arch>-mac.zip` and
+   `sla-mem-setup-<version>.exe`, so keep those attached.
 
 The workflow can also be started by hand (Actions → Release → Run workflow). It then leaves the
 builds as workflow artifacts without touching Releases: use it to try an installer before tagging.

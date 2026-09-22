@@ -93,7 +93,21 @@ it.
 
 sla-mem looks for a new version when it starts and once a day (or right away with **Settings →
 About → Check for updates**). When one is out, it shows a banner: **“Version X is available.”**
-Click **Download**, then:
+Click **Update and restart**. sla-mem downloads the new version, closes, and opens again a few
+seconds later as the new version (if it is in the middle of a sync, it finishes that first).
+
+- **Mac:** the new version may ask whether it may use your **keychain**. Click **Always Allow**
+  (you may need your Mac password): that's where sla-mem keeps your Slack sign-in, and each new
+  version asks once.
+- **Windows:** nothing else to do.
+
+Your archive and settings are kept.
+
+### Updating by hand
+
+The banner shows **Download** instead when sla-mem can't replace itself: for example when it runs
+straight from the disk image, when an update couldn't be installed, or in versions up to 0.2.2,
+which didn't have Update and restart yet. Click **Download**, then:
 
 - **Mac:** quit sla-mem first (**sla-mem → Quit sla-mem**, or ⌘Q; a Mac won't replace an app
   that is open). Open the download and drag sla-mem into Applications, choosing **Replace**. When
@@ -101,8 +115,6 @@ Click **Download**, then:
   as in [step 3](#3-the-first-time-you-open-it-your-computer-will-warn-you).
 - **Windows:** run the downloaded installer (it closes sla-mem if it's open). If Windows warns
   you, choose **More info → Run anyway**, as the first time.
-
-Your archive and settings are kept.
 
 ## Questions or something looks wrong?
 

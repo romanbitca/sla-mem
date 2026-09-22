@@ -396,7 +396,7 @@ describe('Settings — about', () => {
     expect(within(about).queryByText(/tries again by itself later/)).toBeNull();
   });
 
-  it('offers the download when a newer version exists', async () => {
+  it('offers the download when a newer version exists and sla-mem can’t install it itself', async () => {
     vi.spyOn(api, 'checkForUpdates').mockResolvedValue(
       makeUpdateInfo({ available: true, latestVersion: '1.3.0', downloadUrl: 'https://example.com/a.dmg' }),
     );
@@ -404,9 +404,37 @@ describe('Settings — about', () => {
     setup();
     const about = await card('About');
     fireEvent.click(within(about).getByRole('button', { name: 'Check for updates' }));
-    expect(await within(about).findByText('Version 1.3.0 is available.')).toBeTruthy();
+    expect(await within(about).findByText('Version 1.3.0 is available')).toBeTruthy();
+    expect(within(about).queryByRole('button', { name: 'Update and restart' })).toBeNull();
     fireEvent.click(within(about).getByRole('button', { name: 'Download' }));
     await waitFor(() => expect(download).toHaveBeenCalledTimes(1));
+  });
+
+  it('updates and restarts from here too, and follows the update as it goes', async () => {
+    const bridge = installFakeBridge(() => {
+      throw { code: 'blocked', message: 'Not in this test.' };
+    });
+    const available = makeUpdateInfo({ available: true, latestVersion: '1.3.0', canInstall: true });
+    const install = vi.spyOn(api, 'installUpdate').mockResolvedValue({
+      ...available,
+      install: { state: 'downloading', progress: 0.4, waitingFor: null, error: null },
+    });
+    setup();
+    const about = await card('About');
+    // Found by the daily check: no need to click Check for updates first.
+    await waitFor(() => expect(bridge.listenerCount('update')).toBe(1));
+    bridge.emit('update', available);
+    fireEvent.click(await within(about).findByRole('button', { name: 'Update and restart' }));
+    await waitFor(() => expect(install).toHaveBeenCalledTimes(1));
+    expect(await within(about).findByText('Downloading version 1.3.0…')).toBeTruthy();
+    expect(within(about).getByRole('progressbar', { name: 'Update download' }).getAttribute('aria-valuenow')).toBe(
+      '40',
+    );
+    bridge.emit('update', {
+      ...available,
+      install: { state: 'waiting', progress: null, waitingFor: 'import', error: null },
+    });
+    expect(await within(about).findByText('sla-mem restarts as soon as the import finishes.')).toBeTruthy();
   });
 
   it('switches the theme at once and saves it in main', async () => {

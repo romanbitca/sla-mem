@@ -116,6 +116,10 @@ Each item is also corrected where it belongs in this document.
   could see them). Until the first release "Check for updates" says that no version has been
   published (GitHub's 404), rather than a failure to retry. The release workflow refuses a tag that doesn't
   match `package.json`: such a release would be offered as an update forever.
+- **Update and restart (added, §9.5):** the banner's button downloads the new version, checks it,
+  replaces the app and reopens it, on macOS too: the unsigned app replaces itself after quitting
+  instead of going through Squirrel, which refuses unsigned builds. Download remains where the app
+  can't replace itself.
 - **Start at login (§5.3):** Electron 44 removed `openAsHidden`; a launch at login is detected
   with `wasOpenedAtLogin` and starts in the tray.
 - **UI (§7, §8):** the theme choice (system, light, dark) lives in Settings → About; there is no
@@ -1054,11 +1058,40 @@ Therefore:
 Versioning: semver, `tag_name` = `v<version>`, and always publish release notes written for
 non-technical readers ("Fixes search sometimes missing recent messages").
 
-*As built:* the baseline checker is implemented (30 s after launch, then daily, and on demand from
-Settings → About). It reads `romanbitca/sla-mem`, which is **private**, so the API answers
-404 and the app reports "no published releases". Before the first release, either make the
-repository public or publish releases from a public repository and point `UPDATE_REPO`
-(`src/main/context.ts`) and `publish` (`electron-builder.yml`) at it.
+*As built:* the checker runs 30 s after launch, then daily, and on demand from Settings → About.
+It reads `romanbitca/sla-mem`, public since 2026-09-22 (§0.3); were it private again, publish
+releases from a public repository and point `UPDATE_REPO` (`src/main/context.ts`) and `publish`
+(`electron-builder.yml`) at it.
+
+On top of the check, **Update and restart** installs the new version on both platforms without
+Squirrel or electron-updater (`src/main/update-install.ts`, `update-service.ts`):
+
+1. It downloads the release's package for this computer: the macOS `.zip` for this chip (never the
+   other chip's), or the Windows installer. The file must come from GitHub and match the size and
+   SHA-256 GitHub lists for every release file (the API's `digest`); a release file without one is
+   never installed.
+2. macOS: `ditto` unpacks the app, which must be this app (bundle id) at the expected version with
+   an intact signature (`codesign --verify --deep --strict`).
+3. A sync, attachment download or import that is under way finishes first (no new one starts);
+   then the app quits the normal way.
+4. As it exits it hands over. macOS: a small script waits for the process to end, moves the old
+   `sla-mem.app` aside, moves the new one into its place (putting the old one back if that fails)
+   and opens whichever is there with `open -n`, with the same `--data-dir`. Windows: the NSIS
+   installer runs with `--updated /S --force-run`, as electron-updater does: it waits for the app
+   to exit, installs silently and starts it.
+5. The next start compares its version with a note written before the restart: the log says
+   "Updated to X (from Y)", or the banner says the update couldn't be installed and offers Try
+   again and Download.
+
+Downloaded by the app itself, the new macOS app carries no quarantine flag, so Gatekeeper doesn't
+stop it again. macOS may ask once for the keychain (ad-hoc signing gives every build a new
+identity; a signing certificate, even a self-made one, would end that). Where the app can't replace
+itself (a development build, straight from the disk image or App Translocation, a folder it may not
+change, a Windows copy not installed by the installer), the banner keeps Download and the
+one-line instruction. Verified on 2026-09-22 with a packaged build in /Applications, also flagged
+like a browser download allowed with Open Anyway: about 8 s from the click to the new version
+running (download and checks 5 s, restart 2 s). The Windows path is covered by unit tests; a real
+Windows update still needs a person (docs/STATUS.md).
 
 ---
 
@@ -1379,7 +1412,8 @@ findings were confirmed. The ones that matter for this build, distilled:
 25. `better-sqlite3` not rebuilt for Electron's ABI — works in dev, fails in the packaged app.
 26. Google sign-in blocked in an embedded window (§2.4) — have the email-code path ready.
 27. Non-persistent session partition losing the Slack login on every restart.
-28. macOS unsigned builds cannot silently auto-update (§9.5).
+28. macOS unsigned builds cannot silently auto-update (§9.5). *As built:* they replace themselves
+    after quitting instead (Update and restart, §9.5).
 29. Renderer loaded from `file://` breaking browser-history routing — use a hash/memory router.
 
 ---

@@ -104,6 +104,11 @@ export interface ArchiveApi {
   getUpdateInfo(): UpdateInfoDTO;
   checkForUpdates(): UpdateInfoDTO;
   openUpdateDownload(): OkDTO;
+  /**
+   * Update and restart: downloads the new version, then quits, replaces the app and opens the new
+   * one (after a sync or import that's under way). Progress arrives as `update` events.
+   */
+  installUpdate(): UpdateInfoDTO;
 }
 
 export type ApiMethod = keyof ArchiveApi;
@@ -153,6 +158,7 @@ export const API_METHODS = [
   'getUpdateInfo',
   'checkForUpdates',
   'openUpdateDownload',
+  'installUpdate',
 ] as const satisfies readonly ApiMethod[];
 
 // Compile-time check that API_METHODS lists every method exactly: a missing one fails here.
@@ -190,7 +196,7 @@ export interface ArchiveEvents {
   'login-status': LoginStatusDTO;
   /** Preferences or the connection changed. */
   settings: SettingsDTO;
-  /** A newer release was found. */
+  /** A newer release was found, or installing it moved on (download progress, restarting). */
   update: UpdateInfoDTO;
   /** Main asks the UI to show a route (tray menu "Settings", notification clicks). */
   navigate: { path: string };

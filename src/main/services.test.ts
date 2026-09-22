@@ -7,7 +7,7 @@ import { getFileRow, markFileDownloaded, openDb, upsertMessages, type DB } from 
 import { backupArchive } from './backup';
 import { archivePaths, isInside } from './paths';
 import { deleteAttachmentsOlderThan, storageInfo, storageWarning } from './storage';
-import { checkForUpdate, compareVersions, describeRelease, parseVersion, pickAsset } from './updates';
+import { checkForUpdate, compareVersions, describeRelease, parseVersion, pickAsset, pickPackage } from './updates';
 import { redactSecrets, containsSlackSecret } from './redact';
 import { createLogger } from './logger';
 import { Preferences } from './preferences';
@@ -186,22 +186,61 @@ describe('updates', () => {
       html_url: 'https://github.com/o/r/releases/tag/v1.2.0',
       assets,
     };
-    expect(describeRelease(release, { currentVersion: '1.1.0', platform: 'darwin', arch: 'arm64' }, 1)).toMatchObject({
+    expect(
+      describeRelease(release, { currentVersion: '1.1.0', platform: 'darwin', arch: 'arm64' }, 1).info,
+    ).toMatchObject({
       available: true,
       latestVersion: '1.2.0',
       notes: 'Fixes search sometimes missing recent messages',
       downloadUrl: expect.stringMatching(/arm64\.dmg$/),
     });
-    expect(describeRelease(release, { currentVersion: '1.2.0', platform: 'darwin', arch: 'arm64' }, 1).available).toBe(
-      false,
-    );
+    expect(
+      describeRelease(release, { currentVersion: '1.2.0', platform: 'darwin', arch: 'arm64' }, 1).info.available,
+    ).toBe(false);
     expect(
       describeRelease(
         { ...release, prerelease: true },
         { currentVersion: '1.0.0', platform: 'darwin', arch: 'arm64' },
         1,
-      ).available,
+      ).info.available,
     ).toBe(false);
+  });
+
+  it('installs by itself the zip for this Mac’s chip, or the Windows installer, with GitHub’s checksum', () => {
+    const base = 'https://github.com/o/r/releases/download/v1.2.0';
+    const digest = (c: string) => `sha256:${c.repeat(64)}`;
+    const files = [
+      { name: 'sla-mem-1.2.0-arm64-mac.zip', browser_download_url: `${base}/a.zip`, size: 10, digest: digest('a') },
+      { name: 'sla-mem-1.2.0-x64-mac.zip', browser_download_url: `${base}/b.zip`, size: 11, digest: digest('b') },
+      { name: 'sla-mem-1.2.0-arm64-mac.zip.blockmap', browser_download_url: `${base}/c`, size: 1, digest: digest('c') },
+      { name: 'sla-mem-setup-1.2.0.exe', browser_download_url: `${base}/d.exe`, size: 12, digest: digest('D') },
+      { name: 'sla-mem-setup-1.2.0.exe.blockmap', browser_download_url: `${base}/e`, size: 1, digest: digest('e') },
+    ];
+    expect(pickPackage(files, 'darwin', 'arm64', '1.2.0')).toEqual({
+      version: '1.2.0',
+      name: 'sla-mem-1.2.0-arm64-mac.zip',
+      url: `${base}/a.zip`,
+      size: 10,
+      sha256: 'a'.repeat(64),
+    });
+    expect(pickPackage(files, 'darwin', 'x64', '1.2.0')?.name).toBe('sla-mem-1.2.0-x64-mac.zip');
+    expect(pickPackage(files, 'win32', 'x64', '1.2.0')).toMatchObject({
+      name: 'sla-mem-setup-1.2.0.exe',
+      sha256: 'd'.repeat(64),
+    });
+    expect(pickPackage(files, 'linux', 'x64', '1.2.0')).toBeNull();
+    // Never the other chip's build, never without the checksum, never from outside GitHub.
+    expect(pickPackage(files.slice(1), 'darwin', 'arm64', '1.2.0')).toBeNull();
+    expect(pickPackage([{ ...files[0], digest: null }], 'darwin', 'arm64', '1.2.0')).toBeNull();
+    expect(pickPackage([{ ...files[0], size: undefined }], 'darwin', 'arm64', '1.2.0')).toBeNull();
+    expect(
+      pickPackage([{ ...files[0], browser_download_url: 'https://evil.example/a.zip' }], 'darwin', 'arm64', '1.2.0'),
+    ).toBeNull();
+    const release = { tag_name: 'v1.2.0', html_url: 'https://github.com/o/r/releases/tag/v1.2.0', assets: files };
+    expect(describeRelease(release, { currentVersion: '1.1.0', platform: 'darwin', arch: 'arm64' }, 1).pkg?.url).toBe(
+      `${base}/a.zip`,
+    );
+    expect(describeRelease(release, { currentVersion: '1.2.0', platform: 'darwin', arch: 'arm64' }, 1).pkg).toBeNull();
   });
 
   it('never opens links outside GitHub from release data', () => {
@@ -220,9 +259,8 @@ describe('updates', () => {
         fetch: notFound,
       }),
     ).toMatchObject({
-      available: false,
-      error: null,
-      noRelease: true,
+      info: { available: false, error: null, noRelease: true },
+      pkg: null,
     });
     const offline = (async () => {
       throw new TypeError('fetch failed');
@@ -235,7 +273,7 @@ describe('updates', () => {
         arch: 'arm64',
         fetch: offline,
       }),
-    ).toMatchObject({ available: false, noRelease: false, error: 'Couldn’t check for updates (offline?)' });
+    ).toMatchObject({ info: { available: false, noRelease: false, error: 'Couldn’t check for updates (offline?)' } });
   });
 });
 

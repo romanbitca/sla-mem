@@ -228,6 +228,7 @@ export const api = {
   getUpdateInfo: (_signal?: AbortSignal) => call('getUpdateInfo'),
   checkForUpdates: () => call('checkForUpdates'),
   openUpdateDownload: () => call('openUpdateDownload'),
+  installUpdate: () => call('installUpdate'),
 } satisfies { [M in ApiMethod]: (...args: never[]) => Promise<ApiResponse<M>> };
 
 export type Api = typeof api;

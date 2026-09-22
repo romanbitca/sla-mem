@@ -315,6 +315,8 @@ export function makeUpdateInfo(overrides: Partial<UpdateInfoDTO> = {}): UpdateIn
     checkedAt: Date.now(),
     error: null,
     noRelease: false,
+    canInstall: false,
+    install: { state: 'idle', progress: null, waitingFor: null, error: null },
     ...overrides,
   };
 }
