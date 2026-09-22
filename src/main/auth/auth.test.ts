@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { LoginStatusDTO, SlackConnectionDTO } from '../../shared/types';
 import { getMeta, openDb, setMeta, upsertUsers, type DB } from '../db';
-import { CONNECTION_META_KEY, ConnectionService, SIGNED_OUT_MESSAGE } from './connection';
+import { CONNECTION_META_KEY, ConnectionService, SIGN_IN_AGAIN_MESSAGE, SIGNED_OUT_MESSAGE } from './connection';
 import { MemoryCredentialStore, SafeStorageCredentialStore, type SecretCipher } from './credentials';
 import { ConnectError } from './errors';
 import { LoginManager, parseLocalConfig } from './signin';
@@ -194,6 +194,29 @@ describe('ConnectionService', () => {
     const dto = await svc.test();
     expect(dto.expired).toBe(false);
     expect(dto.error).toMatch(/Can’t reach Slack/);
+  });
+
+  it('a saved sign-in this app can’t unlock asks for Reconnect instead of letting syncs fail silently', async () => {
+    // Connected, then the app was renamed (or the folder copied to another computer): the archive
+    // still records the connection, but the Keychain key that locked the sign-in isn't there.
+    await connection().saveSession({ method: 'browser', token: XOXC, cookie: COOKIE });
+    events = [];
+    const svc = connection(new MemoryCredentialStore());
+    expect(svc.status()).toMatchObject({ connected: true, expired: false });
+
+    svc.checkSavedSignIn(); // at start-up
+    expect(svc.status()).toMatchObject({ connected: true, expired: true, error: SIGN_IN_AGAIN_MESSAGE });
+    expect(events).toEqual(['changed']);
+    expect(svc.getCredentials()).toBeNull();
+    svc.checkSavedSignIn();
+    expect(await svc.test()).toMatchObject({ expired: true, error: SIGN_IN_AGAIN_MESSAGE });
+
+    // Reconnecting saves a sign-in this app can read, and the problem is gone.
+    expect(await svc.saveSession({ method: 'browser', token: XOXC, cookie: COOKIE })).toMatchObject({
+      connected: true,
+      expired: false,
+    });
+    expect(svc.getCredentials()).toMatchObject({ token: XOXC });
   });
 
   it('disconnect removes credentials and the sign-in session; the archive stays', async () => {

@@ -118,7 +118,8 @@ export const defaultRunJobs: RunJobs = {
 export interface RunConnection {
   hasCredentials(): boolean;
   getCredentials(): { token: string; cookie: string } | null;
-  status(): { expired: boolean };
+  /** `error`: why the connection needs attention, in plain language (e.g. "sign in again"). */
+  status(): { expired: boolean; error?: string | null };
   markSignedOut(code: string): void;
 }
 
@@ -219,7 +220,8 @@ export class RunManager {
   /** Why a Slack sync can't run right now (plain language), or null when it can. */
   blockedReason(): string | null {
     if (!this.opts.connection.hasCredentials()) return NOT_CONNECTED_REASON;
-    if (this.opts.connection.status().expired) return PROBLEM_MESSAGES.signed_out.message;
+    const connection = this.opts.connection.status();
+    if (connection.expired) return connection.error || PROBLEM_MESSAGES.signed_out.message;
     if (!this.opts.prefs.get().onboardingComplete) return ONBOARDING_REASON;
     return null;
   }
@@ -378,7 +380,12 @@ export class RunManager {
 
   private async runSlackJob(ctx: JobContext, kind: 'sync' | 'files' | 'lists'): Promise<JobStats> {
     const credentials = this.opts.connection.getCredentials();
-    if (!credentials) throw Object.assign(new Error(NOT_CONNECTED_REASON), { code: 'not_authed' });
+    if (!credentials) {
+      // A connection whose saved sign-in can't be read says why (and now shows Reconnect).
+      const reason =
+        (this.opts.connection.hasCredentials() && this.opts.connection.status().error) || NOT_CONNECTED_REASON;
+      throw Object.assign(new Error(reason), { code: 'not_authed' });
+    }
     const prefs = this.opts.prefs.get();
     const options: ApiSyncOptions = {
       ...ctx,
@@ -403,8 +410,15 @@ export class RunManager {
   }
 
   private currentProblem(): ProblemDTO | null {
-    if (this.opts.connection.hasCredentials() && this.opts.connection.status().expired)
-      return problemFor('signed_out', null);
+    if (this.opts.connection.hasCredentials()) {
+      const connection = this.opts.connection.status();
+      if (connection.expired)
+        return {
+          ...PROBLEM_MESSAGES.signed_out,
+          kind: 'signed_out',
+          message: connection.error || PROBLEM_MESSAGES.signed_out.message,
+        };
+    }
     const last = lastFinishedRun(this.db, FAILURE_KINDS);
     if (!last || last.status !== 'error') return null;
     // A failure from before the current sign-in (the user already reconnected) is old news.

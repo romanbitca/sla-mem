@@ -151,6 +151,15 @@ describe('Settings — Slack connection', () => {
     await waitFor(() => expect(startLogin).toHaveBeenCalledTimes(1));
   });
 
+  it('says why when the saved sign-in can’t be used any more', async () => {
+    const reason = 'sla-mem needs you to sign in to Slack again. Reconnect to keep archiving.';
+    setup(makeSettings({ connection: makeConnection({ expired: true, error: reason }) }));
+    const connection = await card('Slack connection');
+    const alert = within(connection).getByRole('alert');
+    expect(alert.textContent).toContain(reason);
+    expect(within(alert).getByRole('button', { name: 'Reconnect' })).toBeTruthy();
+  });
+
   it('offers Connect Slack with the email-code tip when nothing is connected', async () => {
     setup(makeSettings({ connection: NOT_CONNECTED }));
     const connection = await card('Slack connection');

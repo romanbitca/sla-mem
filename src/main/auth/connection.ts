@@ -55,6 +55,8 @@ export interface ConnectionServiceOptions {
 }
 
 export const SIGNED_OUT_MESSAGE = 'Slack signed you out. Reconnect to keep archiving.';
+/** The saved sign-in exists but can't be unlocked on this computer (see getCredentials). */
+export const SIGN_IN_AGAIN_MESSAGE = 'sla-mem needs you to sign in to Slack again. Reconnect to keep archiving.';
 const UNREACHABLE_MESSAGE = 'Can’t reach Slack right now. Check your internet connection and try again.';
 
 export class ConnectionService extends EventEmitter {
@@ -86,10 +88,45 @@ export class ConnectionService extends EventEmitter {
 
   /** The saved session, or null. Throws when the OS secure storage can't be read. */
   getCredentials(): ResolvedCredentials | null {
-    if (!this.readMeta()) return null;
-    if (this.cached === undefined) this.cached = this.store.get();
+    const meta = this.readMeta();
+    if (!meta) return null;
+    if (this.cached === undefined) {
+      this.cached = this.store.get();
+      if (!this.cached) this.recordUnreadable(meta);
+    }
     const c = this.cached;
     return c ? { token: c.token, cookie: c.cookie, method: c.method } : null;
+  }
+
+  /**
+   * Reads the saved sign-in once at start-up, so one that can't be unlocked shows as Reconnect
+   * straight away rather than when a sync fails. Secure-storage errors are left for the sync to
+   * report.
+   */
+  checkSavedSignIn(): void {
+    try {
+      this.getCredentials();
+    } catch {
+      // Reported by the next sync, with the rest of its problems.
+    }
+  }
+
+  /**
+   * The archive records a connection, but the saved sign-in can't be decrypted: it was saved
+   * under the app's old name (the Keychain key belongs to the name), by another computer or user
+   * account (a copied archive folder), or its Keychain entry is gone. Only signing in again fixes
+   * that, so the connection reports it like a signed-out session: Reconnect, and no Sync now that
+   * fails without a word.
+   */
+  private recordUnreadable(meta: ConnectionMeta): void {
+    if (meta.lastError === SIGN_IN_AGAIN_MESSAGE) return;
+    this.writeMeta({
+      ...meta,
+      lastCheckedAt: this.now(),
+      lastErrorCode: 'not_authed',
+      lastError: SIGN_IN_AGAIN_MESSAGE,
+    });
+    this.changed();
   }
 
   status(): SlackConnectionDTO {
@@ -126,15 +163,8 @@ export class ConnectionService extends EventEmitter {
       });
       return this.changed();
     }
-    if (!creds) {
-      this.writeMeta({
-        ...meta,
-        lastCheckedAt: this.now(),
-        lastErrorCode: 'invalid_auth',
-        lastError: SIGNED_OUT_MESSAGE,
-      });
-      return this.changed();
-    }
+    // Nothing readable is saved: getCredentials already recorded that as "sign in again".
+    if (!creds) return this.changed();
     try {
       const auth = await this.authTest(creds.token, creds.cookie);
       this.writeMeta({

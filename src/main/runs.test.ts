@@ -39,12 +39,14 @@ afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-function connection(opts: { connected?: boolean; expired?: boolean } = {}): RunConnection {
+function connection(
+  opts: { connected?: boolean; expired?: boolean; error?: string; unreadable?: boolean } = {},
+): RunConnection {
   const state = { expired: opts.expired ?? false };
   return {
     hasCredentials: () => opts.connected ?? true,
-    getCredentials: () => ((opts.connected ?? true) ? { token: XOXC, cookie: COOKIE } : null),
-    status: () => ({ expired: state.expired }),
+    getCredentials: () => ((opts.connected ?? true) && !opts.unreadable ? { token: XOXC, cookie: COOKIE } : null),
+    status: () => ({ expired: state.expired, error: opts.error ?? null }),
     markSignedOut: (code) => {
       signedOut.push(code);
       state.expired = true;
@@ -199,6 +201,18 @@ describe('RunManager', () => {
       message: 'Slack signed you out. Reconnect to keep archiving.',
       action: 'reconnect',
     });
+  });
+
+  it('a saved sign-in that can’t be read shows Reconnect with its reason, not a Sync now that does nothing', async () => {
+    const reason = 'sla-mem needs you to sign in to Slack again. Reconnect to keep archiving.';
+    const m = manager({}, connection({ expired: true, unreadable: true, error: reason }), { onboardingComplete: true });
+    expect(m.status()).toMatchObject({
+      blockedReason: reason,
+      problem: { kind: 'signed_out', message: reason, action: 'reconnect' },
+    });
+    // Started anyway (the menu, a shortcut): the run says the same, not "Connect Slack".
+    const id = m.startSync();
+    expect(await m.wait(id)).toMatchObject({ status: 'error', error: reason });
   });
 
   it('describes being offline, a full disk and unexpected failures without codes or stack traces', async () => {

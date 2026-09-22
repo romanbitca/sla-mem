@@ -92,7 +92,10 @@ Each item is also corrected where it belongs in this document.
   (`sla-mem-<version>-<arch>.dmg`, `sla-mem-setup-<version>.exe`), app id `com.9h.sla-mem`, data
   folder `sla-mem`. An archive in a folder under the old name moves to the new one on first
   start; its saved Slack sign-in doesn't survive the move (the Keychain key belongs to the old
-  name), so Slack is connected once more.
+  name), so Slack is connected once more. A saved sign-in that can't be unlocked (the rename, a
+  copied archive folder, a Keychain entry that's gone) is noticed at start-up and shown like a
+  signed-out session: "sign in to Slack again", Reconnect, and Sync now held back. (0.2.0 still
+  called itself connected, and Sync now failed without a word.)
 
 - **Toolchain (§3.1):** Electron 44, TypeScript 6.0 (typescript-eslint supports < 6.1), Vite 7
   (electron-vite 5 requires ≤ 7), Vitest 5 with jsdom 29, Playwright for the E2E run.

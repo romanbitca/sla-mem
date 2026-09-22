@@ -326,7 +326,8 @@ function wireStatus(s: AppServices): () => void {
     const { progress } = status;
     trayState = {
       syncing: status.running,
-      connected: connection.connected,
+      // Signed out (or a sign-in that can't be read): Sync now would only fail; the line says why.
+      connected: connection.connected && !connection.expired,
       lastSuccessAt: status.lastSuccessAt,
       problem: status.problem && status.problem.kind !== 'offline' ? shortProblem(status.problem.kind) : null,
       progress:
@@ -563,6 +564,7 @@ async function start(): Promise<void> {
   // Started at login: just the menu bar icon. Without the icon, the Dock icon stays as the way in.
   if (startHidden && process.platform === 'darwin' && prefs.showTrayIcon) app.dock?.hide();
 
+  s.connection.checkSavedSignIn();
   s.scheduler.start();
   s.updates.start();
   powerMonitor.on('resume', () => {

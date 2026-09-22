@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import clsx from 'clsx';
 import type { SlackConnectionDTO } from '../../../shared/types';
-import { describeError } from '../../lib/api';
+import { describeError, presentableMessage } from '../../lib/api';
 import { formatFullDateTime, isoDateTime } from '../../lib/format';
 import { useNow } from '../../lib/hooks';
 import {
@@ -87,7 +87,9 @@ export function ConnectionCard({ connection }: { connection: SlackConnectionDTO 
         )}
         {connection.expired && !failed && (
           <Callout tone="warn" icon={<AlertIcon size={15} />} role="alert">
-            <p className="font-medium">Slack signed you out. Reconnect to keep archiving.</p>
+            <p className="font-medium">
+              {presentableMessage(connection.error, 'Slack signed you out. Reconnect to keep archiving.')}
+            </p>
             <p className="text-ink-muted">Everything already archived stays here.</p>
             <div className="mt-2">
               <Button size="sm" variant="primary" loading={start.isPending} onClick={signIn}>
