@@ -2,7 +2,7 @@ import { memo, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, type To } from 'react-router';
 import clsx from 'clsx';
 import type { MessageDTO, SearchHit } from '../../../shared/types';
-import { useDirectory } from '../../lib/directory';
+import { isNotesToSelf, useDirectory } from '../../lib/directory';
 import { formatFullDateTime, formatShortDate, isBeyondFreeWindow, isoDateTime, pluralize } from '../../lib/format';
 import { conversationPath, messagePath } from '../../lib/links';
 import { mrkdwnToPlainText, useMrkdwnContext } from '../../lib/mrkdwn';
@@ -196,7 +196,7 @@ export const HitRow = memo(function HitRow({
   const conv = dir.conversations.get(message.conversationId);
   const date = tsToDate(message.ts);
   const fallback = useFallbackText(hit.snippet ? null : message);
-  const beyond = isBeyondFreeWindow(date);
+  const beyond = isBeyondFreeWindow(date) && !isNotesToSelf(conv, dir.selfUserId);
   const where = conv ? conversationTitle(conv) : message.conversationId;
   const text = hit.snippet ? snippetText(hit.snippet) : fallback;
   const link = linkFor(message);

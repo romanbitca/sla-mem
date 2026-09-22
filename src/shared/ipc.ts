@@ -8,6 +8,7 @@
  */
 import type {
   AiEventDTO,
+  AiSpendingDTO,
   AppInfoDTO,
   AskAiRequest,
   BackupResultDTO,
@@ -110,6 +111,8 @@ export interface ArchiveApi {
   stopAi(req: { chatId: string }): OkDTO;
   /** New chat: forgets this one. Chats are only ever kept in memory. */
   endAiChat(req: { chatId: string }): OkDTO;
+  /** What the questions cost, per day (estimated at list prices). */
+  getAiSpending(): AiSpendingDTO;
 
   // App
   getAppInfo(): AppInfoDTO;
@@ -171,6 +174,7 @@ export const API_METHODS = [
   'askAi',
   'stopAi',
   'endAiChat',
+  'getAiSpending',
   'getAppInfo',
   'openExternal',
   'getUpdateInfo',

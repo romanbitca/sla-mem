@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import type { MessageDTO, ThreadDTO } from '../../../shared/types';
+import type { BeyondFreeWindowDTO, MessageDTO, ThreadDTO } from '../../../shared/types';
 import { api, ApiError } from '../../lib/api';
 import ConversationPage from '../../pages/ConversationPage';
 import { MESSAGE_MAX_PAGES, MESSAGE_PAGE_SIZE } from '../../lib/queries';
@@ -252,12 +252,12 @@ describe('ConversationView', () => {
 
 describe('the conversation header', () => {
   const seconds = (d: Date) => d.getTime() / 1000;
-  const conversation = (beyondFreeWindow?: { count: number; oldest: number | null; newest: number | null }) =>
+  const conversation = (hidden?: Omit<BeyondFreeWindowDTO, 'notesToSelf'>) =>
     makeConversation('C1', 'general', {
       messageCount: 1234,
       oldestTs: `${seconds(new Date(2026, 2, 18, 10))}.000000`,
       latestTs: `${seconds(new Date(2026, 8, 18, 15))}.000000`,
-      beyondFreeWindow,
+      beyondFreeWindow: hidden && { ...hidden, notesToSelf: false },
     });
   async function header(): Promise<HTMLElement> {
     const title = await screen.findByRole('heading', { level: 1, name: '#general' });
@@ -293,5 +293,36 @@ describe('the conversation header', () => {
       'Slack Free shows the last 90 days. The oldest message here drops out of Slack on Jun 16, 2026; it stays in your archive.',
     );
     expect(screen.queryByText(/no longer in Slack/)).toBeNull();
+  });
+
+  it('never counts notes to yourself as gone from Slack, however old', async () => {
+    // The self-DM: an IM with the reader (U1 in the test directory). Its messages are from 2023.
+    vi.spyOn(api, 'getConversation').mockResolvedValue(
+      makeConversation('D1', 'You', {
+        type: 'im',
+        rawName: null,
+        dmUserId: 'U1',
+        messageCount: TOTAL,
+        oldestTs: tsAt(0),
+        latestTs: tsAt(TOTAL - 1),
+        beyondFreeWindow: { count: 0, oldest: null, newest: null, notesToSelf: true },
+      }),
+    );
+    renderAt('/c/D1');
+    const title = await screen.findByRole('heading', { level: 1, name: 'You' });
+    const still = await within(title.closest('header')!).findByText('All still in Slack');
+    expect(still.getAttribute('title')).toBe(
+      'Slack Free shows the last 90 days, but it keeps showing notes to yourself however old they are.',
+    );
+    await screen.findByText(`msg-${TOTAL - 1}`);
+    const days = scroller().querySelectorAll('h2');
+    expect(days.length).toBeGreaterThan(0);
+    expect(scroller().textContent).not.toContain('only in the archive');
+  });
+
+  it('marks days older than 90 days in other conversations', async () => {
+    renderAt('/c/C1');
+    await screen.findByText(`msg-${TOTAL - 1}`);
+    expect(scroller().textContent).toContain('only in the archive');
   });
 });

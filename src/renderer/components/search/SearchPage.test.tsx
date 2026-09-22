@@ -213,6 +213,54 @@ describe('SearchPage', () => {
     expect(await screen.findByRole('button', { name: 'Clear From filter' })).toBeTruthy();
   });
 
+  it('starts over when the box is cleared: no results, filters or sort, as if just opened', async () => {
+    const { location } = renderAt('/search?q=deploy&has=file&sort=newest&view=grouped');
+    await screen.findByText(/Showing 30/);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search text' }));
+    await waitFor(() => expect(location.current?.search).toBe(''));
+    expect(location.current?.pathname).toBe('/search');
+    expect(input().value).toBe('');
+    expect(screen.getByText('Search everything you’ve archived')).toBeTruthy();
+    expect(screen.queryByText(/Showing/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Files' }).getAttribute('aria-pressed')).toBe('false');
+    expect(document.activeElement).toBe(input());
+    // Back brings the cleared search back.
+    act(() => void navigate(-1));
+    await waitFor(() => expect(input().value).toBe('deploy'));
+    expect(await screen.findByText(/Showing 30/)).toBeTruthy();
+  });
+
+  it('clears a query that was typed but not searched yet, and nothing else', async () => {
+    const { location } = renderAt('/search');
+    fireEvent.change(input(), { target: { value: 'half typed' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search text' }));
+    expect(input().value).toBe('');
+    expect(location.current?.search).toBe('');
+    expect(search).not.toHaveBeenCalled();
+  });
+
+  it('tags old results “Archive only”, except notes to yourself (Slack keeps those)', async () => {
+    const old = (conversationId: string, i: number) => ({
+      message: makeMessage({ ts: tsAt(i), conversationId, userId: 'U1', text: `note ${i}` }),
+      snippet: `${MATCH_START}note${MATCH_END} ${i}`,
+    });
+    search.mockImplementation(async (params) => ({
+      ...respond(params),
+      total: 2,
+      hits: [old('C1', 1), old('D1', 2)],
+    }));
+    const notes = makeConversation('D1', 'You', { type: 'im', rawName: null, dmUserId: 'U1' });
+    vi.spyOn(api, 'getConversations').mockResolvedValue([...conversations, notes]);
+    const { container } = renderWithProviders(<SearchPage />, {
+      route: '/search?q=note',
+      directory: testDirectory([...conversations, notes]),
+    });
+    await screen.findByText(/Showing 2 of 2/);
+    const [channel, self] = container.querySelectorAll<HTMLElement>('[data-search-hit]');
+    expect(within(channel).queryByText('Archive only')).toBeTruthy();
+    expect(within(self).queryByText('Archive only')).toBeNull();
+  });
+
   it('follows back/forward: the URL is the source of truth', async () => {
     renderAt('/search?q=deploy');
     await screen.findByText(/Showing 30/);

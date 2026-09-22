@@ -12,6 +12,7 @@ import {
   listUsers,
   messageRowIds,
   normalizeTs,
+  notesToSelfId,
   plainTexts,
   threadReplies,
   topLevelInRange,
@@ -472,7 +473,7 @@ describe('stats and workspace meta', () => {
     const db = seededDb();
     const bulk = localMidnight(BASE_SECONDS + 200 * day) + 12 * 3600; // noon
     steadyHistory(db, bulk);
-    // Old notes to yourself Slack still showed: months before everything else.
+    // A couple of old messages Slack still showed (say, thread starters): months before the rest.
     upsertMessages(
       db,
       'D1',
@@ -511,14 +512,77 @@ describe('stats and workspace meta', () => {
       count: 13,
       oldest: BASE_SECONDS + 60,
       newest: BASE_SECONDS + 33 * 60,
+      notesToSelf: false,
     });
     // Everything still inside the window, or nothing archived: none.
     expect(conversationBeyondFreeWindow(db, 'C1', (BASE_SECONDS + 10 * day) * 1000)).toEqual({
       count: 0,
       oldest: null,
       newest: null,
+      notesToSelf: false,
     });
-    expect(conversationBeyondFreeWindow(db, 'C404', now)).toEqual({ count: 0, oldest: null, newest: null });
+    expect(conversationBeyondFreeWindow(db, 'C404', now)).toEqual({
+      count: 0,
+      oldest: null,
+      newest: null,
+      notesToSelf: false,
+    });
+  });
+
+  it('never counts notes to yourself as gone from Slack', () => {
+    const db = seededDb(); // D2 is the self-DM
+    expect(notesToSelfId(db)).toBe('D2');
+    expect(notesToSelfId(memDb())).toBeNull();
+    upsertMessages(db, 'D2', [msg(at(BASE_SECONDS), 'a note from long ago')], 'api');
+    expect(conversationBeyondFreeWindow(db, 'D2', (BASE_SECONDS + 400 * day) * 1000)).toEqual({
+      count: 0,
+      oldest: null,
+      newest: null,
+      notesToSelf: true,
+    });
+  });
+
+  it('leaves notes to yourself out of where the archive starts and of what Slack no longer shows', () => {
+    const db = seededDb();
+    const bulk = localMidnight(BASE_SECONDS + 200 * day) + 12 * 3600;
+    steadyHistory(db, bulk);
+    // Notes to yourself from months before: Slack keeps showing them, so they change nothing.
+    upsertMessages(
+      db,
+      'D2',
+      [msg(at(BASE_SECONDS + 3 * 3600), 'note'), msg(at(BASE_SECONDS + 50 * day), 'note 2')],
+      'api',
+    );
+    const now = (bulk + 80 * day) * 1000; // the window starts ten days before the steady history
+    expect(getStats(db, { now })).toMatchObject({
+      messageCount: 302,
+      oldestTs: at(bulk),
+      newestTs: at(bulk + 299 * 6 * 3600),
+      oldestConversationId: 'C1',
+      mainStart: null,
+      beyondFreeWindowCount: 0,
+    });
+    // Anyone else's message from before the window does count.
+    upsertMessages(db, 'D1', [msg(at(bulk - 20 * day), 'old')], 'api');
+    expect(getStats(db, { now })).toMatchObject({
+      messageCount: 303,
+      oldestTs: at(bulk - 20 * day),
+      oldestConversationId: 'D1',
+      beyondFreeWindowCount: 1,
+    });
+  });
+
+  it('dates the archive by notes to yourself when that is all it holds', () => {
+    const db = seededDb();
+    upsertMessages(db, 'D2', [msg(at(BASE_SECONDS), 'note'), msg(at(BASE_SECONDS + day), 'note 2')], 'api');
+    expect(getStats(db, { now: (BASE_SECONDS + 200 * day) * 1000 })).toMatchObject({
+      messageCount: 2,
+      oldestTs: at(BASE_SECONDS),
+      newestTs: at(BASE_SECONDS + day),
+      oldestConversationId: 'D2',
+      mainStart: null,
+      beyondFreeWindowCount: 0,
+    });
   });
 
   it('reads workspace meta', () => {

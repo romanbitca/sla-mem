@@ -17,6 +17,8 @@ export interface SearchInputProps {
   autoFocus?: boolean;
   /** ArrowDown with no suggestions open: move focus into the results. */
   onExitDown?: () => void;
+  /** The clear button: starts over (without it, the button only empties the box). */
+  onClear?: () => void;
 }
 
 const NO_SOURCE: AutocompleteSource = { users: [], conversations: [], selfUserId: null };
@@ -25,7 +27,16 @@ const NO_SOURCE: AutocompleteSource = { users: [], conversations: [], selfUserId
  * Search box with Slack-style modifier completion (ARIA combobox). Enter searches unless a
  * suggestion is highlighted; Tab or Enter accepts one; Esc dismisses the list.
  */
-export function SearchInput({ value, onChange, onSubmit, source, inputRef, autoFocus, onExitDown }: SearchInputProps) {
+export function SearchInput({
+  value,
+  onChange,
+  onSubmit,
+  source,
+  inputRef,
+  autoFocus,
+  onExitDown,
+  onClear,
+}: SearchInputProps) {
   const ownRef = useRef<HTMLInputElement>(null);
   const ref = inputRef ?? ownRef;
   const listId = useId();
@@ -152,7 +163,8 @@ export function SearchInput({ value, onChange, onSubmit, source, inputRef, autoF
           title="Clear"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
-            onChange('');
+            if (onClear) onClear();
+            else onChange('');
             setCaret(0);
             setOpen(true);
             ref.current?.focus();

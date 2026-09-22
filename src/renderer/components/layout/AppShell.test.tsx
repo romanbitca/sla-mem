@@ -106,8 +106,8 @@ describe('describeSync', () => {
     const signedOut = makeSyncStatus({
       problem: { kind: 'signed_out', message: 'Slack signed you out.', action: 'reconnect' },
     });
-    expect(describeSync(signedOut, null, false)).toMatchObject({ text: 'Reconnect Slack', toSettings: true });
-    expect(describeSync(makeSyncStatus(), null, true)).toMatchObject({ text: 'Connect Slack', toSettings: true });
+    expect(describeSync(signedOut, null, false)).toMatchObject({ text: 'Reconnect Slack', tone: 'warn' });
+    expect(describeSync(makeSyncStatus(), null, true)).toMatchObject({ text: 'Connect Slack', tone: 'warn' });
     const failed = makeSyncStatus({ problem: { kind: 'offline', message: 'Can’t reach Slack.', action: 'retry' } });
     expect(describeSync(failed, null, false)).toMatchObject({ text: 'Last sync didn’t finish', tone: 'bad' });
     expect(describeSync(makeSyncStatus({ stale: true }), null, false).tone).toBe('warn');
@@ -285,7 +285,7 @@ describe('AppShell', () => {
     expect(await screen.findByRole('region', { name: 'Slack connection' })).toBeTruthy();
   });
 
-  it('points the sync indicator at Settings while Slack isn’t connected', async () => {
+  it('says Slack needs connecting in the footer, as plain text', async () => {
     vi.spyOn(api, 'getWorkspace').mockResolvedValue(
       makeWorkspace({ teamId: null, teamName: null, teamDomain: null, selfUserId: null, connected: false }),
     );
@@ -293,11 +293,11 @@ describe('AppShell', () => {
       makeSyncStatus({ recentRuns: [], lastSuccessAt: null, blockedReason: 'Connect Slack to start syncing.' }),
     );
     renderApp();
-    const indicator = await screen.findByTitle('Open Settings to connect Slack');
-    expect(indicator.textContent).toBe('Connect Slack');
-    expect(indicator.getAttribute('href')).toBe('/settings');
-    // Screen readers hear the state once, from a live region outside the link.
-    expect(screen.getByText('Connect Slack', { selector: '[role="status"]' }).closest('a')).toBeNull();
+    const line = await screen.findByText('Connect Slack', { selector: 'p span' });
+    // Not a link or a button: Overview says what to do, and the gear beside it opens Settings.
+    expect(line.closest('a, button')).toBeNull();
+    // Screen readers hear the state once, from a live region.
+    expect(screen.getByText('Connect Slack', { selector: '[role="status"]' })).toBeTruthy();
     expect(screen.getAllByText('Slamem').length).toBeGreaterThan(0);
   });
 
@@ -305,8 +305,10 @@ describe('AppShell', () => {
     vi.spyOn(api, 'getWorkspace').mockResolvedValue(makeWorkspace({ teamName: '9H', teamDomain: '9h' }));
     renderApp();
     expect((await screen.findAllByText('9H')).length).toBeGreaterThan(0);
-    expect(screen.getByText('9h.slack.com · archive')).toBeTruthy();
-    expect((await screen.findByText(/Synced .* ago/)).closest('a')!.getAttribute('href')).toBe('/');
+    expect(screen.getByText('9h.slack.com')).toBeTruthy();
+    const synced = await screen.findByText(/Synced .* ago/);
+    expect(synced.closest('a, button')).toBeNull();
+    expect(synced.parentElement!.hasAttribute('title')).toBe(false);
   });
 
   it('routes unknown paths to a not-found page', async () => {

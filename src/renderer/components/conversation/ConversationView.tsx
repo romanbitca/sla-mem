@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { addDays } from 'date-fns';
 import type { ConversationDTO, MessageDTO } from '../../../shared/types';
 import { describeError, isApiError } from '../../lib/api';
+import { isNotesToSelf, useDirectory } from '../../lib/directory';
 import { Mrkdwn } from '../../lib/mrkdwn';
 import { FREE_PLAN_WINDOW_DAYS, formatDate, formatDateRange, pluralize } from '../../lib/format';
 import { guessThreadParent } from '../../lib/grouping';
@@ -76,6 +77,7 @@ export function ConversationView({ conversationId, header }: ConversationViewPro
   const [missingTs, setMissingTs] = useState<string | null>(null);
   const exporter = useExportConversation();
   const excluded = useSettings().data?.preferences.excludedConversationIds.includes(conversationId) ?? false;
+  const selfUserId = useDirectory().selfUserId;
 
   const query = useMessages(conversationId, anchor);
   const { messages } = query;
@@ -198,6 +200,7 @@ export function ConversationView({ conversationId, header }: ConversationViewPro
   }
 
   const conv = conversation.data;
+  const notesToSelf = isNotesToSelf(conv, selfUserId);
   let body;
   if (query.isPending) {
     body = <LoadingState label="Loading messages…" />;
@@ -228,6 +231,7 @@ export function ConversationView({ conversationId, header }: ConversationViewPro
         onOpenThread={openThread}
         request={request}
         intro={conv && <ConversationIntro conversation={conv} />}
+        keptBySlack={notesToSelf}
       />
     );
   }
@@ -341,7 +345,8 @@ function ConversationHeader({
 /**
  * The conversation in numbers: how many messages the archive holds and over which dates, then,
  * set apart, how many of them Slack Free no longer shows (older than 90 days) and from when to
- * when. Details drop out as the header narrows; the tooltips keep them.
+ * when. Notes to yourself are all still in Slack, however old. Details drop out as the header
+ * narrows; the tooltips keep them.
  */
 function ConversationFacts({ conversation }: { conversation: ConversationDTO }) {
   if (conversation.messageCount === 0) return null;
@@ -360,7 +365,7 @@ function ConversationFacts({ conversation }: { conversation: ConversationDTO }) 
       {hidden && hidden.count > 0 && (
         <NoLongerInSlack count={hidden.count} oldest={hidden.oldest} newest={hidden.newest} />
       )}
-      {hidden && hidden.count === 0 && <StillInSlack oldest={oldest} />}
+      {hidden && hidden.count === 0 && <StillInSlack oldest={oldest} notesToSelf={hidden.notesToSelf} />}
     </span>
   );
 }
@@ -382,12 +387,15 @@ function NoLongerInSlack({ count, oldest, newest }: { count: number; oldest: num
   );
 }
 
-function StillInSlack({ oldest }: { oldest: Date }) {
+function StillInSlack({ oldest, notesToSelf }: { oldest: Date; notesToSelf: boolean }) {
   const leaves = formatDate(addDays(oldest, FREE_PLAN_WINDOW_DAYS), 'MMM d, yyyy');
+  const title = notesToSelf
+    ? `Slack Free shows the last ${FREE_PLAN_WINDOW_DAYS} days, but it keeps showing notes to yourself however old they are.`
+    : `Slack Free shows the last ${FREE_PLAN_WINDOW_DAYS} days.${leaves ? ` The oldest message here drops out of Slack on ${leaves}; it stays in your archive.` : ''}`;
   return (
     <span
       className="hidden shrink-0 items-center gap-1 rounded-full bg-inset px-2 py-px text-ink-faint @md:flex"
-      title={`Slack Free shows the last ${FREE_PLAN_WINDOW_DAYS} days.${leaves ? ` The oldest message here drops out of Slack on ${leaves}; it stays in your archive.` : ''}`}
+      title={title}
     >
       <CheckIcon size={12} className="shrink-0" />
       All still in Slack

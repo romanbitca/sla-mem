@@ -17,7 +17,8 @@
  *   8. killed mid-sync (SIGKILL): committed messages survive and the next sync completes;
  *   9. quitting right after a sync exits promptly;
  *  10. Ask AI against a pretend Claude: the key saved in Settings (encrypted), a question asked in
- *      the chat, a cited message opened; the key never reaches the logs.
+ *      the chat, a cited message opened, what it cost kept (never what was asked) and shown in
+ *      Settings; the key never reaches the logs.
  *
  * Usage: npm run build && npm run e2e   (screenshots go to .e2e-data/shots)
  */
@@ -413,9 +414,18 @@ async function main(): Promise<void> {
     await page.locator('[data-highlighted="true"]').first().waitFor();
     await page.screenshot({ path: path.join(shots, 'ask-ai-citation.png') });
     assert(claude.requests >= 3, `the pretend Claude was asked (${claude.requests} requests)`);
+    // What the question cost is kept, never the question, and adds up in Settings.
+    const usage = fs.readFileSync(path.join(dataDir, 'ai-usage.jsonl'), 'utf8').trim().split('\n');
+    assert(usage.length === 1 && !usage[0].includes('deploy'), `one question's cost kept, not what was asked`);
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    const spending = page.locator('#ask-ai').getByRole('button', { name: /^Spending/ });
+    await spending.click();
+    await page.locator('#ask-ai').getByRole('list', { name: 'Spending per day, last 30 days' }).waitFor();
+    assert((await spending.innerText()).includes('this month'), 'Settings shows what Ask AI cost this month');
+    await page.screenshot({ path: path.join(shots, 'ask-ai-spending.png') });
     await quit(app);
     app = null;
-    log('Ask AI: key saved encrypted, a question answered with sources, a citation opened');
+    log('Ask AI: key saved encrypted, a question answered with sources, a citation opened, its cost in Settings');
 
     const logs = fs
       .readdirSync(path.join(dataDir, 'logs'))

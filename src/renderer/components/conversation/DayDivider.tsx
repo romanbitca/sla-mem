@@ -4,10 +4,20 @@ import { ArchiveIcon } from '../icons';
 
 /**
  * Sticky date header for one day section. The whole band is opaque (PLAN §8.2): while it sticks
- * to the top, messages scroll underneath it instead of showing around a floating pill.
+ * to the top, messages scroll underneath it instead of showing around a floating pill. Days older
+ * than 90 days are marked as only in the archive, except where Slack keeps them (`keptBySlack`:
+ * notes to yourself).
  */
-export const DayDivider = memo(function DayDivider({ date, id }: { date: Date; id: string }) {
-  const beyond = isBeyondFreeWindow(date);
+export const DayDivider = memo(function DayDivider({
+  date,
+  id,
+  keptBySlack = false,
+}: {
+  date: Date;
+  id: string;
+  keptBySlack?: boolean;
+}) {
+  const beyond = !keptBySlack && isBeyondFreeWindow(date);
   return (
     <h2 id={id} className="sticky top-0 z-[5] flex items-center gap-3 bg-canvas px-5 py-2">
       <span aria-hidden="true" className="h-px flex-1 bg-line" />

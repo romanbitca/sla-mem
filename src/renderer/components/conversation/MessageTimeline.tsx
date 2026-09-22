@@ -43,6 +43,8 @@ export interface MessageTimelineProps {
   request: ScrollRequest | null;
   /** Shown above the first message once the beginning of the archive is reached. */
   intro?: ReactNode;
+  /** Notes to yourself: Slack keeps them however old, so no day is marked as gone from Slack. */
+  keptBySlack?: boolean;
 }
 
 const HIGHLIGHT_MS = 3000;
@@ -173,7 +175,7 @@ export function MessageTimeline(props: MessageTimelineProps) {
           )}
           {groups.map((group) => (
             <section key={group.key} aria-labelledby={`day-${group.key}`} className="relative">
-              <DayDivider id={`day-${group.key}`} date={group.date} />
+              <DayDivider id={`day-${group.key}`} date={group.date} keptBySlack={props.keptBySlack} />
               {group.rows.map(({ message, continuation }) => (
                 <MessageItem
                   key={message.ts}

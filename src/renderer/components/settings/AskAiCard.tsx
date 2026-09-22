@@ -9,6 +9,7 @@ import { Button } from '../ui/Button';
 import { Callout } from '../ui/Callout';
 import { Card } from '../ui/Card';
 import { ConfirmDialog } from '../ui/Dialog';
+import { AiSpending } from './AiSpending';
 import { FieldError, SecretInput, Select, SettingRow } from './fields';
 
 /** Where Anthropic's Console lists API keys (console.anthropic.com redirects here). */
@@ -17,7 +18,8 @@ export const ANTHROPIC_KEYS_URL = 'https://platform.claude.com/settings/keys';
 /**
  * Ask AI: the reader's own Anthropic API key and which Claude model answers. The key is checked
  * with Anthropic before it's saved, kept encrypted like the Slack sign-in, and never shown again
- * (only its last four characters). What leaves the computer, and when, is said right here.
+ * (only its last four characters). What leaves the computer, and when, is said right here, and
+ * what the questions have cost is folded away at the bottom (AiSpending).
  */
 export function AskAiCard({ ai, model }: { ai: AiKeyStatusDTO; model: AiModel }) {
   const save = useSaveAiKey();
@@ -167,6 +169,7 @@ export function AskAiCard({ ai, model }: { ai: AiKeyStatusDTO; model: AiModel })
       {save.isError && <FieldError>{describeError(save.error)}</FieldError>}
       {update.isError && <FieldError>Couldn’t save: {describeError(update.error)}</FieldError>}
       {openConsole.isError && <FieldError>{describeError(openConsole.error)}</FieldError>}
+      <AiSpending />
 
       <ConfirmDialog
         open={confirming}

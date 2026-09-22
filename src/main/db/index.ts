@@ -63,6 +63,7 @@ export {
   listConversations,
   getConversation,
   conversationBeyondFreeWindow,
+  notesToSelfId,
   getMessages,
   getThread,
   getMessageRevisions,

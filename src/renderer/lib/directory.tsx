@@ -41,6 +41,14 @@ export function buildDirectory(
   };
 }
 
+/**
+ * The self-DM ("You"): notes to yourself. Slack keeps showing them however old they are, so they
+ * are never marked as gone from Slack (main leaves them out of its counts the same way).
+ */
+export function isNotesToSelf(conversation: ConversationDTO | undefined, selfUserId: string | null): boolean {
+  return conversation?.type === 'im' && selfUserId != null && conversation.dmUserId === selfUserId;
+}
+
 export function buildMrkdwnContext(dir: Directory): MrkdwnContext {
   return {
     userLabel: (id) => dir.users.get(id)?.label,

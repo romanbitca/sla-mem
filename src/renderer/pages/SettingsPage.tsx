@@ -7,6 +7,7 @@ import { AdvancedCard } from '../components/settings/AdvancedCard';
 import { AppSettingsCard } from '../components/settings/AppSettingsCard';
 import { AskAiCard } from '../components/settings/AskAiCard';
 import { AttachmentsCard } from '../components/settings/AttachmentsCard';
+import { BackupCard } from '../components/settings/BackupCard';
 import { ConnectionCard } from '../components/settings/ConnectionCard';
 import { StorageCard } from '../components/settings/StorageCard';
 import { SyncSettingsCard } from '../components/settings/SyncSettingsCard';
@@ -16,7 +17,8 @@ import { LoadingState } from '../components/ui/Spinner';
 
 /**
  * `/settings` (PLAN §8.4): deliberately small. Cards that need the saved settings wait for them;
- * storage, about and the advanced options load on their own, so one failure never blanks the page.
+ * storage, backup, about and the advanced options load on their own, so one failure never blanks
+ * the page.
  */
 export default function SettingsPage() {
   const settings = useSettings();
@@ -73,6 +75,7 @@ export default function SettingsPage() {
         <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6 sm:px-6 lg:py-8">
           {settingsCards}
           <StorageCard />
+          <BackupCard />
           <AboutCard />
           <AdvancedCard open={advancedOpen} onOpenChange={setAdvancedOpen} status={sync.data} teamDomain={teamDomain} />
         </div>

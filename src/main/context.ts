@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { AppInfoDTO, AttachmentPolicy, LoginStatusDTO, PreferencesDTO, ThemePreference } from '../shared/types';
-import { AiService, SafeStorageAiKeyStore } from './ai';
+import { AiService, AiUsageLog, SafeStorageAiKeyStore } from './ai';
 import {
   ConnectionService,
   LoginManager,
@@ -143,6 +143,11 @@ export function createServices(opts: ServicesOptions): AppServices {
     db: ctx.db,
     store: new SafeStorageAiKeyStore(ctx.paths.aiKeyPath, opts.cipher),
     model: () => ctx.prefs.get().aiModel,
+    usage: new AiUsageLog({
+      file: ctx.paths.aiUsagePath,
+      logsDir: ctx.paths.logsDir,
+      log: (line) => ctx.log.info(line),
+    }),
     log: (line) => ctx.log.info(line),
     baseURL: opts.aiBaseUrl,
     fetch: opts.fetch,

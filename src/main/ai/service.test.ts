@@ -8,6 +8,7 @@ import { fakeAnthropicFetch, type FakeRequest, type FakeResponse } from '../../.
 import { MemoryAiKeyStore } from './key-store';
 import { AiService, describeAiError, usageDTO } from './service';
 import { RefusedError } from './agent';
+import type { AiUsageEntry, AiUsageLog } from './usage-log';
 
 const KEY = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -24,7 +25,10 @@ function archive(): DB {
 
 type Script = (req: FakeRequest, round: number) => FakeResponse | undefined;
 
-function setup(script: Script, opts: { model?: AiModel; key?: string | null } = {}) {
+function setup(
+  script: Script,
+  opts: { model?: AiModel; key?: string | null; usage?: Pick<AiUsageLog, 'record' | 'spending'> } = {},
+) {
   let round = 0;
   const api = fakeAnthropicFetch((req) => (req.method === 'POST' ? script(req, round++) : script(req, -1)));
   const events: AiEventDTO[] = [];
@@ -33,6 +37,7 @@ function setup(script: Script, opts: { model?: AiModel; key?: string | null } = 
     db: archive(),
     store: new MemoryAiKeyStore(opts.key === undefined ? KEY : opts.key),
     model: () => opts.model ?? 'claude-opus-5',
+    usage: opts.usage,
     log: (line) => logs.push(line),
     baseURL: 'http://anthropic.test',
     fetch: api.fetch,
@@ -316,6 +321,91 @@ describe('AiService: answering', () => {
     await expect(finished('t')).resolves.toMatchObject({ type: 'done' });
     expect(posts().map((p) => 'fallbacks' in (p.body ?? {}))).toEqual([true, false]);
     expect(logs.join('\n')).toContain('asking without them from now on');
+  });
+});
+
+describe('AiService: spending', () => {
+  /** Records what the service keeps, and how many log lines there were at that moment. */
+  function keeper() {
+    const kept: { entry: AiUsageEntry; logLines: number }[] = [];
+    let logs: string[] = [];
+    return {
+      kept,
+      watch: (lines: string[]) => (logs = lines),
+      usage: {
+        record: (entry: AiUsageEntry) => kept.push({ entry, logLines: logs.length }),
+        spending: () => ({ days: [{ date: '2026-09-22', costUsd: 0.2, questions: 3 }] }),
+      },
+    };
+  }
+
+  it('keeps what each answer cost, before its log line', async () => {
+    const k = keeper();
+    const { service, finished, logs } = setup(searchThenAnswer, { usage: k.usage });
+    k.watch(logs);
+    service.ask({ chatId: 'c', turnId: 't', question: 'Who asked for the e2e run?' });
+    await finished('t');
+    const cost = usageDTO('claude-opus-5', { input: 1600, cacheWrite: 1000, cacheRead: 2200, output: 100 });
+    expect(k.kept).toHaveLength(1);
+    expect(k.kept[0].entry).toEqual({
+      at: expect.any(Number),
+      model: 'claude-opus-5',
+      inputTokens: 4800,
+      outputTokens: 100,
+      costUsd: cost.costUsd,
+      outcome: 'answered',
+    });
+    // Kept before "answered with …" reached the log (which the first read of spending brings over).
+    expect(logs.slice(0, k.kept[0].logLines).some((l) => l.includes('answered with'))).toBe(false);
+    expect(logs.some((l) => l.includes('answered with'))).toBe(true);
+    expect(service.spending()).toEqual({ days: [{ date: '2026-09-22', costUsd: 0.2, questions: 3 }] });
+  });
+
+  it('keeps what stopped and failed questions used, and nothing when they used nothing', async () => {
+    const searched = { input_tokens: 1200, cache_write: 1000, output_tokens: 60 };
+    const round0: FakeResponse = {
+      reply: {
+        content: [{ type: 'tool_use', id: 'toolu_1', name: 'search_messages', input: { query: 'test' } }],
+        stop_reason: 'tool_use',
+        usage: searched,
+      },
+    };
+
+    const stopped = keeper();
+    const a = setup((_req, round) => (round === 0 ? round0 : { hangAfter: 'Looking' }), { usage: stopped.usage });
+    a.service.ask({ chatId: 'c', turnId: 't', question: 'Anything?' });
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    a.service.stop('c');
+    await expect(a.finished('t')).resolves.toMatchObject({ type: 'done', stopped: true });
+    expect(stopped.kept.map((k) => k.entry)).toEqual([
+      expect.objectContaining({ inputTokens: 2200, outputTokens: 60, outcome: 'stopped' }),
+    ]);
+
+    const failed = keeper();
+    const b = setup(
+      (_req, round) =>
+        round === 0
+          ? round0
+          : { status: 400, type: 'invalid_request_error', message: 'Your credit balance is too low.' },
+      { usage: failed.usage },
+    );
+    b.service.ask({ chatId: 'c', turnId: 't', question: 'Anything?' });
+    await expect(b.finished('t')).resolves.toMatchObject({ type: 'error', kind: 'no_credit' });
+    expect(failed.kept.map((k) => k.entry)).toEqual([
+      expect.objectContaining({ inputTokens: 2200, outputTokens: 60, outcome: 'failed' }),
+    ]);
+
+    const refusedKey = keeper();
+    const c = setup(() => ({ status: 401, type: 'authentication_error', message: 'invalid x-api-key' }), {
+      usage: refusedKey.usage,
+    });
+    c.service.ask({ chatId: 'c', turnId: 't', question: 'Hi' });
+    await c.finished('t');
+    expect(refusedKey.kept).toEqual([]);
+  });
+
+  it('has nothing to show without a record', () => {
+    expect(setup(() => undefined).service.spending()).toEqual({ days: [] });
   });
 });
 

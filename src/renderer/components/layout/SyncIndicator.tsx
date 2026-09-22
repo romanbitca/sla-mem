@@ -1,4 +1,3 @@
-import { Link } from 'react-router';
 import clsx from 'clsx';
 import type { SyncStatusDTO } from '../../../shared/types';
 import { presentableMessage } from '../../lib/api';
@@ -9,7 +8,7 @@ import { Spinner } from '../ui/Spinner';
 export interface SyncIndicatorProps {
   status: SyncStatusDTO | undefined;
   error: unknown;
-  /** No Slack session saved: say so and point at Settings instead of the archive home. */
+  /** No Slack session saved: say so. */
   needsConnection?: boolean;
 }
 
@@ -18,7 +17,6 @@ type Tone = 'ok' | 'warn' | 'bad' | 'busy';
 export interface SyncSummary {
   text: string;
   tone: Tone;
-  toSettings: boolean;
   /** Longer explanation for the tooltip, when there is one. */
   detail?: string;
   /**
@@ -36,8 +34,8 @@ export function describeSync(
 ): SyncSummary {
   if (!status) {
     return error
-      ? { text: 'Sync status unavailable', tone: 'warn', toSettings: false, announce: '' }
-      : { text: 'Checking…', tone: 'ok', toSettings: false, announce: '' };
+      ? { text: 'Sync status unavailable', tone: 'warn', announce: '' }
+      : { text: 'Checking…', tone: 'ok', announce: '' };
   }
   if (status.running) {
     const p = status.progress;
@@ -46,32 +44,30 @@ export function describeSync(
     return {
       text: `${what}…${count}`,
       tone: 'busy',
-      toSettings: false,
       detail: presentableMessage(p?.message, '') || undefined,
       announce: `${what}…`,
     };
   }
   if (status.problem?.kind === 'signed_out') {
-    return { text: 'Reconnect Slack', tone: 'warn', toSettings: true, announce: 'Reconnect Slack' };
+    return { text: 'Reconnect Slack', tone: 'warn', announce: 'Reconnect Slack' };
   }
-  if (needsConnection) return { text: 'Connect Slack', tone: 'warn', toSettings: true, announce: 'Connect Slack' };
+  if (needsConnection) return { text: 'Connect Slack', tone: 'warn', announce: 'Connect Slack' };
   if (status.blockedReason) {
     const detail = presentableMessage(status.blockedReason, 'Syncing isn’t possible right now.');
-    return { text: 'Sync paused', tone: 'warn', toSettings: false, detail, announce: 'Sync paused' };
+    return { text: 'Sync paused', tone: 'warn', detail, announce: 'Sync paused' };
   }
   if (status.problem) {
-    return { text: 'Last sync didn’t finish', tone: 'bad', toSettings: false, announce: 'Last sync didn’t finish' };
+    return { text: 'Last sync didn’t finish', tone: 'bad', announce: 'Last sync didn’t finish' };
   }
   if (status.lastSuccessAt) {
     const ago = timeAgo(status.lastSuccessAt, now);
     return {
       text: ago ? `Synced ${ago}` : 'Synced',
       tone: status.stale ? 'warn' : 'ok',
-      toSettings: false,
       announce: 'Synced',
     };
   }
-  return { text: 'Not synced yet', tone: 'warn', toSettings: false, announce: 'Not synced yet' };
+  return { text: 'Not synced yet', tone: 'warn', announce: 'Not synced yet' };
 }
 
 const DOT: Record<Exclude<Tone, 'busy'>, string> = {
@@ -81,19 +77,19 @@ const DOT: Record<Exclude<Tone, 'busy'>, string> = {
 };
 
 /**
- * Compact status line in the sidebar footer. Links to the archive home, where syncing is shown
- * in full, or to Settings when Slack needs connecting.
+ * Compact status line in the sidebar footer: text, not a control (Overview shows syncing in full,
+ * and the gear beside it opens Settings). A tooltip adds only what the line leaves out, such as
+ * what a running sync is fetching or why syncing is paused.
  */
 export function SyncIndicator({ status, error, needsConnection = false }: SyncIndicatorProps) {
   // Pushed updates only arrive when something changes; "Synced 5 minutes ago" must still move on.
   const now = useNow(30_000);
-  const { text, tone, toSettings, detail, announce } = describeSync(status, error, needsConnection, now);
+  const { text, tone, detail, announce } = describeSync(status, error, needsConnection, now);
   return (
     <>
-      <Link
-        to={toSettings ? '/settings' : '/'}
-        className="focus-ring flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-xs text-ink-muted hover:bg-hover hover:text-ink"
-        title={toSettings ? 'Open Settings to connect Slack' : detail || text}
+      <p
+        className="flex min-w-0 flex-1 cursor-default items-center gap-2 px-2 py-1 text-xs text-ink-muted"
+        title={detail}
       >
         {tone === 'busy' ? (
           <Spinner size={12} className="shrink-0 text-accent-text" />
@@ -101,7 +97,7 @@ export function SyncIndicator({ status, error, needsConnection = false }: SyncIn
           <span className={clsx('size-2 shrink-0 rounded-full', DOT[tone])} aria-hidden="true" />
         )}
         <span className="truncate">{text}</span>
-      </Link>
+      </p>
       <span className="sr-only" role="status">
         {announce}
       </span>

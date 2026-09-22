@@ -149,7 +149,7 @@ Each item is also corrected where it belongs in this document.
   no history, threads or attachments (a file also shared somewhere archived still downloads), and
   what was archived before stays unless the reader chooses to delete it.
 - **Moving to another computer (added):** "Back up now" writes the whole archive into one zip;
-  "Import a backup" (first screen, or Settings → Storage) merges it into the archive on another
+  "Import a backup" (first screen, or Settings → Backup) merges it into the archive on another
   computer, row by row, losing and duplicating nothing, and carries each conversation's sync
   position over so syncing continues where it stopped. A backup of another Slack account is
   refused.
@@ -170,18 +170,37 @@ Each item is also corrected where it belongs in this document.
   starts where the steady history starts when a handful of messages reach much further back. Slack
   still shows some messages past its 90 days (notes to yourself, thread starters with recent
   replies), so the first sync of the real workspace found five notes from March while everything
-  else began on Jun 24, and "Mar 18 – Sep 22, 189 days" described it badly. The card then reads
-  "Jun 24, 2026 – Sep 22, 2026 · 91 days · plus 7 older messages, back to Mar 18, 2026", the date
-  linking to the oldest message. Main finds the start from the point all but the oldest 1% of
-  messages follow, back through messages less than four days apart, and only says it when the few
-  older ones stretch the range by over a month and over a quarter (`getStats` → `mainStart`).
+  else began on Jun 24, and "Mar 18 – Sep 22, 189 days" described it badly. 0.3.2 read "Jun 24,
+  2026 – Sep 22, 2026 · 91 days · plus 7 older messages, back to Mar 18, 2026", the date linking to
+  the oldest message. Main finds the start from the point all but the oldest 1% of messages
+  follow, back through messages less than four days apart, and only says it when the few older
+  ones stretch the range by over a month and over a quarter (`getStats` → `mainStart`).
+- **Notes to yourself never expire (0.3.5):** Slack keeps showing the self-DM ("You") however old
+  its messages are (the owner's point, and what the first sync found), so they count nowhere as
+  history Slack no longer shows: not in the Overview's count, the conversation header (always "All
+  still in Slack", its tooltip says why), the day dividers or search's "Archive only" tag. Nor do
+  they set where **Archive covers** starts, unless the archive holds nothing else. On the real
+  workspace the card now reads "Jun 17, 2026 – Sep 22, 2026 · 98 days": the two oldest messages are
+  thread starters from Jun 17 and 19, a week before the rest, too little to mention separately.
+  The self-DM is the IM whose other member is the archive's own user (`notesToSelfId`).
 - **Conversation header (0.3.2, §8.3):** the line under the name gives the total ("1,057 messages
   · Mar 6 – Sep 21, 2026") and, set apart, how many of them Slack Free no longer shows, with their
   dates ("522 no longer in Slack · Mar 6 – Jun 18, 2026"), or "All still in Slack" (the tooltip says
   when the first one drops out). Older than 90 days is the same rule as the Overview's count. The
-  details give way as the header narrows (a thread open), and the tooltips keep them.
+  details give way as the header narrows (a thread open), and the tooltips keep them. Notes to
+  yourself are always all still in Slack (0.3.5, above).
 - **Sidebar filter (0.3.2):** "Filter conversations" is a bordered box with a filter icon, set apart
   from Overview and Search by a line, and its clear button shows whenever it holds text.
+- **Sidebar, top and bottom (0.3.5):** under the workspace's name, just its address
+  (9hgroup.slack.com, no "· archive"). The sync status at the bottom ("Synced 5 hours ago") is a
+  line of text, not a link, with no hover effect: Overview shows syncing in full, and the gear
+  beside it opens Settings. A tooltip appears only when it adds something (what a running sync is
+  fetching, why syncing is paused).
+- **Clearing a search starts over (0.3.5):** the × in the search box goes back to Search as it
+  opens: no results, filters, sort or open message (Back returns to the cleared search). It used
+  to empty the box and leave the old results on screen.
+- **Settings → Backup (0.3.5):** "Back up now" and "Import a backup" have their own card after
+  Storage, which keeps disk use, the folder and freeing space.
 - **Ask AI (added, opt-in):** a sidebar place where the reader asks questions about the archive in
   plain words ("where did Ana mention the tests?", "what happened in #design this week?") and
   Claude answers with numbered citations that open the message beside the chat (or its
@@ -205,6 +224,15 @@ Each item is also corrected where it belongs in this document.
   tokens and cost. Chats live in memory only (New chat forgets one; quitting forgets all); logs say
   what an answer cost, never what was asked. `npm run mock:claude` plus `SLA_MEM_ANTHROPIC_API`
   (development builds only) stand in for Anthropic without a key.
+- **Ask AI spending (0.3.5):** what each question cost is kept in `ai-usage.jsonl` (when it
+  finished, the model, the tokens and the price estimated at Anthropic's list prices; never the
+  question or the answer), for answered, stopped and failed questions alike, whatever they used.
+  **Settings → Ask AI → Spending**, folded until opened (its title gives this month's total), shows
+  today, this week (from Monday) and this month, and a bar chart by day (the last 30), week (12)
+  or month (12); pointing at a bar, or moving along the bars with the arrow keys, shows its dates,
+  cost and number of questions, and a finished answer adds itself straight away. 0.3.3 and 0.3.4
+  only wrote costs to the log, so the first time spending is read those log lines are brought over
+  once (on the owner's archive: 13 answers, $0.21). The Anthropic Console has the exact bill.
 - **Export conversation (Stage 8 nicety):** built as Markdown only (day headings, threads as
   quotes, edits, deletions, attachments and reactions noted). Markdown opens in any editor and
   renders in most viewers, so the HTML variant was left out.
@@ -614,6 +642,9 @@ Use Electron's `app.getPath('userData')`, which resolves per-OS:
   tmp/                  partial downloads before their atomic rename
 ```
 
+As built, also: `ai-key.bin` (the Anthropic API key for Ask AI, encrypted the same way) and
+`ai-usage.jsonl` (what each Ask AI question cost; never what was asked).
+
 Secrets are **not** stored here in plaintext — see §3.5.
 
 As built, `--data-dir=<path>` or `SLA_MEM_DATA_DIR` points the app at another folder (demo
@@ -975,7 +1006,8 @@ Familiar to anyone who has used Slack, but clearly a *reader*:
 - **Sidebar**: workspace name; a search box (⌘K / Ctrl+K); Channels, Direct messages, Group DMs, each
   collapsible with a filter box; message counts; archived channels dimmed. *(As built: Overview
   and a Search item that opens the search screen instead of a box in the sidebar, then one filter
-  box for all the conversations, with a clear button while it holds text; see §0.3.)*
+  box for all the conversations, with a clear button while it holds text; at the bottom the sync
+  status as plain text beside the Settings gear; see §0.3.)*
 - **Conversation view**: day dividers (sticky, opaque — must not overlap message content),
   consecutive messages from the same author within 5 minutes grouped, avatars, timestamps with full
   date on hover, "(edited)" with a revisions popover, "deleted in Slack" badge, reactions with
@@ -1013,8 +1045,10 @@ Familiar to anyone who has used Slack, but clearly a *reader*:
   — see §10.4 for why.
 - **Storage**: disk used, broken down (messages vs attachments), "Show folder", "Delete downloaded
   attachments older than…", and a **Back up now** action that zips the archive to a chosen folder.
+  *(As built: backing up and importing a backup have their own **Backup** card.)*
 - **About**: version, check for updates, link to the guide.
-- *(As built: an **Ask AI** card: the Anthropic API key, the model, and what is sent to Anthropic.)*
+- *(As built: an **Ask AI** card: the Anthropic API key, the model, what is sent to Anthropic, and
+  what the questions cost, folded away; see §0.3.)*
 
 ### 8.5 Error messages — plain language, always with an action
 

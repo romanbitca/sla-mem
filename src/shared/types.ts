@@ -65,6 +65,11 @@ export interface BeyondFreeWindowDTO {
   /** Unix seconds of the oldest and the newest of them (null when there are none). */
   oldest: number | null;
   newest: number | null;
+  /**
+   * The self-DM ("You"): Slack keeps showing notes to yourself however old they are, so none of
+   * them count (count 0).
+   */
+  notesToSelf: boolean;
 }
 
 // ─── Messages ─────────────────────────────────────────────────────────────────────────────────
@@ -268,17 +273,23 @@ export interface StatsDTO {
   filesDownloaded: number;
   filesBytes: number;
   dbBytes: number;
+  /**
+   * The period the archive covers: its oldest and newest messages. Notes to yourself (the self-DM)
+   * don't set the start, since Slack keeps showing them however old they are, unless the archive
+   * holds nothing else.
+   */
   oldestTs: string | null;
   newestTs: string | null;
-  /** The conversation that holds the oldest message. */
+  /** The conversation that holds the oldest message (as `oldestTs` counts it). */
   oldestConversationId: string | null;
   /**
-   * When the oldest messages are a thin trickle long before the rest (say, old notes to yourself
-   * that Slack still showed): the day most of the archive starts (local midnight, as a ts) and how
-   * many messages are older. Null when the archive simply starts at its oldest message.
+   * When the oldest messages are a thin trickle long before the rest (say, thread starters that
+   * Slack still showed for their recent replies): the day most of the archive starts (local
+   * midnight, as a ts) and how many messages are older. Null when the archive simply starts at
+   * `oldestTs`.
    */
   mainStart: { ts: string; olderCount: number } | null;
-  /** Messages older than 90 days: history Slack Free no longer shows. */
+  /** Messages older than 90 days, notes to yourself aside: history Slack Free no longer shows. */
   beyondFreeWindowCount: number;
 }
 
@@ -495,6 +506,21 @@ export interface AiUsageDTO {
   outputTokens: number;
   /** At Anthropic's list prices, in US dollars. */
   costUsd: number;
+}
+
+/** What Ask AI has cost, per local day (Settings → Ask AI → Spending). */
+export interface AiSpendingDTO {
+  /** Days anything was spent, oldest first. */
+  days: AiSpendingDayDTO[];
+}
+
+export interface AiSpendingDayDTO {
+  /** Local date, YYYY-MM-DD. */
+  date: string;
+  /** Estimated at Anthropic's list prices, in US dollars. */
+  costUsd: number;
+  /** Questions that used any tokens: answered, stopped or failed. */
+  questions: number;
 }
 
 /**

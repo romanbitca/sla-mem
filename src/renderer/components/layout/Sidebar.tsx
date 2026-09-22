@@ -143,9 +143,7 @@ export function Sidebar({ syncStatus, syncError, onClose, className, inert }: Si
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm leading-tight font-semibold text-ink">{teamName}</p>
-          <p className="truncate text-[11px] leading-tight text-ink-faint">
-            {host ? `${host} · archive` : 'Local archive'}
-          </p>
+          <p className="truncate text-[11px] leading-tight text-ink-faint">{host || 'Local archive'}</p>
         </div>
         {onClose && (
           <IconButton

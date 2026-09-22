@@ -85,11 +85,11 @@ Slack no longer shows.
 
 ## Moving to a new computer
 
-1. On the old computer: **Settings → Storage → Back up now**, and save the file somewhere you can
+1. On the old computer: **Settings → Backup → Back up now**, and save the file somewhere you can
    reach from the new computer (a USB stick, a shared drive). It contains your Slack messages:
    keep it private.
 2. On the new computer: install Slamem as above. On its first screen click **Moving from another
-   computer? Import a backup** and choose that file. (Later, it's **Settings → Storage → Import a
+   computer? Import a backup** and choose that file. (Later, it's **Settings → Backup → Import a
    backup**.) Backups made under the old name, sla-mem, work too.
 3. Connect Slack with the same account. Syncing carries on from where the old computer stopped,
    and nothing is duplicated.

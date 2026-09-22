@@ -204,6 +204,13 @@ export default function SearchPage() {
 
   const focusFirstHit = () => resultsRef.current?.querySelector<HTMLElement>('[data-search-hit]')?.focus();
 
+  // The box's clear button starts over, as if Search had just been opened: no results, filters or
+  // open message. Back returns to the search that was cleared.
+  const clear = () => {
+    setDraft('');
+    if (location.search) navigate('/search');
+  };
+
   let body: ReactNode;
   if (!params) {
     body = <SearchTips onInsert={insertTip} />;
@@ -311,6 +318,7 @@ export default function SearchPage() {
             inputRef={inputRef}
             autoFocus={!params}
             onExitDown={focusFirstHit}
+            onClear={clear}
           />
           <FilterBar state={working} effective={effective} data={data} onChange={go} />
         </div>

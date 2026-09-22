@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import type { SettingsDTO } from '../../../shared/types';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { format, subDays } from 'date-fns';
+import type { AiSpendingDTO, SettingsDTO } from '../../../shared/types';
 import { AppEffects } from '../../App';
 import { api, ApiError } from '../../lib/api';
 import SettingsPage from '../../pages/SettingsPage';
@@ -42,6 +43,7 @@ function setup(settings: SettingsDTO | Error = makeSettings(), route = '/setting
   vi.spyOn(api, 'getStorage').mockResolvedValue(storage);
   vi.spyOn(api, 'getAppInfo').mockResolvedValue(makeAppInfo());
   vi.spyOn(api, 'getUpdateInfo').mockResolvedValue(makeUpdateInfo());
+  if (!vi.isMockFunction(api.getAiSpending)) vi.spyOn(api, 'getAiSpending').mockResolvedValue({ days: [] });
   return renderWithProviders(
     <>
       <AppEffects />
@@ -311,18 +313,101 @@ describe('Settings — Ask AI', () => {
   });
 });
 
+describe('Settings — Ask AI spending', () => {
+  const today = new Date();
+  const date = (d: Date) => format(d, 'yyyy-MM-dd');
+  // Today, and a day far enough back to be in no current week or month.
+  const SPENT: AiSpendingDTO = {
+    days: [
+      { date: date(subDays(today, 40)), costUsd: 1.5, questions: 30 },
+      { date: date(today), costUsd: 0.21, questions: 13 },
+    ],
+  };
+  const toggle = (ask: HTMLElement) => within(ask).getByRole('button', { name: /^Spending/ });
+
+  it('is folded away, with this month’s total beside its name', async () => {
+    vi.spyOn(api, 'getAiSpending').mockResolvedValue(SPENT);
+    setup();
+    const ask = await card('Ask AI');
+    await waitFor(() => expect(toggle(ask).textContent).toBe('Spending$0.21 this month'));
+    expect(toggle(ask).getAttribute('aria-expanded')).toBe('false');
+    expect(within(ask).queryByText('This week')).toBeNull();
+    expect(within(ask).queryByRole('list')).toBeNull();
+  });
+
+  it('opens to today, this week and this month, and bars by day, week or month', async () => {
+    vi.spyOn(api, 'getAiSpending').mockResolvedValue(SPENT);
+    setup();
+    const ask = await card('Ask AI');
+    await waitFor(() => expect(toggle(ask).textContent).toContain('$0.21'));
+    fireEvent.click(toggle(ask));
+    expect(toggle(ask).getAttribute('aria-expanded')).toBe('true');
+    for (const label of ['Today', 'This week', 'This month']) {
+      const figure = within(ask).getByText(label, { selector: 'dt' }).parentElement!;
+      expect(figure.textContent).toBe(`${label}$0.2113 questions`);
+    }
+    expect(within(ask).getByText(/\$1\.71 in all for 43 questions since/).textContent).toContain(
+      'Estimated at Anthropic’s list prices',
+    );
+
+    const days = within(ask).getByRole('list', { name: 'Spending per day, last 30 days' });
+    const bars = within(days).getAllByRole('listitem');
+    expect(bars).toHaveLength(30);
+    const todayBar = bars[29];
+    expect(todayBar.getAttribute('aria-label')).toMatch(/: \$0\.21, 13 questions$/);
+    // Pointing at a bar shows its numbers.
+    fireEvent.mouseEnter(todayBar);
+    expect(within(ask).getByText('$0.21 · 13 questions')).toBeTruthy();
+    fireEvent.mouseLeave(days);
+    expect(within(ask).queryByText('$0.21 · 13 questions')).toBeNull();
+    // One tab stop; the arrow keys walk the bars and show each one's numbers.
+    expect(bars.filter((b) => b.tabIndex === 0)).toEqual([todayBar]);
+    act(() => todayBar.focus());
+    fireEvent.keyDown(todayBar, { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(bars[28]);
+    expect(within(ask).getByText('$0 · 0 questions')).toBeTruthy();
+
+    fireEvent.click(within(ask).getByRole('button', { name: 'Months' }));
+    const months = within(ask).getByRole('list', { name: 'Spending per month, last 12 months' });
+    const labels = within(months)
+      .getAllByRole('listitem')
+      .map((b) => b.getAttribute('aria-label'));
+    expect(labels).toHaveLength(12);
+    expect(labels[11]).toMatch(/: \$0\.21, 13 questions$/);
+    expect(labels.filter((l) => l?.endsWith(': $1.50, 30 questions'))).toHaveLength(1);
+  });
+
+  it('says when nothing has been spent yet, and adds each answer as it finishes', async () => {
+    const bridge = installFakeBridge(() => {
+      throw { code: 'blocked', message: 'Not in this test.' };
+    });
+    const spending = vi.spyOn(api, 'getAiSpending').mockResolvedValue({ days: [] });
+    setup();
+    const ask = await card('Ask AI');
+    await waitFor(() => expect(toggle(ask).textContent).toBe('SpendingNothing yet'));
+    fireEvent.click(toggle(ask));
+    expect(within(ask).getByText(/Nothing spent yet/)).toBeTruthy();
+
+    spending.mockResolvedValue(SPENT);
+    const usage = { model: 'claude-sonnet-5', inputTokens: 5000, outputTokens: 300, costUsd: 0.01 } as const;
+    bridge.emit('ai', { chatId: 'c', turnId: 't', type: 'done', usage, stopped: false });
+    await waitFor(() => expect(toggle(ask).textContent).toBe('Spending$0.21 this month'));
+    expect(within(ask).getByRole('list', { name: 'Spending per day, last 30 days' })).toBeTruthy();
+  });
+});
+
 describe('Settings — moving computers', () => {
   it('imports a backup made on another computer through main’s file picker', async () => {
     const restore = vi.spyOn(api, 'importBackup').mockResolvedValueOnce(null).mockResolvedValueOnce({ runId: 4 });
     setup();
-    const storage = await card('Storage');
-    const button = await within(storage).findByRole('button', { name: 'Import a backup…' });
+    const backup = await card('Backup');
+    const button = await within(backup).findByRole('button', { name: 'Import a backup…' });
     fireEvent.click(button); // cancelled in the picker: nothing to say
     await waitFor(() => expect(restore).toHaveBeenCalledTimes(1));
-    expect(within(storage).queryByText(/Importing the backup/)).toBeNull();
+    expect(within(backup).queryByText(/Importing the backup/)).toBeNull();
     fireEvent.click(button);
     expect(
-      await within(storage).findByText(/Importing the backup: you can follow it on the Archive page/),
+      await within(backup).findByText(/Importing the backup: you can follow it on the Overview page/),
     ).toBeTruthy();
   });
 });
@@ -425,14 +510,16 @@ describe('Settings — storage', () => {
   it('backs up to a folder the reader picks (and does nothing when they cancel)', async () => {
     const backup = vi.spyOn(api, 'backupNow').mockResolvedValueOnce(null);
     setup();
-    const storage = await card('Storage');
-    fireEvent.click(within(storage).getByRole('button', { name: 'Back up now' }));
+    const section = await card('Backup');
+    // Its own section, no longer part of Storage.
+    expect(within(await card('Storage')).queryByRole('button', { name: 'Back up now' })).toBeNull();
+    fireEvent.click(within(section).getByRole('button', { name: 'Back up now' }));
     await waitFor(() => expect(backup).toHaveBeenCalledTimes(1));
-    expect(within(storage).queryByText(/Backup saved/)).toBeNull();
+    expect(within(section).queryByText(/Backup saved/)).toBeNull();
     backup.mockResolvedValueOnce({ path: '/Volumes/Backup/Slamem 2026-09-21.zip', bytes: 1.2 * 1024 ** 3 });
-    fireEvent.click(within(storage).getByRole('button', { name: 'Back up now' }));
+    fireEvent.click(within(section).getByRole('button', { name: 'Back up now' }));
     expect(
-      await within(storage).findByText('Backup saved (1.2 GB): /Volumes/Backup/Slamem 2026-09-21.zip'),
+      await within(section).findByText('Backup saved (1.2 GB): /Volumes/Backup/Slamem 2026-09-21.zip'),
     ).toBeTruthy();
   });
 });

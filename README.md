@@ -14,7 +14,8 @@ seen, forever**, even after Slack hides it.
 - **Ask AI, only if you turn it on.** With your own Anthropic API key (Settings → Ask AI), you can
   ask questions about your archive and Claude answers with links to the messages. Only then, and
   only while it answers a question, do the question and the messages it reads go to Anthropic.
-  Chats are never saved.
+  Chats are never saved; what each question cost is, for Settings → Ask AI → Spending (by day,
+  week and month).
 - **Only your own view.** It archives the conversations _you_ are in, using your own Slack login.
   Nobody else's DMs or private channels, no workspace admin needed.
 - **Read-only against Slack.** It never posts, edits, reacts or deletes anything in Slack.

@@ -114,9 +114,10 @@ function FilesCard({ stats, filesBytes }: { stats: StatsDTO; filesBytes: number 
 }
 
 /**
- * The period the archive covers. When a handful of messages reach months further back than the
- * rest (Slack still shows notes to yourself and threads with recent replies past its 90 days), the
- * range starts where most of the history does, and those few are named, with a link to the oldest.
+ * The period the archive covers (notes to yourself don't count: Slack keeps them however old they
+ * are). When a handful of messages reach months further back than the rest (Slack still shows
+ * threads with recent replies past its 90 days), the range starts where most of the history does,
+ * and those few are named, with a link to the oldest.
  */
 function RangeCard({ stats }: { stats: StatsDTO }) {
   const main = stats.mainStart;
@@ -145,7 +146,7 @@ function RangeCard({ stats }: { stats: StatsDTO }) {
       value={<span className="text-xl">{`${from} – ${to}`}</span>}
       detail={
         main && oldest ? (
-          <span title="Slack still showed these past its 90 days, for example notes to yourself or threads with recent replies.">
+          <span title="Slack still showed these past its 90 days, for example the start of a thread with recent replies.">
             {days} · plus {pluralize(main.olderCount, 'older message')}, back to{' '}
             {stats.oldestConversationId && stats.oldestTs ? (
               <Link

@@ -183,6 +183,7 @@ export function actionHandlers(s: AppServices, hooks: PlatformHooks): ActionHand
       s.ai.end(record(req).chatId);
       return ok;
     },
+    getAiSpending: () => s.ai.spending(),
 
     // ─── app and updates ───────────────────────────────────────────────────────────────────────
     getAppInfo: () => hooks.appInfo(),

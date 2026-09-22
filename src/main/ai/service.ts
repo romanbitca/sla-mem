@@ -5,7 +5,8 @@
  *
  * Chats live in this process's memory only. Nothing about them is written anywhere, "New chat"
  * forgets one, and quitting forgets them all. A few recent chats are kept so the window can
- * leave the Ask AI screen (to open a cited message) and come back to the same chat.
+ * leave the Ask AI screen (to open a cited message) and come back to the same chat. What each
+ * question cost is kept (usage-log.ts), never what was asked.
  *
  * Emits 'event' (AiEventDTO) while answers are written and 'changed' (AiKeyStatusDTO) when the
  * key is saved or removed.
@@ -13,7 +14,15 @@
 import { EventEmitter } from 'node:events';
 import Anthropic from '@anthropic-ai/sdk';
 import type { BetaMessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages';
-import type { AiErrorKind, AiEventDTO, AiKeyStatusDTO, AiModel, AiScopeDTO, AiUsageDTO } from '../../shared/types';
+import type {
+  AiErrorKind,
+  AiEventDTO,
+  AiKeyStatusDTO,
+  AiModel,
+  AiScopeDTO,
+  AiSpendingDTO,
+  AiUsageDTO,
+} from '../../shared/types';
 import type { DB } from '../db';
 import { blocked, conflict, invalid } from '../errors';
 import { safeErrorMessage } from '../redact';
@@ -22,12 +31,15 @@ import { emptyUsage, RefusedError, runTurn, type TokenUsage, type TurnResult } f
 import { isAnthropicKey, type AiKeyStore } from './key-store';
 import { promptFacts, systemPrompt } from './prompt';
 import { describeScope, runTool, SourceRefs, type ToolOutcome } from './tools';
+import type { AiUsageLog, AiUsageOutcome } from './usage-log';
 
 export interface AiServiceOptions {
   db: DB;
   store: AiKeyStore;
   /** The model chosen in Settings, read for each question. */
   model: () => AiModel;
+  /** Where what each question cost is kept (Settings → Ask AI → Spending). */
+  usage?: Pick<AiUsageLog, 'record' | 'spending'>;
   log?: (line: string) => void;
   /** Development / test override for Anthropic's API (never honoured by packaged builds). */
   baseURL?: string;
@@ -145,6 +157,11 @@ export class AiService extends EventEmitter {
     void this.answer(chat, turnId, question, scope, key, controller);
   }
 
+  /** What Ask AI has cost, per day. */
+  spending(): AiSpendingDTO {
+    return this.opts.usage?.spending() ?? { days: [] };
+  }
+
   stop(chatId: unknown): void {
     this.chats.get(id(chatId, 'chat'))?.running?.controller.abort();
   }
@@ -178,6 +195,13 @@ export class AiService extends EventEmitter {
     const asked = withLimits(question, limits, chat.toldScope);
     const started = Date.now();
     const usage = emptyUsage();
+    let recorded = false;
+    const keepCost = (outcome: AiUsageOutcome): AiUsageDTO => {
+      const cost = usageDTO(model, usage);
+      if (!recorded) this.recordUsage(cost, outcome);
+      recorded = true;
+      return cost;
+    };
     let written = '';
     let pending = '';
     let calls = 0;
@@ -230,7 +254,7 @@ export class AiService extends EventEmitter {
       flush();
       this.commit(chat, result.messages, limits);
       if (result.truncated) send({ type: 'text', text: '\n\n(The answer was cut short.)' });
-      const cost = usageDTO(model, usage);
+      const cost = keepCost('answered');
       send({ type: 'done', usage: cost, stopped: false });
       this.log(
         `Ask AI: answered with ${model} in ${((Date.now() - started) / 1000).toFixed(1)} s, ` +
@@ -249,9 +273,11 @@ export class AiService extends EventEmitter {
           ],
           limits,
         );
-        send({ type: 'done', usage: usageDTO(model, usage), stopped: true });
+        send({ type: 'done', usage: keepCost('stopped'), stopped: true });
         return;
       }
+      // Rounds that finished before the failure were paid for.
+      keepCost('failed');
       const problem = describeAiError(err);
       this.log(`Ask AI failed (${problem.kind}): ${safeErrorMessage(err, [key])}`);
       send({ type: 'error', kind: problem.kind, message: problem.message });
@@ -260,6 +286,22 @@ export class AiService extends EventEmitter {
       if (chat.running?.turnId === turnId) chat.running = null;
       chat.lastUsed = Date.now();
     }
+  }
+
+  /**
+   * Keeps what a question cost, whenever it used anything. Called before the answer's log line:
+   * the first read of spending brings over costs from the log, which must not count this one twice.
+   */
+  private recordUsage(cost: AiUsageDTO, outcome: AiUsageOutcome): void {
+    if (cost.inputTokens + cost.outputTokens === 0) return;
+    this.opts.usage?.record({
+      at: this.now().getTime(),
+      model: cost.model,
+      inputTokens: cost.inputTokens,
+      outputTokens: cost.outputTokens,
+      costUsd: cost.costUsd,
+      outcome,
+    });
   }
 
   private commit(chat: Chat, messages: BetaMessageParam[], limits: string | null): void {

@@ -53,7 +53,11 @@ export function useArchiveEvents(): void {
       bridge.on('navigate', (payload) => {
         if (isAppPath(payload?.path)) go(payload.path);
       }),
-      bridge.on('ai', applyAiEvent),
+      bridge.on('ai', (event) => {
+        applyAiEvent(event);
+        // A finished question changes what Ask AI has cost.
+        if (event.type === 'done' || event.type === 'error') void qc.invalidateQueries({ queryKey: qk.aiSpending });
+      }),
     ];
     return () => {
       for (const off of unsubscribe) off();

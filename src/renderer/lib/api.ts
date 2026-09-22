@@ -229,6 +229,7 @@ export const api = {
   askAi: (req: AskAiRequest) => call('askAi', req),
   stopAi: (req: { chatId: string }) => call('stopAi', req),
   endAiChat: (req: { chatId: string }) => call('endAiChat', req),
+  getAiSpending: (_signal?: AbortSignal) => call('getAiSpending'),
 
   // App
   getAppInfo: (_signal?: AbortSignal) => call('getAppInfo'),

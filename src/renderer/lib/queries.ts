@@ -54,6 +54,7 @@ export const qk = {
   search: (params: SearchParams) => ['search', normalizeSearchKey(params)] as const,
   syncStatus: ['sync', 'status'] as const,
   settings: ['settings'] as const,
+  aiSpending: ['ai', 'spending'] as const,
   loginStatus: ['login'] as const,
   storage: ['storage'] as const,
   appInfo: ['app', 'info'] as const,
@@ -418,6 +419,11 @@ export function useRemoveAiKey() {
     mutationFn: () => api.removeAiKey(),
     onSuccess: (settings) => qc.setQueryData(qk.settings, settings),
   });
+}
+
+/** What Ask AI has cost, per day. A finished answer refreshes it (events.ts). */
+export function useAiSpending() {
+  return useQuery({ queryKey: qk.aiSpending, queryFn: ({ signal }) => api.getAiSpending(signal) });
 }
 
 export function useCompleteOnboarding() {
