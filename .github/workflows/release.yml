@@ -1,15 +1,19 @@
 name: Release
 
 # Builds the installers (PLAN §9.3):
-#  - push a tag like v1.2.0  → macOS (Apple Silicon + Intel dmg/zip) and Windows (NSIS) are built and
-#    attached to a *draft* GitHub Release; write the notes for non-technical readers, then publish.
-#  - run manually (Actions → Release → Run workflow) → the same builds, uploaded as workflow
-#    artifacts only (nothing published), to try an installer before tagging.
+#  - push a tag like v1.2.0  → macOS (Apple Silicon + Intel dmg/zip) and Windows (NSIS) are built,
+#    then one job attaches them all to a *draft* GitHub Release; write the notes for non-technical
+#    readers, then publish.
+#  - run manually (Actions → Release → Run workflow) → the same builds, kept as workflow artifacts
+#    only (nothing published), to try an installer before tagging.
+#
+# The builds never publish themselves: when both finished at the same moment each created its own
+# draft (v0.2.0 had two, the installers split between them).
 #
 # Releases must be downloadable without a GitHub account and readable by the update check, so they
-# live in this repository, which is public. Were it made private again, point `publish` in
-# electron-builder.yml and UPDATE_REPO in src/main/context.ts at a public releases repository and add
-# a RELEASES_TOKEN secret (a token with contents: write on it).
+# live in this repository, which is public. Were it made private again, point UPDATE_REPO in
+# src/main/context.ts and the release job's GH_REPO at a public releases repository, and give the
+# job a RELEASES_TOKEN secret with contents: write there.
 
 on:
   push:
@@ -50,22 +54,47 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      - name: Package (and publish a draft release on tags)
-        shell: bash
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then PUBLISH=always; else PUBLISH=never; fi
-          npx electron-builder ${{ matrix.args }} --publish "$PUBLISH"
+      - name: Package
+        run: npx electron-builder ${{ matrix.args }} --publish never
         env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN || secrets.GITHUB_TOKEN }}
           # No paid certificates (PLAN §1.4): never look for a signing identity.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - uses: actions/upload-artifact@v7
-        if: github.event_name == 'workflow_dispatch'
         with:
           name: installers-${{ matrix.os }}
           path: |
             release/*/*.dmg
             release/*/*.zip
             release/*/*.exe
+            release/*/*.blockmap
+            release/*/latest*.yml
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    # Only for tags, and only when every build succeeded: never a release with one platform missing.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: installers-*
+          path: dist
+          merge-multiple: true
+      - name: Attach every installer to one draft release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ls -l dist
+          # GitHub accepts several drafts with one tag, so look before creating: a re-run replaces
+          # the files in the release it made before.
+          existing=$(gh api "repos/$GH_REPO/releases" --jq "[.[] | select(.tag_name == \"$GITHUB_REF_NAME\")][0].id // empty")
+          if [[ -n "$existing" ]]; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* --draft --verify-tag --title "sla-mem ${GITHUB_REF_NAME#v}" \
+              --notes "Write what's new for non-technical readers (the app shows it as plain text), then publish."
+          fi
