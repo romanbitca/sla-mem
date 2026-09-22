@@ -129,6 +129,14 @@ Each item is also corrected where it belongs in this document.
   the archive numbers appear after the first sync. Block Kit is drawn read-only: buttons and
   inputs are inert, `markdown` blocks show as text, and images on Slack's private file URLs are
   not shown. A thread panel draws 200 replies at a time.
+- **Search as a place (added, §8.2):** the sidebar has a **Search** item next to Archive instead
+  of a search box; it (and ⌘K / Ctrl+K, and "/") opens the search screen with the last search,
+  the cursor in its box. In a window at least 1200 px wide a result opens beside the list (the
+  conversation at that message, or the thread for a reply), the list staying where it is with the
+  open result marked; the preview is in the URL (`c`, `ts`, `thread`), Esc closes it, and "Open
+  conversation" shows the whole conversation. In narrower windows a result opens the
+  conversation. Either way the conversation offers **Search results**, which returns to the same
+  search, scrolled where the list was, with that result focused.
 - **What to archive (added):** conversations can be left out, such as a channel or the DMs with
   someone. Onboarding's third step first lists every conversation (fetched from Slack without
   any history) with all ticked, and only "Start archiving" begins the first sync; automatic syncs
@@ -929,7 +937,8 @@ A short, friendly, 3-screen flow. No jargon. No settings required.
 Familiar to anyone who has used Slack, but clearly a *reader*:
 
 - **Sidebar**: workspace name; a search box (⌘K / Ctrl+K); Channels, Direct messages, Group DMs, each
-  collapsible with a filter box; message counts; archived channels dimmed.
+  collapsible with a filter box; message counts; archived channels dimmed. *(As built: a Search
+  item opens the search screen instead of a box in the sidebar; see §0.3.)*
 - **Conversation view**: day dividers (sticky, opaque — must not overlap message content),
   consecutive messages from the same author within 5 minutes grouped, avatars, timestamps with full
   date on hover, "(edited)" with a revisions popover, "deleted in Slack" badge, reactions with

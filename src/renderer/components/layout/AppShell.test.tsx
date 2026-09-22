@@ -2,7 +2,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useLocation, type Location } from 'react-router';
+import type { SearchParams, SearchResponse } from '../../../shared/types';
 import { api, ApiError } from '../../lib/api';
+import { resetSearchNav } from '../../lib/searchNav';
 import { AppProviders, AppRoutes } from '../../App';
 import {
   makeConversation,
@@ -15,6 +17,7 @@ import {
   makeWorkspace,
   testQueryClient,
   testUsers,
+  tsAt,
 } from '../../test/helpers';
 import { buildSections } from './Sidebar';
 import { describeSync } from './SyncIndicator';
@@ -69,6 +72,7 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  resetSearchNav();
   try {
     localStorage.clear();
   } catch {
@@ -154,22 +158,33 @@ describe('AppShell', () => {
     await screen.findByText(/Synced .* ago/);
   });
 
-  it('focuses the search box on Ctrl/Cmd+K and submits to /search', async () => {
+  it('opens search from the sidebar and with Ctrl/Cmd+K, with the cursor in the box', async () => {
+    vi.spyOn(api, 'search').mockImplementation(async (params) => searchResponse(params, []));
     renderApp();
-    const search = screen.getByRole('searchbox', { name: 'Search archive' });
-    fireEvent.keyDown(window, { key: 'k', metaKey: true });
-    await waitFor(() => expect(document.activeElement).toBe(search));
-    fireEvent.keyDown(window, { key: 'Escape' });
+    const searchLink = await screen.findByRole('link', { name: /^Search/ });
+    expect(searchLink.getAttribute('href')).toBe('/search');
+    expect(screen.queryByRole('searchbox', { name: 'Search archive' })).toBeNull(); // no box in the sidebar
 
-    fireEvent.change(search, { target: { value: 'from:@bob deploy' } });
-    fireEvent.submit(search.closest('form')!);
+    fireEvent.keyDown(window, { key: 'k', metaKey: true });
     await waitFor(() => expect(location?.pathname).toBe('/search'));
-    expect(new URLSearchParams(location!.search).get('q')).toBe('from:@bob deploy');
+    const box = await screen.findByRole('combobox', { name: 'Search messages' });
+    await waitFor(() => expect(document.activeElement).toBe(box));
+
+    fireEvent.change(box, { target: { value: 'from:@bob deploy' } });
+    fireEvent.submit(box.closest('form')!);
+    await waitFor(() => expect(new URLSearchParams(location!.search).get('q')).toBe('from:@bob deploy'));
+
+    // From anywhere else, Search comes back to that search.
+    fireEvent.click(screen.getByRole('link', { name: 'Archive' }));
+    await waitFor(() => expect(location?.pathname).toBe('/'));
+    expect(screen.getByRole('link', { name: /^Search/ }).getAttribute('href')).toBe(
+      `/search?${new URLSearchParams({ q: 'from:@bob deploy' }).toString()}`,
+    );
   });
 
   it('leaves the page shortcuts alone while a dialog is open', async () => {
     renderApp();
-    const search = screen.getByRole('searchbox', { name: 'Search archive' });
+    await screen.findByRole('link', { name: /^Search/ });
     const modal = document.createElement('div');
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
@@ -182,7 +197,7 @@ describe('AppShell', () => {
       fireEvent.keyDown(window, { key: '/' });
       await new Promise((r) => setTimeout(r, 20));
       expect(document.activeElement).toBe(inside);
-      expect(document.activeElement).not.toBe(search);
+      expect(location?.pathname).toBe('/');
     } finally {
       modal.remove();
     }
@@ -282,5 +297,110 @@ describe('AppShell', () => {
   it('routes unknown paths to a not-found page', async () => {
     renderApp('/nope');
     expect(await screen.findByText('Page not found')).toBeTruthy();
+  });
+});
+
+function searchResponse(params: SearchParams, messages: ReturnType<typeof makeMessage>[]): SearchResponse {
+  return {
+    total: messages.length,
+    hits: messages.map((message) => ({ message, snippet: message.text })),
+    parsed: {
+      text: params.q,
+      conversationIds: [],
+      userIds: [],
+      after: null,
+      before: null,
+      has: [],
+      unresolved: [],
+    },
+    tookMs: 1,
+  };
+}
+
+describe('search results and the way back to them', () => {
+  const found = [
+    makeMessage({ ts: tsAt(1), conversationId: 'C1', userId: 'U2', text: 'deploy one' }),
+    makeMessage({ ts: tsAt(2), conversationId: 'C2', userId: 'U2', text: 'deploy two' }),
+    makeMessage({
+      ts: tsAt(3),
+      conversationId: 'C1',
+      userId: 'U2',
+      text: 'deploy reply',
+      threadTs: tsAt(1),
+      isReply: true,
+    }),
+  ];
+  const results = async () => screen.findByRole('list', { name: 'Search results' });
+  const params = () => new URLSearchParams(location!.search);
+
+  beforeEach(() => {
+    vi.spyOn(api, 'search').mockImplementation(async (p) => searchResponse(p, found));
+    vi.spyOn(api, 'getConversation').mockImplementation(async (id) => conversations.find((c) => c.id === id)!);
+    vi.spyOn(api, 'getMessages').mockImplementation(async (conversationId) => ({
+      messages: found.filter((m) => m.conversationId === conversationId && !m.isReply),
+      hasMoreBefore: false,
+      hasMoreAfter: false,
+    }));
+    vi.spyOn(api, 'getThread').mockResolvedValue({ parent: found[0], replies: [found[2]] });
+  });
+
+  it('opens a result next to the list in a wide window, follows the next one, and Esc closes it', async () => {
+    renderApp('/search?q=deploy');
+    const [first, second] = within(await results()).getAllByRole('link');
+    fireEvent.click(first);
+    const preview = await screen.findByRole('region', { name: 'Search result preview' });
+    expect(within(preview).getByRole('heading', { name: '#general' })).toBeTruthy();
+    expect([params().get('q'), params().get('c'), params().get('ts')]).toEqual(['deploy', 'C1', tsAt(1)]);
+    await waitFor(() => expect(within(preview).getByText('deploy one')).toBeTruthy());
+    expect(first.getAttribute('aria-current')).toBe('true');
+
+    fireEvent.click(second);
+    await waitFor(() => expect(params().get('c')).toBe('C2'));
+    expect(
+      within(await results())
+        .getAllByRole('link')[1]
+        .getAttribute('aria-current'),
+    ).toBe('true');
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Search result preview' })).toBeNull());
+    expect([params().get('q'), params().get('c')]).toEqual(['deploy', null]);
+  });
+
+  it('shows a reply in its thread, and opens the full conversation with a way back', async () => {
+    renderApp('/search?q=deploy');
+    fireEvent.click(within(await results()).getAllByRole('link')[2]);
+    const preview = await screen.findByRole('region', { name: 'Search result preview' });
+    const thread = await within(preview).findByRole('complementary', { name: 'Thread' });
+    await waitFor(() => expect(within(thread).getByText('deploy reply')).toBeTruthy());
+
+    fireEvent.click(within(preview).getByRole('button', { name: 'Open conversation' }));
+    await waitFor(() => expect(location?.pathname).toBe('/c/C1'));
+    expect([params().get('thread'), params().get('ts')]).toEqual([tsAt(1), tsAt(3)]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Search results' }));
+    await waitFor(() => expect(location?.pathname).toBe('/search'));
+    expect([params().get('q'), params().get('c')]).toEqual(['deploy', 'C1']);
+    await screen.findByRole('region', { name: 'Search result preview' });
+  });
+
+  it('in a narrower window opens the conversation, which keeps its way back through a thread', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('1024px'), // a laptop-sized window: too narrow to show both
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    renderApp('/search?q=deploy');
+    fireEvent.click(within(await results()).getAllByRole('link')[2]);
+    await waitFor(() => expect(location?.pathname).toBe('/c/C1'));
+    const thread = await screen.findByRole('complementary', { name: 'Thread' });
+    fireEvent.click(within(thread).getByRole('button', { name: 'Close thread' }));
+    await waitFor(() => expect(params().get('thread')).toBeNull());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Search results' }));
+    await waitFor(() => expect(location?.pathname).toBe('/search'));
+    expect(params().get('q')).toBe('deploy');
+    // The result that was opened has the focus again, for the next one with ↓.
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-search-hit')).toBe(`C1:${tsAt(3)}`));
   });
 });

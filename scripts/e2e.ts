@@ -208,7 +208,11 @@ async function main(): Promise<void> {
     await page.screenshot({ path: path.join(shots, 'thread.png') });
     await panel.getByRole('button', { name: 'Close thread' }).click();
 
-    const box = page.getByRole('searchbox', { name: 'Search archive' });
+    await page
+      .getByRole('navigation', { name: 'Archive' })
+      .getByRole('link', { name: /^Search/ })
+      .click();
+    const box = page.getByRole('combobox', { name: 'Search messages' });
     await box.fill('deploy');
     await box.press('Enter');
     const results = page.getByRole('list', { name: 'Search results' });
@@ -218,9 +222,20 @@ async function main(): Promise<void> {
     await page.screenshot({ path: path.join(shots, 'search.png') });
     await firstHit.click();
     await page.locator('[data-highlighted="true"]').first().waitFor();
+    // A wide window opens the result next to the list; from there, the whole conversation.
+    const preview = page.getByRole('region', { name: 'Search result preview' });
+    if (await preview.count()) {
+      await page.screenshot({ path: path.join(shots, 'search-preview.png') });
+      await preview.getByRole('button', { name: 'Open conversation' }).click();
+    }
+    const back = page.getByRole('button', { name: 'Search results' });
+    await back.waitFor();
     assert(page.url().includes('#/c/'), 'a search result opens its conversation');
     await page.screenshot({ path: path.join(shots, 'search-click-through.png') });
-    log(`UI: home, #engineering, a thread, and search (${hitCount} hits on the first page) click through`);
+    await back.click();
+    await results.getByRole('link').first().waitFor();
+    assert(page.url().includes('#/search') && page.url().includes('q=deploy'), '"Search results" goes back');
+    log(`UI: home, #engineering, a thread, and search (${hitCount} hits on the first page): opened and back`);
 
     await quit(app);
     app = null;

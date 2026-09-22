@@ -1,11 +1,12 @@
 import { memo, type KeyboardEvent, type ReactNode } from 'react';
-import { Link } from 'react-router';
+import { Link, type To } from 'react-router';
 import clsx from 'clsx';
 import type { MessageDTO, SearchHit } from '../../../shared/types';
 import { useDirectory } from '../../lib/directory';
 import { formatFullDateTime, formatShortDate, isBeyondFreeWindow, isoDateTime, pluralize } from '../../lib/format';
 import { conversationPath, messagePath } from '../../lib/links';
 import { mrkdwnToPlainText, useMrkdwnContext } from '../../lib/mrkdwn';
+import { messageKey } from '../../lib/searchNav';
 import { tsToDate } from '../../lib/ts';
 import { ConversationIcon, conversationTitle } from '../conversation/ConversationIcon';
 import { ArchiveIcon, ArrowUpIcon, CornerDownRightIcon, FileIcon, ThreadIcon } from '../icons';
@@ -24,7 +25,23 @@ export interface SearchResultsProps {
   onOnlyConversation: (conversationId: string) => void;
   /** ArrowUp from the first hit returns here (the search box). */
   onExitUp?: () => void;
+  /** Where a result opens (the page decides: the preview, or the conversation). */
+  linkFor?: (message: MessageDTO) => ResultLink;
+  /** Where a conversation heading opens (grouped layout). */
+  conversationLinkFor?: (conversationId: string) => ResultLink;
+  /** The result open in the preview (`messageKey`). */
+  selectedKey?: string | null;
 }
+
+/** A router link target, with its history state. */
+export interface ResultLink {
+  to: To;
+  state?: unknown;
+  replace?: boolean;
+}
+
+const defaultLinkFor = (message: MessageDTO): ResultLink => ({ to: messagePath(message) });
+const defaultConversationLinkFor = (conversationId: string): ResultLink => ({ to: conversationPath(conversationId) });
 
 /** Hits are links; ↑/↓ moves between them like a list. */
 function onResultsKeyDown(e: KeyboardEvent<HTMLElement>, onExitUp?: () => void) {
@@ -39,7 +56,16 @@ function onResultsKeyDown(e: KeyboardEvent<HTMLElement>, onExitUp?: () => void) 
   else links[Math.min(next, links.length - 1)]?.focus();
 }
 
-export function SearchResults({ hits, view, filteredConversations, onOnlyConversation, onExitUp }: SearchResultsProps) {
+export function SearchResults({
+  hits,
+  view,
+  filteredConversations,
+  onOnlyConversation,
+  onExitUp,
+  linkFor = defaultLinkFor,
+  conversationLinkFor = defaultConversationLinkFor,
+  selectedKey = null,
+}: SearchResultsProps) {
   return (
     <div onKeyDown={(e) => onResultsKeyDown(e, onExitUp)}>
       {view === 'grouped' ? (
@@ -47,12 +73,15 @@ export function SearchResults({ hits, view, filteredConversations, onOnlyConvers
           hits={hits}
           filteredConversations={filteredConversations}
           onOnlyConversation={onOnlyConversation}
+          linkFor={linkFor}
+          conversationLinkFor={conversationLinkFor}
+          selectedKey={selectedKey}
         />
       ) : (
         <ol aria-label="Search results" className="flex flex-col gap-0.5">
           {hits.map((hit) => (
             <li key={hitKey(hit)}>
-              <HitRow hit={hit} showConversation />
+              <HitRow hit={hit} showConversation linkFor={linkFor} selected={selectedKey === messageKey(hit.message)} />
             </li>
           ))}
         </ol>
@@ -65,7 +94,13 @@ function GroupedResults({
   hits,
   filteredConversations,
   onOnlyConversation,
-}: Omit<SearchResultsProps, 'view' | 'onExitUp'>) {
+  linkFor,
+  conversationLinkFor,
+  selectedKey,
+}: Omit<SearchResultsProps, 'view' | 'onExitUp' | 'linkFor' | 'conversationLinkFor'> & {
+  linkFor: (message: MessageDTO) => ResultLink;
+  conversationLinkFor: (conversationId: string) => ResultLink;
+}) {
   const dir = useDirectory();
   const groups = groupHitsByConversation(hits);
   const onlyOne = filteredConversations.length === 1;
@@ -75,6 +110,7 @@ function GroupedResults({
         const conv = dir.conversations.get(group.conversationId);
         const title = conv ? conversationTitle(conv) : group.conversationId;
         const headingId = `search-group-${group.conversationId}`;
+        const heading = conversationLinkFor(group.conversationId);
         return (
           <section key={group.conversationId} aria-labelledby={headingId}>
             <header className="flex items-center gap-2 border-b border-line px-3 pb-2">
@@ -82,7 +118,12 @@ function GroupedResults({
                 {conv && <ConversationIcon conversation={conv} size={14} />}
               </span>
               <h2 id={headingId} className="min-w-0 truncate text-sm font-semibold text-ink">
-                <Link to={conversationPath(group.conversationId)} className="focus-ring rounded hover:underline">
+                <Link
+                  to={heading.to}
+                  state={heading.state}
+                  replace={heading.replace}
+                  className="focus-ring rounded hover:underline"
+                >
                   {title}
                 </Link>
               </h2>
@@ -103,7 +144,12 @@ function GroupedResults({
             <ol aria-label={`Results in ${title}`} className="mt-1 flex flex-col gap-0.5">
               {group.hits.map((hit) => (
                 <li key={hitKey(hit)}>
-                  <HitRow hit={hit} showConversation={false} />
+                  <HitRow
+                    hit={hit}
+                    showConversation={false}
+                    linkFor={linkFor}
+                    selected={selectedKey === messageKey(hit.message)}
+                  />
                 </li>
               ))}
             </ol>
@@ -129,8 +175,21 @@ function useFallbackText(message: MessageDTO | null): string {
   return files.length ? files.join(', ') : '(no text)';
 }
 
-/** One result: the whole row is a single link to the message (replies open their thread). */
-export const HitRow = memo(function HitRow({ hit, showConversation }: { hit: SearchHit; showConversation: boolean }) {
+/**
+ * One result: the whole row is a single link to the message (replies open their thread), in the
+ * preview or in its conversation, as `linkFor` says. The previewed one is marked as current.
+ */
+export const HitRow = memo(function HitRow({
+  hit,
+  showConversation,
+  linkFor = defaultLinkFor,
+  selected = false,
+}: {
+  hit: SearchHit;
+  showConversation: boolean;
+  linkFor?: (message: MessageDTO) => ResultLink;
+  selected?: boolean;
+}) {
   const dir = useDirectory();
   const { message } = hit;
   const author = resolveAuthor(message, dir);
@@ -140,14 +199,22 @@ export const HitRow = memo(function HitRow({ hit, showConversation }: { hit: Sea
   const beyond = isBeyondFreeWindow(date);
   const where = conv ? conversationTitle(conv) : message.conversationId;
   const text = hit.snippet ? snippetText(hit.snippet) : fallback;
+  const link = linkFor(message);
 
   return (
     <Link
-      to={messagePath(message)}
-      data-search-hit=""
+      to={link.to}
+      state={link.state}
+      replace={link.replace}
+      data-search-hit={messageKey(message)}
+      data-selected={selected || undefined}
+      aria-current={selected ? 'true' : undefined}
       // A concise name that still includes the message: the visual row is badges and fragments.
       aria-label={`${author.label} in ${where}, ${formatFullDateTime(date)}: ${text}`}
-      className="focus-ring group/hit flex gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-hover/70"
+      className={clsx(
+        'focus-ring group/hit flex gap-3 rounded-xl px-3 py-2.5 transition-colors duration-150',
+        selected ? 'bg-accent-soft/70 ring-1 ring-accent/20' : 'hover:bg-hover/70',
+      )}
     >
       <Avatar seed={author.seed} label={author.label} src={author.avatarUrl} size={32} className="mt-0.5" />
       <div className="min-w-0 flex-1">

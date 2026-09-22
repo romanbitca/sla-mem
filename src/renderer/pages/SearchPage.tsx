@@ -1,12 +1,26 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import clsx from 'clsx';
-import type { SearchResponse, SearchSort } from '../../shared/types';
+import type { MessageDTO, SearchResponse, SearchSort } from '../../shared/types';
 import { describeError } from '../lib/api';
-import { useStableCallback } from '../lib/hooks';
+import { isModalOpen, isTypingTarget, useKeydown, useMediaQuery, useStableCallback } from '../lib/hooks';
+import { conversationPath, messagePath } from '../lib/links';
 import { useConversations, useSearch, useUsers, useWorkspace } from '../lib/queries';
+import {
+  carryPreview,
+  messageKey,
+  parsePreview,
+  rememberSearch,
+  resultsScroll,
+  saveResultsScroll,
+  withConversationPreview,
+  withoutPreview,
+  withPreview,
+  type FromSearchState,
+  type ReturnToSearchState,
+} from '../lib/searchNav';
 import { LayersIcon, ListIcon, SearchIcon } from '../components/icons';
-import { SidebarToggle } from '../components/layout/shell';
+import { SidebarToggle, useShell } from '../components/layout/shell';
 import { Button } from '../components/ui/Button';
 import { EmptyState, ErrorState } from '../components/ui/EmptyState';
 import { LoadingState, Spinner } from '../components/ui/Spinner';
@@ -16,7 +30,8 @@ import { collectHits } from '../components/search/hits';
 import { removeRawToken, tokenizeQuery } from '../components/search/queryText';
 import type { ResolverData } from '../components/search/resolve';
 import { SearchInput } from '../components/search/SearchInput';
-import { SearchResults } from '../components/search/SearchResults';
+import { SearchPreview } from '../components/search/SearchPreview';
+import { SearchResults, type ResultLink } from '../components/search/SearchResults';
 import { SearchTips, UnresolvedNotice } from '../components/search/SearchNotices';
 import {
   clearFilters,
@@ -42,9 +57,16 @@ function useResolverData(): ResolverData | null {
   );
 }
 
+/** Wide enough for the results and an open message side by side. */
+const SPLIT_QUERY = '(min-width: 1200px)';
+
 /**
  * `/search`: the URL (q plus filter params) is the only source of truth, so back/forward and
  * reloads restore the exact search. The text box holds a draft until it's submitted.
+ *
+ * Opening a result: in a wide window it opens next to the results (the preview, also in the URL:
+ * `c`, `ts`, `thread`), so the list stays in view; otherwise it opens the conversation, whose
+ * "Search results" button comes back here, scrolled where the list was, with that result focused.
  */
 export default function SearchPage() {
   const location = useLocation();
@@ -54,8 +76,26 @@ export default function SearchPage() {
   const effective = useMemo(() => effectiveFilters(state, data), [state, data]);
   const params = useMemo(() => toApiParams(state), [state]);
   const search = useSearch(params);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useShell().searchInputRef;
   const resultsRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const split = useMediaQuery(SPLIT_QUERY);
+  const preview = split ? parsePreview(location.search) : null;
+  const previewOpen = preview != null;
+  const selectedKey = preview?.ts ? `${preview.conversationId}:${preview.ts}` : null;
+  const currentUrl = `/search${location.search}`;
+  const searchKey = withoutPreview(location.search);
+  const arrival = location.state as ReturnToSearchState | null;
+
+  // The sidebar's Search (and ⌘K) come back to this search.
+  useEffect(() => rememberSearch(currentUrl), [currentUrl]);
+
+  // ⌘K from another page: the cursor goes in the box, ready to type over the last query.
+  useEffect(() => {
+    if (!arrival?.focusSearch) return;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [arrival, inputRef]);
 
   // The draft follows the URL whenever the URL's query changes (submit, back/forward, sidebar).
   const [draft, setDraft] = useState(state.q);
@@ -67,9 +107,74 @@ export default function SearchPage() {
 
   const go = useStableCallback((next: SearchUrlState, mode?: EditMode): boolean => {
     if (sameSearch(next, state)) return false;
-    navigate(searchLocation(next), { replace: mode?.replace ?? false });
+    // A new search closes the preview; sorting or regrouping the same results keeps it.
+    const sameResults = sameSearch({ ...next, sort: state.sort, view: state.view }, state);
+    const target = searchLocation(next);
+    navigate(sameResults ? carryPreview(target, location.search) : target, { replace: mode?.replace ?? false });
     return true;
   });
+
+  const closePreview = useStableCallback(() =>
+    navigate({ pathname: '/search', search: withoutPreview(location.search) }, { replace: true }),
+  );
+
+  // The first result opened adds a history entry (Back closes it); switching results replaces it.
+  const linkFor = useCallback(
+    (message: MessageDTO): ResultLink =>
+      split
+        ? { to: { pathname: '/search', search: withPreview(location.search, message) }, replace: previewOpen }
+        : {
+            to: messagePath(message),
+            state: { fromSearch: currentUrl, hit: messageKey(message) } satisfies FromSearchState,
+          },
+    [split, location.search, previewOpen, currentUrl],
+  );
+  const conversationLinkFor = useCallback(
+    (conversationId: string): ResultLink =>
+      split
+        ? {
+            to: { pathname: '/search', search: withConversationPreview(location.search, conversationId) },
+            replace: previewOpen,
+          }
+        : {
+            to: conversationPath(conversationId),
+            state: { fromSearch: currentUrl, hit: '' } satisfies FromSearchState,
+          },
+    [split, location.search, previewOpen, currentUrl],
+  );
+
+  // Esc closes the preview (a thread in it closes first, by its own Esc).
+  useKeydown((e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || !preview || preview.threadTs || isModalOpen()) return;
+    if (isTypingTarget(e.target)) return;
+    e.preventDefault();
+    closePreview();
+  });
+
+  // Coming back to a search: the list where it was, and the result that was opened focused. A
+  // different search starts at the top.
+  const restoredFor = useRef<string | null>(null);
+  const hasResults = search.data != null;
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || !hasResults || restoredFor.current === searchKey) return;
+    restoredFor.current = searchKey;
+    const top = resultsScroll(searchKey);
+    scroller.scrollTop = top ?? 0;
+    if (arrival?.focusHit) {
+      scroller
+        .querySelector<HTMLElement>(`[data-search-hit="${arrival.focusHit}"]`)
+        ?.focus({ preventScroll: top != null });
+    }
+  }, [hasResults, searchKey, arrival]);
+
+  // The previewed result stays in view as the list narrows beside it.
+  useLayoutEffect(() => {
+    if (!selectedKey) return;
+    scrollerRef.current
+      ?.querySelector<HTMLElement>(`[data-search-hit="${selectedKey}"]`)
+      ?.scrollIntoView?.({ block: 'nearest' });
+  }, [selectedKey]);
 
   // Filter edits also run whatever is typed in the box, as Slack does.
   const working = useMemo<SearchUrlState>(() => ({ ...state, q: draft.trim() }), [state, draft]);
@@ -150,6 +255,7 @@ export default function SearchPage() {
               fetching={search.isFetching && !search.isFetchingNextPage}
               sort={state.sort}
               view={state.view}
+              compact={preview != null}
               onSort={(sort) => go({ ...working, sort })}
               onView={(view) => go({ ...state, view }, { replace: true })}
             />
@@ -160,6 +266,9 @@ export default function SearchPage() {
                 filteredConversations={effective.conversation}
                 onOnlyConversation={(id) => go(setConversationFilter(working, [id], data))}
                 onExitUp={() => inputRef.current?.focus()}
+                linkFor={linkFor}
+                conversationLinkFor={conversationLinkFor}
+                selectedKey={selectedKey}
               />
             </div>
             <div className="flex flex-col items-center gap-2 py-6">
@@ -189,23 +298,36 @@ export default function SearchPage() {
         <SidebarToggle />
         <h1 className="text-[15px] font-semibold text-ink">Search</h1>
       </header>
-      <div className="scroll-thin relative min-h-0 flex-1 overflow-y-auto">
-        {/* Sticky from sm up; on phones the filter rows would eat half the screen. */}
-        <div className="relative z-20 border-b border-line bg-canvas/95 backdrop-blur-sm sm:sticky sm:top-0">
-          <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 pt-4 pb-3 sm:px-6">
-            <SearchInput
-              value={draft}
-              onChange={setDraft}
-              onSubmit={submit}
-              source={data}
-              inputRef={inputRef}
-              autoFocus={!params}
-              onExitDown={focusFirstHit}
-            />
-            <FilterBar state={working} effective={effective} data={data} onChange={go} />
-          </div>
+      {/* The box and filters stay put above the results (and the preview, when open). */}
+      <div className="relative z-20 shrink-0 border-b border-line bg-canvas">
+        <div
+          className={clsx('flex flex-col gap-3 px-4 pt-4 pb-3 sm:px-6', preview ? 'max-w-none' : 'mx-auto max-w-4xl')}
+        >
+          <SearchInput
+            value={draft}
+            onChange={setDraft}
+            onSubmit={submit}
+            source={data}
+            inputRef={inputRef}
+            autoFocus={!params}
+            onExitDown={focusFirstHit}
+          />
+          <FilterBar state={working} effective={effective} data={data} onChange={go} />
         </div>
-        <div className="mx-auto max-w-4xl px-1 py-4 sm:px-3">{body}</div>
+      </div>
+      <div className="flex min-h-0 flex-1">
+        {/* One scroller in both layouts, so opening a result doesn't lose the place in the list. */}
+        <div
+          ref={scrollerRef}
+          onScroll={(e) => saveResultsScroll(searchKey, e.currentTarget.scrollTop)}
+          className={clsx(
+            'scroll-thin relative min-h-0 overflow-y-auto',
+            preview ? 'w-[400px] shrink-0 xl:w-[460px]' : 'flex-1',
+          )}
+        >
+          <div className={clsx(preview ? 'px-1 py-3' : 'mx-auto max-w-4xl px-1 py-4 sm:px-3')}>{body}</div>
+        </div>
+        {preview && <SearchPreview target={preview} searchUrl={currentUrl} onClose={closePreview} />}
       </div>
     </section>
   );
@@ -229,6 +351,7 @@ function ResultsToolbar({
   fetching,
   sort,
   view,
+  compact,
   onSort,
   onView,
 }: {
@@ -237,6 +360,8 @@ function ResultsToolbar({
   fetching: boolean;
   sort: SearchSort;
   view: SearchView;
+  /** Beside the preview: layout buttons show only their icons. */
+  compact: boolean;
   onSort: (sort: SearchSort) => void;
   onView: (view: SearchView) => void;
 }) {
@@ -271,12 +396,14 @@ function ResultsToolbar({
             onClick={() => onView('flat')}
             icon={<ListIcon size={14} />}
             label="List"
+            compact={compact}
           />
           <ViewButton
             active={view === 'grouped'}
             onClick={() => onView('grouped')}
             icon={<LayersIcon size={14} />}
             label="By conversation"
+            compact={compact}
           />
         </div>
       </div>
@@ -289,11 +416,13 @@ function ViewButton({
   onClick,
   icon,
   label,
+  compact,
 }: {
   active: boolean;
   onClick: () => void;
   icon: ReactNode;
   label: string;
+  compact: boolean;
 }) {
   return (
     <button
@@ -307,7 +436,7 @@ function ViewButton({
       )}
     >
       {icon}
-      <span className="max-sm:sr-only">{label}</span>
+      <span className={compact ? 'sr-only' : 'max-sm:sr-only'}>{label}</span>
     </button>
   );
 }

@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router';
 import clsx from 'clsx';
 import { isModalOpen, isTypingTarget, useKeydown, useMediaQuery } from '../../lib/hooks';
 import { useSyncStatus } from '../../lib/queries';
+import { useLastSearch, type ReturnToSearchState } from '../../lib/searchNav';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { ShellContext, type ShellContextValue } from './shell';
 import { Sidebar } from './Sidebar';
@@ -36,21 +37,25 @@ export function AppShell() {
   const searchRef = useRef<HTMLInputElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const sync = useSyncStatus();
   const onClick = useInternalLinkHandler();
+  const lastSearch = useLastSearch();
 
   // The drawer closes whenever the reader goes somewhere.
   useEffect(() => setSidebarOpen(false), [location.pathname, location.search]);
 
+  const onSearchPage = location.pathname === '/search';
   const focusSearch = useCallback(() => {
-    setSidebarOpen(true);
-    // The drawer may still be inert for this frame on narrow screens.
-    requestAnimationFrame(() => {
-      searchRef.current?.focus();
-      searchRef.current?.select();
-    });
-  }, []);
+    if (onSearchPage && searchRef.current) {
+      searchRef.current.focus();
+      searchRef.current.select();
+      return;
+    }
+    // The search screen puts the cursor in its box when it opens with this state.
+    navigate(lastSearch, { state: { focusSearch: true } satisfies ReturnToSearchState });
+  }, [onSearchPage, lastSearch, navigate]);
 
   useKeydown((e) => {
     // Behind a dialog or the image viewer, the page's shortcuts would move focus out of it.
@@ -69,7 +74,7 @@ export function AppShell() {
   });
 
   const shell = useMemo<ShellContextValue>(
-    () => ({ sidebarOpen, setSidebarOpen, focusSearch }),
+    () => ({ sidebarOpen, setSidebarOpen, focusSearch, searchInputRef: searchRef }),
     [sidebarOpen, focusSearch],
   );
   const drawerHidden = !isDesktop && !sidebarOpen;
@@ -96,7 +101,6 @@ export function AppShell() {
           />
         )}
         <Sidebar
-          searchRef={searchRef}
           syncStatus={sync.data}
           syncError={sync.error}
           onClose={() => setSidebarOpen(false)}

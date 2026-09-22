@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, createRef, useContext, type RefObject } from 'react';
 import { MenuIcon } from '../icons';
 import { IconButton } from '../ui/IconButton';
 
@@ -6,14 +6,17 @@ export interface ShellContextValue {
   /** Narrow layouts show the sidebar as a drawer. */
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
-  /** Focuses (and reveals) the sidebar search box, as ⌘K does. */
+  /** Opens the search screen (the last search) and puts the cursor in its box, as ⌘K does. */
   focusSearch: () => void;
+  /** The search screen's text box, while it is shown. */
+  searchInputRef: RefObject<HTMLInputElement | null>;
 }
 
 export const ShellContext = createContext<ShellContextValue>({
   sidebarOpen: false,
   setSidebarOpen: () => {},
   focusSearch: () => {},
+  searchInputRef: createRef<HTMLInputElement>(),
 });
 
 export function useShell(): ShellContextValue {

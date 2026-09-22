@@ -1,13 +1,14 @@
 import { useCallback } from 'react';
-import { useParams, useSearchParams } from 'react-router';
+import { useParams } from 'react-router';
 import { ConversationView } from '../components/conversation/ConversationView';
 import { ThreadPanel } from '../components/thread/ThreadPanel';
+import { useSearchParamsKeepingState } from '../lib/searchNav';
 import { parseTsParam } from '../lib/ts';
 
 /** `/c/:id` — conversation in the main pane, optional thread (`?thread=`) on the right. */
 export default function ConversationPage() {
   const { id = '' } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParamsKeepingState();
   const threadTs = parseTsParam(searchParams.get('thread'));
   const ts = parseTsParam(searchParams.get('ts'));
   const replyTs = threadTs && ts && ts !== threadTs ? ts : null;

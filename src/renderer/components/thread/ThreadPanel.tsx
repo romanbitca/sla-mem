@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import clsx from 'clsx';
 import type { MessageDTO } from '../../../shared/types';
 import { useDirectory } from '../../lib/directory';
 import { formatDate, formatDayLabel, pluralize } from '../../lib/format';
@@ -10,6 +11,7 @@ import { AlertIcon, CloseIcon } from '../icons';
 import { conversationTitle } from '../conversation/ConversationIcon';
 import { findMessageElement } from '../conversation/scrollAnchor';
 import { MessageItem } from '../message/MessageItem';
+import { Button } from '../ui/Button';
 import { EmptyState, ErrorState } from '../ui/EmptyState';
 import { IconButton } from '../ui/IconButton';
 import { LoadingState } from '../ui/Spinner';
@@ -20,6 +22,8 @@ export interface ThreadPanelProps {
   /** A reply to scroll to and highlight (deep link `?thread=…&ts=…`). */
   highlightTs?: string | null;
   onClose: () => void;
+  /** 'fill': takes all the space it's given (the search preview) instead of being a side panel. */
+  variant?: 'panel' | 'fill';
 }
 
 const HIGHLIGHT_MS = 3000;
@@ -40,7 +44,13 @@ function initialRange(replies: MessageDTO[], highlightTs: string | null): [numbe
 }
 
 /** Right-hand panel: thread parent plus all archived replies. Esc or the close button dismisses it. */
-export function ThreadPanel({ conversationId, threadTs, highlightTs = null, onClose }: ThreadPanelProps) {
+export function ThreadPanel({
+  conversationId,
+  threadTs,
+  highlightTs = null,
+  onClose,
+  variant = 'panel',
+}: ThreadPanelProps) {
   const thread = useThread(conversationId, threadTs);
   const conversation = useDirectory().conversations.get(conversationId);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -97,14 +107,32 @@ export function ThreadPanel({ conversationId, threadTs, highlightTs = null, onCl
   return (
     <aside
       aria-label="Thread"
-      className="absolute inset-y-0 right-0 z-30 flex w-full max-w-[440px] animate-slide-in-right flex-col border-l border-line bg-canvas shadow-pop lg:static lg:z-auto lg:w-[400px] lg:shrink-0 lg:shadow-none xl:w-[440px]"
+      className={
+        variant === 'fill'
+          ? 'flex min-h-0 min-w-0 flex-1 animate-fade-in flex-col bg-canvas'
+          : 'absolute inset-y-0 right-0 z-30 flex w-full max-w-[440px] animate-slide-in-right flex-col border-l border-line bg-canvas shadow-pop lg:static lg:z-auto lg:w-[400px] lg:shrink-0 lg:shadow-none xl:w-[440px]'
+      }
     >
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line pr-2 pl-5">
+      <header
+        className={clsx(
+          'flex shrink-0 items-center gap-2 border-b border-line pr-2 pl-5',
+          variant === 'fill' ? 'h-11' : 'h-14',
+        )}
+      >
         <div className="min-w-0 flex-1">
           <h2 className="text-[15px] leading-tight font-semibold text-ink">Thread</h2>
-          {conversation && <p className="truncate text-xs text-ink-muted">{conversationTitle(conversation)}</p>}
+          {/* Filling the preview, the conversation's name is already in the header above. */}
+          {conversation && variant === 'panel' && (
+            <p className="truncate text-xs text-ink-muted">{conversationTitle(conversation)}</p>
+          )}
         </div>
-        <IconButton label="Close thread" icon={<CloseIcon size={18} />} onClick={onClose} />
+        {variant === 'fill' ? (
+          <Button size="sm" variant="ghost" onClick={onClose}>
+            Show conversation
+          </Button>
+        ) : (
+          <IconButton label="Close thread" icon={<CloseIcon size={18} />} onClick={onClose} />
+        )}
       </header>
 
       <div ref={scrollRef} className="scroll-thin min-h-0 flex-1 overflow-y-auto pb-6" data-testid="thread-scroller">

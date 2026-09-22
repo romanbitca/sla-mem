@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ConversationDTO, MessageDTO } from '../../../shared/types';
 import { describeError, isApiError } from '../../lib/api';
@@ -8,9 +8,20 @@ import { formatCount, formatTsRange, pluralize } from '../../lib/format';
 import { guessThreadParent } from '../../lib/grouping';
 import { useStableCallback } from '../../lib/hooks';
 import { qk, useConversation, useExportConversation, useMessages, useSettings } from '../../lib/queries';
+import { fromSearchOf, useSearchParamsKeepingState, type ReturnToSearchState } from '../../lib/searchNav';
 import { compareTs, parseTsParam } from '../../lib/ts';
-import { AlertIcon, ArchiveIcon, CheckIcon, CloseIcon, DownloadIcon, HashIcon, InfoIcon } from '../icons';
+import {
+  AlertIcon,
+  ArchiveIcon,
+  CheckIcon,
+  ChevronLeftIcon,
+  CloseIcon,
+  DownloadIcon,
+  HashIcon,
+  InfoIcon,
+} from '../icons';
 import { SidebarToggle } from '../layout/shell';
+import { Button } from '../ui/Button';
 import { EmptyState, ErrorState } from '../ui/EmptyState';
 import { IconButton } from '../ui/IconButton';
 import { LoadingState } from '../ui/Spinner';
@@ -20,6 +31,8 @@ import { MessageTimeline, type ScrollRequest, type ScrollTarget } from './Messag
 
 export interface ConversationViewProps {
   conversationId: string;
+  /** Replaces the conversation header (the search preview draws its own); omitted keeps it. */
+  header?: ReactNode;
 }
 
 function initialTarget(ts: string | null, thread: string | null): ScrollTarget {
@@ -44,10 +57,11 @@ function nearestMessage(messages: readonly MessageDTO[], ts: string): MessageDTO
  * lives in ConversationPage). The window is keyed by an anchor ts; when a jump target is already
  * loaded we only scroll, otherwise we load a fresh window `around` it.
  */
-export function ConversationView({ conversationId }: ConversationViewProps) {
+export function ConversationView({ conversationId, header }: ConversationViewProps) {
   const qc = useQueryClient();
   const conversation = useConversation(conversationId);
-  const [searchParams, setSearchParams] = useSearchParams();
+  // Keeps the way back to search results through thread opens and jumps.
+  const [searchParams, setSearchParams] = useSearchParamsKeepingState();
   const tsParam = parseTsParam(searchParams.get('ts'));
   const threadParam = parseTsParam(searchParams.get('thread'));
 
@@ -218,12 +232,16 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
 
   return (
     <Pane>
-      <ConversationHeader
-        conversationId={conversationId}
-        conversation={conv}
-        onJump={onJumpToDate}
-        exporter={exporter}
-      />
+      {header === undefined ? (
+        <ConversationHeader
+          conversationId={conversationId}
+          conversation={conv}
+          onJump={onJumpToDate}
+          exporter={exporter}
+        />
+      ) : (
+        header
+      )}
       <ExportNotice conversationId={conversationId} exporter={exporter} />
       {excluded && (
         <div
@@ -276,6 +294,7 @@ function ConversationHeader({
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
       <SidebarToggle />
+      <BackToSearch />
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         {conversation && (
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset text-ink-muted">
@@ -321,6 +340,26 @@ function ConversationHeader({
         onClick={() => exporter.mutate(conversationId)}
       />
     </header>
+  );
+}
+
+/** Opened from search results: the way back to them, with the opened result focused. */
+function BackToSearch() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const back = fromSearchOf(location.state);
+  if (!back) return null;
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      icon={<ChevronLeftIcon size={15} />}
+      title="Back to the search results"
+      onClick={() => navigate(back.fromSearch, { state: { focusHit: back.hit } satisfies ReturnToSearchState })}
+      className="-ml-1.5 shrink-0"
+    >
+      Search results
+    </Button>
   );
 }
 

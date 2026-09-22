@@ -1,11 +1,12 @@
-import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router';
+import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { NavLink, useNavigate } from 'react-router';
 import clsx from 'clsx';
 import type { ConversationDTO, SyncStatusDTO } from '../../../shared/types';
 import { useDirectory } from '../../lib/directory';
 import { formatCount } from '../../lib/format';
-import { conversationPath, searchPath } from '../../lib/links';
+import { conversationPath } from '../../lib/links';
 import { useConversations, useSettings, useWorkspace } from '../../lib/queries';
+import { useLastSearch } from '../../lib/searchNav';
 import { readJsonPref, writeJsonPref } from '../../lib/storage';
 import { workspaceHost } from '../../lib/workspaceName';
 import {
@@ -53,7 +54,6 @@ export function buildSections(conversations: readonly ConversationDTO[], filter:
 const COLLAPSE_KEY = 'sidebar.collapsed';
 
 export interface SidebarProps {
-  searchRef: RefObject<HTMLInputElement | null>;
   syncStatus: SyncStatusDTO | undefined;
   syncError: unknown;
   /** Present on narrow layouts where the sidebar is a drawer. */
@@ -62,7 +62,7 @@ export interface SidebarProps {
   inert?: boolean;
 }
 
-export function Sidebar({ searchRef, syncStatus, syncError, onClose, className, inert }: SidebarProps) {
+export function Sidebar({ syncStatus, syncError, onClose, className, inert }: SidebarProps) {
   const workspace = useWorkspace().data;
   const conversations = useConversations();
   const navigate = useNavigate();
@@ -154,24 +154,12 @@ export function Sidebar({ searchRef, syncStatus, syncError, onClose, className, 
         )}
       </div>
 
-      <div className="px-3 pb-2">
-        <SidebarSearch inputRef={searchRef} />
-      </div>
-
-      <nav className="px-2 pb-1" aria-label="Archive">
-        <NavLink
-          to="/"
-          end
-          className={({ isActive }) =>
-            clsx(
-              'focus-ring flex h-8 items-center gap-2.5 rounded-md px-2 text-sm font-medium transition-colors',
-              isActive ? 'bg-accent-soft text-accent-text' : 'text-ink-muted hover:bg-hover hover:text-ink',
-            )
-          }
-        >
+      <nav className="flex flex-col gap-px px-2 pb-1" aria-label="Archive">
+        <NavLink to="/" end className={({ isActive }) => primaryNavClass(isActive)}>
           <ArchiveIcon size={16} />
           Archive
         </NavLink>
+        <SearchNavLink />
       </nav>
 
       <div className="px-3 pt-1 pb-2">
@@ -255,43 +243,28 @@ export function Sidebar({ searchRef, syncStatus, syncError, onClose, className, 
   );
 }
 
-function SidebarSearch({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> }) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const urlQuery = location.pathname === '/search' ? (new URLSearchParams(location.search).get('q') ?? '') : '';
-  const [value, setValue] = useState(urlQuery);
-  useEffect(() => setValue(urlQuery), [urlQuery]);
+function primaryNavClass(isActive: boolean): string {
+  return clsx(
+    'focus-ring group/nav flex h-8 items-center gap-2.5 rounded-md px-2 text-sm font-medium transition-colors',
+    isActive ? 'bg-accent-soft text-accent-text' : 'text-ink-muted hover:bg-hover hover:text-ink',
+  );
+}
 
+/**
+ * Search is a place, like Archive: it opens the search screen with the last search (its results,
+ * filters and open message), or an empty one. ⌘K does the same from anywhere.
+ */
+function SearchNavLink() {
+  const lastSearch = useLastSearch();
   return (
-    <form
-      role="search"
-      onSubmit={(e) => {
-        e.preventDefault();
-        navigate(searchPath(value.trim()));
-      }}
-      className="group/search relative"
-    >
-      <SearchIcon size={15} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-faint" />
-      <input
-        ref={inputRef}
-        type="search"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape' && value) {
-            e.preventDefault();
-            setValue('');
-          }
-        }}
-        placeholder="Search archive"
-        aria-label="Search archive"
-        className="focus-ring h-8.5 w-full rounded-lg border border-line bg-raised pr-12 pl-8 text-[13px] text-ink shadow-xs placeholder:text-ink-faint"
-      />
-      <span className="pointer-events-none absolute top-1/2 right-2 flex -translate-y-1/2 gap-0.5 group-focus-within/search:hidden">
+    <NavLink to={lastSearch} className={({ isActive }) => primaryNavClass(isActive)}>
+      <SearchIcon size={16} />
+      <span className="flex-1">Search</span>
+      <span className="flex gap-0.5 opacity-70 transition-opacity group-hover/nav:opacity-100" aria-hidden="true">
         <Kbd>{modKeyLabel()}</Kbd>
         <Kbd>K</Kbd>
       </span>
-    </form>
+    </NavLink>
   );
 }
 
