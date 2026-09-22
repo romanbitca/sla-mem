@@ -12,13 +12,14 @@ import { useAppliedTheme } from './lib/theme';
 import ConversationPage from './pages/ConversationPage';
 import HomePage from './pages/HomePage';
 import NotFoundPage from './pages/NotFoundPage';
+import PeoplePage from './pages/PeoplePage';
+import PersonPage from './pages/PersonPage';
 import SearchPage from './pages/SearchPage';
 
-// Visited now and then (settings, people) or once (onboarding): keep them out of the main bundle.
+// Visited rarely (settings now and then, onboarding once): keep them out of the main bundle.
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const AskPage = lazy(() => import('./pages/AskPage'));
-const PeoplePage = lazy(() => import('./pages/PeoplePage'));
-const PersonPage = lazy(() => import('./pages/PersonPage'));
+
 const Onboarding = lazy(() => import('./components/onboarding/Onboarding'));
 
 /** Route table, separate from the router so tests can mount it in a MemoryRouter. */
@@ -37,22 +38,9 @@ export function AppRoutes() {
             </Suspense>
           }
         />
-        <Route
-          path="people"
-          element={
-            <Suspense fallback={<LoadingState label="Loading people…" />}>
-              <PeoplePage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="people/:id"
-          element={
-            <Suspense fallback={<LoadingState label="Loading…" />}>
-              <PersonPage />
-            </Suspense>
-          }
-        />
+        {/* In the main bundle, like Search: loading a page's code the first time costs ~300 ms. */}
+        <Route path="people" element={<PeoplePage />} />
+        <Route path="people/:id" element={<PersonPage />} />
         <Route
           path="settings"
           element={

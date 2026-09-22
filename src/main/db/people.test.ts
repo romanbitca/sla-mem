@@ -105,6 +105,12 @@ describe('getPerson: who they are', () => {
     expect(person(db, 'U5')).toMatchObject({ title: null, tz: null, email: null, isGuest: false });
   });
 
+  it('has no DM to open when nothing in it is archived', () => {
+    const db = seededDb();
+    put(db, 'C1', [msg(tsAt(1), 'hi')]);
+    expect(person(db, 'U1')).toMatchObject({ dm: null, recent: [] });
+  });
+
   it('is null for someone the archive doesn’t know', () => {
     expect(getPerson(seededDb(), 'UNKNOWN')).toBeNull();
   });
@@ -145,12 +151,12 @@ describe('getPerson: where you talk', () => {
     ]);
     put(db, 'C1', [
       msg(tsAt(6), '<@USELF> have a look'),
-      msg(tsAt(7), 'thanks <@U1>', { user: 'USELF' }),
+      msg(tsAt(7), 'thanks <@U1|alice>', { user: 'USELF' }),
       msg(tsAt(8), 'Alice talking to everyone'),
     ]);
     const alice = person(db, 'U1');
     expect(texts(alice.recent)).toEqual([
-      'thanks <@U1>',
+      'thanks <@U1|alice>',
       '<@USELF> have a look',
       'me in the group',
       'Alice in the group',
@@ -329,6 +335,16 @@ describe('addressedPart', () => {
     } else {
       expect(part).toEqual({ text: lines.join('\n'), alsoTo });
     }
+  });
+
+  it('stays quick on lines with many mentions or long runs of spaces (one pattern once took seconds)', () => {
+    const many = `${Array.from({ length: 400 }, (_, i) => `<@U${i}>`).join(' ')} please fill in the form`;
+    const spaces = `hi <@UME>${' '.repeat(20_000)}x`;
+    const started = performance.now();
+    expect(addressedPart(many, 'U7', false)).toMatchObject({ text: many });
+    expect(addressedPart(spaces, 'UME', false)).toMatchObject({ text: spaces });
+    expect(looksLikeAsk(many)).toBe(true);
+    expect(performance.now() - started).toBeLessThan(1000);
   });
 
   it('is nothing when the mention is only about them, or for everyone', () => {

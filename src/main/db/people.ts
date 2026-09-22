@@ -135,7 +135,10 @@ export function getPerson(db: DB, userId: string, opts: { now?: number } = {}): 
   ).get(userId)!;
 
   const privates = privateConversations(db);
-  const dmRow = isSelf ? undefined : privates.find((c) => c.type === 'im' && c.dm_user_id === userId);
+  // A DM with nothing archived (never used, or its archive deleted) is no place to open.
+  const dmRow = isSelf
+    ? undefined
+    : privates.find((c) => c.type === 'im' && c.dm_user_id === userId && c.message_count > 0);
   const groupRows = isSelf
     ? []
     : privates.filter((c) => c.type === 'mpim' && parseStringArray(c.member_ids).includes(userId));
@@ -256,14 +259,17 @@ function latestBy(db: DB, author: string, conversationId: string, limit: number)
   ).all(author, conversationId, limit);
 }
 
-/** `author`'s latest messages that mention `mentioned`, among their latest MENTION_SCAN_ROWS. */
+/**
+ * `author`'s latest messages that mention `mentioned` (`<@U1>`, or Slack's older `<@U1|ana>`),
+ * among their latest MENTION_SCAN_ROWS.
+ */
 function mentions(db: DB, author: string, mentioned: string, limit: number): IdTime[] {
   return stmt<IdTime>(
     db,
     `SELECT id, time FROM (
        SELECT id, time, text FROM messages WHERE user_id = ? ORDER BY time DESC LIMIT ?
-     ) WHERE instr(text, ?) > 0 ORDER BY time DESC LIMIT ?`,
-  ).all(author, MENTION_SCAN_ROWS, `<@${mentioned}>`, limit);
+     ) WHERE instr(text, ?) > 0 OR instr(text, ?) > 0 ORDER BY time DESC LIMIT ?`,
+  ).all(author, MENTION_SCAN_ROWS, `<@${mentioned}>`, `<@${mentioned}|`, limit);
 }
 
 /**
@@ -361,27 +367,45 @@ function openQuestions(db: DB, asker: string, answerer: string, b: Between, nowS
 }
 
 const MENTION = /<@([A-Za-z0-9_-]+)(?:\|[^>]*)?>/g;
-const MENTIONS = String.raw`(?:<@[A-Za-z0-9_-]+(?:\|[^>]*)?>(?:\s*(?:,|&|and\b)?\s*))+`;
-/** "Hey @Ana, @Bo …", "Thanks @Ana", "1. @Ana …": the line speaks to them. */
-const LEADING = new RegExp(
-  String.raw`^[\s>*•-]*(?:\w[.)]\s*)?(?:(?:hey|hi|hello|dear|yo|thanks|thank you|thx|cc|fyi|ping|good (?:morning|afternoon|evening)|morning)\b[\s,!:]*)?(${MENTIONS})`,
-  'i',
-);
-/**
- * "… can you check, @Ana?", "… with the client @Ana. I …", "… @Ana @Bo" at the end; but not
- * "3 tasks for @Ana." or "a message to @Ana": after such a word the name is who it's about.
- */
-const CLOSING = new RegExp(
-  String.raw`(?<!\b(?:to|for|with|from|by|about|of|at|on|in|and|or)\s+)(${MENTIONS})(?=[.!?؟？]|$)`,
-  'gi',
-);
-const CC = new RegExp(String.raw`\bcc:?\s*(${MENTIONS})`, 'gi');
+/** Between two mentions of one run: "@Ana, @Bo and @Cy". */
+const BETWEEN_MENTIONS = /^(?:[\s,&]|and\b)*$/i;
+/** Before a run that opens the line: "Hey …", "Thanks …", "1. …", a quote or a bullet. */
+const OPENING =
+  /^[\s>*•-]*(?:\w[.)]\s*)?(?:(?:hey|hi|hello|dear|yo|thanks|thank you|thx|cc|fyi|ping|good (?:morning|afternoon|evening)|morning)\b[\s,!:]*)?$/i;
+/** After a run that closes a sentence: "… can you check, @Ana?", "… with the client @Ana. I …". */
+const CLOSING = /^(?:[\s,&]|and\b)*(?:[.!?؟？]|$)/i;
+/** Before a run that is who a sentence is about: "3 tasks for @Ana.", "a message to @Ana". */
+const ABOUT = /\b(?:to|for|with|from|by|about|of|at|on|in|and|or)\s+$/i;
+const CC = /\bcc:?\s*$/i;
+/** Only the end of the text before a run matters to ABOUT and CC. */
+const BEFORE_TAIL = 40;
 
-/** Who a line speaks to: mentions opening it, closing a sentence, or after "cc". Not "I told @Ana". */
+/**
+ * Who a line speaks to: a run of mentions opening it, closing a sentence, or after "cc"; not
+ * "I told @Ana". Runs are found first and judged by the text around them, so no pattern can
+ * backtrack over a line with many mentions (one did: 30 mentions in a row took seconds).
+ */
 function addressees(line: string): string[] {
-  const groups = [LEADING.exec(line)?.[1], ...[...line.matchAll(CLOSING)].map((m) => m[1])];
-  groups.push(...[...line.matchAll(CC)].map((m) => m[1]));
-  return [...new Set(groups.flatMap((g) => (g ? [...g.matchAll(MENTION)].map((m) => m[1]) : [])))];
+  const runs: { start: number; end: number; ids: string[] }[] = [];
+  for (const m of line.matchAll(MENTION)) {
+    const start = m.index;
+    const end = start + m[0].length;
+    const last = runs[runs.length - 1];
+    if (last && BETWEEN_MENTIONS.test(line.slice(last.end, start))) {
+      last.end = end;
+      last.ids.push(m[1]);
+    } else {
+      runs.push({ start, end, ids: [m[1]] });
+    }
+  }
+  const to = new Set<string>();
+  for (const run of runs) {
+    const before = line.slice(0, run.start);
+    const tail = before.slice(-BEFORE_TAIL);
+    const speaks = OPENING.test(before) || CC.test(tail) || (CLOSING.test(line.slice(run.end)) && !ABOUT.test(tail));
+    if (speaks) for (const id of run.ids) to.add(id);
+  }
+  return [...to];
 }
 
 /**

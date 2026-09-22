@@ -12,7 +12,7 @@ and Windows for every push.
 
 | Check                                          | Result                                                                           |
 | ---------------------------------------------- | -------------------------------------------------------------------------------- |
-| `npm run check` (typecheck, lint, tests)       | ✅ 1,104 tests in 70 files                                                       |
+| `npm run check` (typecheck, lint, tests)       | ✅ 1,106 tests in 70 files                                                       |
 | `npm run build && npm run e2e` (18 steps)      | ✅ passed                                                                        |
 | `npm run bench` (300k) and `--messages 500000` | ✅ all checks within the §6.3 targets                                            |
 | Packaged macOS app                             | ✅ opened on a demo archive: the UI loads from `app.asar`, IPC and SQLite answer |
