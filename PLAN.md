@@ -305,6 +305,61 @@ Each item is also corrected where it belongs in this document.
   the window is on screen: a free-standing alert stops the process that now serves the page. And a
   download cancelled (Cancel sync, quitting) between Slack's answer and the reading of its body
   now stops at once instead of waiting out the 60-second stall timer.
+- **My style (0.3.8, §8.2):** the owner asked for a place that looks at his own messages: how
+  professional he sounds and how to sound more so, and how fast he answers, counted only in
+  working hours and never on days off. A sidebar place under Overview, worked out on this computer
+  from the archive, with four parts:
+  - **Reply time.** How long questions and requests waited for his answer, in DMs (anything the
+    other person asked, or a plain hello) and wherever he was tagged (a line that speaks to him,
+    People's rule), until his next message there: in the DM or group DM, in the thread, or for a
+    top-level question his next top-level message in the channel within a day. Several questions
+    answered by one message count once. The clock runs only in working hours: by default Monday
+    to Thursday, 09:00–20:30, in the time zone most people in the archive have in Slack (9H:
+    Europe/Amsterdam), because part of the team works Sunday to Thursday and the rest Monday to
+    Friday; **Change hours** sets days, times and zone (`workHours` in config.json). So a question
+    at 20:00 on Thursday answered at 09:15 on Monday waited 45 minutes. Questions that arrive on a
+    day that doesn't count for the one asked, or on their day off, are left out, and so are answers
+    after more than three working days (rarely an answer to that question by then). The page shows
+    the average, the wait half the answers beat, the share within an hour, DMs and tags apart, how
+    fast people answer him (the same rules the other way, on their days off), a bar chart per week
+    or per month (the last 12 of each, from the first answers), and **who he answers fastest and
+    slowest** (ten each at most, people with three answers or more, nobody on both lists). A year
+    before his latest message is read. On the owner's archive: 161 answers, 1 h 02 min on average,
+    half within 3 minutes, 82% within an hour; people answer him in 59 minutes.
+  - **Days off** come from the archive. Leave lists: 9H's bot posts every morning in #9h-general
+    "The following people are on leave today: • *Name* (dd/mm/yy to dd/mm/yy)", so each person
+    named (by full name or mention) is off for their whole range; "I'm not on leave today" takes a
+    day back, and "I'm off today" anywhere marks its author. Absence channels: a channel named for
+    it (sick, leave, ooo, pto, holiday, time-off…) whose posts mostly read like notices ("not
+    feeling well", "emergency", "offline"…) counts each top-level post as its author's day off,
+    or the next day when posted after working hours. #9h-sick-emergency-leave: 98% of its posts
+    read that way, no other channel over 34% (#9h-general, because of the bot). 12 days of the
+    owner's, 731 person-days in all.
+  - **How you write**: six checks on his latest 5,000 messages (notes to self left out), each with
+    one of his recent messages as written and as it could read: capital letters and apostrophes
+    ("i" for "I", "im", "dont"; 67% of his English messages start with a small letter, a mention
+    in front not counted), a hello
+    when starting a chat (a DM or group DM after three quiet hours; 75%, 43 asking how the other
+    is), hello and the question together (5 hello-only openers in 118), "please" in "can you"
+    requests (76%), three or more messages in a row within a minute (36 times), and casual words
+    ("yeah", "gonna", "thanks man"). A check needs enough messages to say anything, and the ones
+    about language read English messages only. The rewrites are rules too (capitals, apostrophes,
+    "Hi Dana, …", "Could you please …", a burst joined into one message). The page's headline sums
+    them up: friendly (he greets and says please) and polished (capitals, one message, no slang)
+    make "Professional and friendly", "Friendly, but casual" (his), "Professional, but brief" or
+    "Casual". A spell check built from the archive's own vocabulary was tried and dropped: about one
+    word in five it flagged was a real typo.
+  - **Claude's review**, only when he clicks: his latest 150 messages (only his, as Slack shows
+    them, code and quotes out) go to the model chosen for Ask AI with his key, and back come a
+    summary, what works, three or four tips each with one of his messages rewritten, and the words
+    he misspells, as structured JSON (asked in words where an API or model refuses structured
+    outputs). It is kept in `style-review.json`, owner-only, and shown until he asks again; its
+    cost adds to Ask AI's spending. Claude is told to leave the rules above alone and look at tone,
+    clarity and how requests, pushback and bad news are put.
+  The page reads in about 180 ms on the owner's archive and 275 ms at 488k messages (`npm run
+  bench`, target 500 ms): joined to conversations, the query for the latest 5,000 messages sorted
+  all 155k of that author's (250 ms warm, 1.2 s cold), and first-answer lookups written as min()
+  walked whole conversations; both now read in index order and stop.
 - **Export conversation (Stage 8 nicety):** built as Markdown only (day headings, threads as
   quotes, edits, deletions, attachments and reactions noted). Markdown opens in any editor and
   renders in most viewers, so the HTML variant was left out.
@@ -714,8 +769,9 @@ Use Electron's `app.getPath('userData')`, which resolves per-OS:
   tmp/                  partial downloads before their atomic rename
 ```
 
-As built, also: `ai-key.bin` (the Anthropic API key for Ask AI, encrypted the same way) and
-`ai-usage.jsonl` (what each Ask AI question cost; never what was asked).
+As built, also: `ai-key.bin` (the Anthropic API key for Ask AI, encrypted the same way),
+`ai-usage.jsonl` (what each Ask AI question cost; never what was asked) and `style-review.json`
+(Claude's last review of the reader's writing on My style, readable by its owner only).
 
 Secrets are **not** stored here in plaintext — see §3.5.
 
@@ -1109,8 +1165,8 @@ A short, friendly, 3-screen flow. No jargon. No settings required.
 Familiar to anyone who has used Slack, but clearly a *reader*:
 
 - **Sidebar**: workspace name; a search box (⌘K / Ctrl+K); Channels, Direct messages, Group DMs, each
-  collapsible with a filter box; message counts; archived channels dimmed. *(As built: Overview
-  and a Search item that opens the search screen instead of a box in the sidebar, Ask AI and
+  collapsible with a filter box; message counts; archived channels dimmed. *(As built: Overview,
+  My style, a Search item that opens the search screen instead of a box in the sidebar, Ask AI and
   People, then one filter box for all the conversations, with a clear button while it holds text; at the bottom the sync
   status as plain text beside the Settings gear; at the top the workspace's logo, or its initial
   when it has none; see §0.3.)*
@@ -1130,6 +1186,9 @@ Familiar to anyone who has used Slack, but clearly a *reader*:
 - *(As built: an **Ask AI** place under Search, a chat with Claude over the archive; see §0.3.)*
 - *(As built: a **People** place, everyone in the archive and a page for each: who they are, what's
   open between you, your latest messages, where you talk; see §0.3.)*
+- *(As built: a **My style** place under Overview: how fast you answer on working hours, whom you
+  answer fastest and slowest, writing checks with your own messages rewritten, and Claude's review
+  on request; see §0.3.)*
 - **Archive home**: how many messages/conversations/files, the date range covered, how much disk is
   used, when the last sync ran, a **Sync now** button, and prominently: **"N messages older than 90
   days — no longer visible in Slack"**, which is the payoff. *(As built: called **Overview**; when a

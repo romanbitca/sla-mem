@@ -30,6 +30,8 @@ import type {
   SettingsDTO,
   SlackConnectionDTO,
   StartLoginRequest,
+  StyleDTO,
+  StyleReviewDTO,
   StartRunResponse,
   StatsDTO,
   StorageDTO,
@@ -56,6 +58,8 @@ export interface ArchiveApi {
   /** Everyone the reader talks with or reads, most recently in touch first. */
   getPeople(): PersonSummaryDTO[];
   getPerson(req: { id: string }): PersonDTO;
+  /** My style: how you write and how quickly you answer, from your own messages. */
+  getStyle(): StyleDTO;
 
   // Sync
   getSyncStatus(): SyncStatusDTO;
@@ -118,6 +122,10 @@ export interface ArchiveApi {
   endAiChat(req: { chatId: string }): OkDTO;
   /** What the questions cost, per day (estimated at list prices). */
   getAiSpending(): AiSpendingDTO;
+  /** My style: Claude reads your recent messages (only yours) and reviews your writing; kept until the next one. */
+  reviewStyle(): StyleReviewDTO;
+  /** The last review of your writing; null before the first. Nothing is sent. */
+  getStyleReview(): StyleReviewDTO | null;
 
   // App
   getAppInfo(): AppInfoDTO;
@@ -150,6 +158,7 @@ export const API_METHODS = [
   'getEmoji',
   'getPeople',
   'getPerson',
+  'getStyle',
   'getSyncStatus',
   'startSync',
   'cancelSync',
@@ -182,6 +191,8 @@ export const API_METHODS = [
   'stopAi',
   'endAiChat',
   'getAiSpending',
+  'reviewStyle',
+  'getStyleReview',
   'getAppInfo',
   'openExternal',
   'getUpdateInfo',

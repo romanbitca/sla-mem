@@ -22,14 +22,26 @@ import type {
   AiScopeDTO,
   AiSpendingDTO,
   AiUsageDTO,
+  StyleReviewDTO,
 } from '../../shared/types';
-import type { DB } from '../db';
+import { getMeta, styleSample, type DB } from '../db';
 import { blocked, conflict, invalid } from '../errors';
 import { safeErrorMessage } from '../redact';
 import { optionalDate, record, slackId, string } from '../validate';
-import { emptyUsage, RefusedError, runTurn, type TokenUsage, type TurnResult } from './agent';
+import { addUsage, emptyUsage, RefusedError, runTurn, type TokenUsage, type TurnResult } from './agent';
 import { isAnthropicKey, type AiKeyStore } from './key-store';
 import { promptFacts, systemPrompt } from './prompt';
+import type { StyleReviewStore } from './review-store';
+import {
+  JSON_ONLY,
+  MIN_REVIEW_MESSAGES,
+  parseReview,
+  REVIEW_CHARS,
+  REVIEW_MESSAGES,
+  REVIEW_SCHEMA,
+  REVIEW_SYSTEM,
+  reviewInput,
+} from './style-review';
 import { describeScope, runTool, SourceRefs, type ToolOutcome } from './tools';
 import type { AiUsageLog, AiUsageOutcome } from './usage-log';
 
@@ -40,6 +52,8 @@ export interface AiServiceOptions {
   model: () => AiModel;
   /** Where what each question cost is kept (Settings → Ask AI → Spending). */
   usage?: Pick<AiUsageLog, 'record' | 'spending'>;
+  /** Where the last review of your writing is kept (My style). */
+  reviews?: Pick<StyleReviewStore, 'get' | 'set'>;
   log?: (line: string) => void;
   /** Development / test override for Anthropic's API (never honoured by packaged builds). */
   baseURL?: string;
@@ -87,6 +101,10 @@ export class AiService extends EventEmitter {
   private readonly chats = new Map<string, Chat>();
   /** Off for the rest of the session if the API ever refuses the fallbacks option. */
   private fallbacks = true;
+  /** A style review is being written (one at a time). */
+  private reviewing = false;
+  /** Off for the session if the API refuses structured outputs: the review asks for JSON in words. */
+  private structuredReviews = true;
 
   constructor(private readonly opts: AiServiceOptions) {
     super();
@@ -160,6 +178,97 @@ export class AiService extends EventEmitter {
   /** What Ask AI has cost, per day. */
   spending(): AiSpendingDTO {
     return this.opts.usage?.spending() ?? { days: [] };
+  }
+
+  /**
+   * My style: Claude reads your latest messages (only yours) and reviews your writing. The
+   * messages go to Anthropic for this one request; the review is kept until the next one.
+   */
+  async reviewStyle(): Promise<StyleReviewDTO> {
+    const key = this.loadKey();
+    if (!key) throw blocked('Add your Anthropic API key in Settings → Ask AI first.');
+    if (this.reviewing) throw conflict('Claude is already reviewing your messages.');
+    const self = getMeta(this.opts.db, 'self_user_id');
+    const sample = self ? styleSample(this.opts.db, self, { limit: REVIEW_MESSAGES, maxChars: REVIEW_CHARS }) : [];
+    if (sample.length < MIN_REVIEW_MESSAGES) {
+      throw invalid(
+        `Claude needs at least ${MIN_REVIEW_MESSAGES} of your messages to review; the archive has ${sample.length}.`,
+      );
+    }
+    const model = this.opts.model();
+    const usage = emptyUsage();
+    const started = Date.now();
+    this.reviewing = true;
+    try {
+      const input = reviewInput(sample, promptFacts(this.opts.db, this.now()).userLabel);
+      let answer: string;
+      try {
+        answer = await this.reviewRequest(key, model, this.structuredReviews ? input : input + JSON_ONLY, usage);
+      } catch (err) {
+        // A model or account without structured outputs (or anything else about the request it
+        // won't take): ask once more for the JSON in words, and keep doing so this session.
+        if (!this.structuredReviews || !(err instanceof Anthropic.BadRequestError)) throw err;
+        this.structuredReviews = false;
+        this.log(
+          `My style: the API refused structured outputs (${safeErrorMessage(err, [key])}); asking for JSON in the answer from now on`,
+        );
+        answer = await this.reviewRequest(key, model, input + JSON_ONLY, usage);
+      }
+      const review = parseReview(answer, sample);
+      const cost = usageDTO(model, usage);
+      this.recordUsage(cost, 'answered');
+      this.log(
+        `My style: Claude reviewed ${sample.length} messages with ${model} in ${((Date.now() - started) / 1000).toFixed(1)} s, ` +
+          `${cost.inputTokens} tokens in, ${cost.outputTokens} out, about $${cost.costUsd.toFixed(3)}`,
+      );
+      const saved: StyleReviewDTO = { ...review, messageCount: sample.length, usage: cost, at: this.now().getTime() };
+      this.opts.reviews?.set(saved);
+      return saved;
+    } catch (err) {
+      this.recordUsage(usageDTO(model, usage), 'failed');
+      if (err instanceof Error && /^The review/.test(err.message)) {
+        this.log(`My style: ${err.message}`);
+        throw blocked('Claude’s review came back unreadable. Try again.');
+      }
+      const problem = describeAiError(err);
+      this.log(`My style: review failed (${problem.kind}): ${safeErrorMessage(err, [key])}`);
+      throw blocked(
+        problem.kind === 'failed' ? 'Something went wrong while Claude was reviewing. Try again.' : problem.message,
+      );
+    } finally {
+      this.reviewing = false;
+    }
+  }
+
+  /** The last review, kept until the next one; null before the first. */
+  savedReview(): StyleReviewDTO | null {
+    return this.opts.reviews?.get() ?? null;
+  }
+
+  private async reviewRequest(key: string, model: AiModel, input: string, usage: TokenUsage): Promise<string> {
+    const structured = this.structuredReviews;
+    const stream = this.client(key).beta.messages.stream({
+      model,
+      max_tokens: 4_000,
+      system: REVIEW_SYSTEM,
+      messages: [{ role: 'user', content: input }],
+      ...(structured || model !== 'claude-haiku-4-5'
+        ? {
+            output_config: {
+              // Enough thought for a review; no tools, so "low" is plenty.
+              ...(model !== 'claude-haiku-4-5' ? { effort: 'low' as const } : {}),
+              ...(structured ? { format: { type: 'json_schema' as const, schema: REVIEW_SCHEMA } } : {}),
+            },
+          }
+        : {}),
+    });
+    const message = await stream.finalMessage();
+    addUsage(usage, message.usage);
+    if (message.stop_reason === 'refusal') throw new RefusedError();
+    return message.content
+      .filter((b) => b.type === 'text')
+      .map((b) => (b as { text: string }).text)
+      .join('');
   }
 
   stop(chatId: unknown): void {

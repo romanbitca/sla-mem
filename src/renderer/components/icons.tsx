@@ -208,6 +208,15 @@ export const SyncIcon = makeIcon(
 export const ArrowDownIcon = makeIcon('ArrowDown', <path d="M12 5v14m0 0-6-6m6 6 6-6" />);
 export const ArrowUpIcon = makeIcon('ArrowUp', <path d="M12 19V5m0 0-6 6m6-6 6 6" />);
 export const PencilIcon = makeIcon('Pencil', <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16zM13.5 6.5l4 4" />);
+/** A pen nib: My style (how you write). */
+export const PenNibIcon = makeIcon(
+  'PenNib',
+  <>
+    <path d="M12 3 18 10.5 12 21 6 10.5z" />
+    <path d="M12 12.5V21" />
+    <circle cx="12" cy="10.5" r="1.5" />
+  </>,
+);
 export const EyeOffIcon = makeIcon(
   'EyeOff',
   <>

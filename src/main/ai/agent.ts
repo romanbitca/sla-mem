@@ -158,7 +158,7 @@ function finalContent(content: BetaContentBlock[]): BetaContentBlock[] {
   return [...kept, { type: 'text', text: '(No answer.)', citations: null }];
 }
 
-function addUsage(total: TokenUsage, u: BetaUsage): void {
+export function addUsage(total: TokenUsage, u: BetaUsage): void {
   total.input += u.input_tokens;
   total.cacheWrite += u.cache_creation_input_tokens ?? 0;
   total.cacheRead += u.cache_read_input_tokens ?? 0;

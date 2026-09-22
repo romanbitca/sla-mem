@@ -15,6 +15,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import PeoplePage from './pages/PeoplePage';
 import PersonPage from './pages/PersonPage';
 import SearchPage from './pages/SearchPage';
+import StylePage from './pages/StylePage';
 
 // Visited rarely (settings now and then, onboarding once): keep them out of the main bundle.
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
@@ -41,6 +42,7 @@ export function AppRoutes() {
         {/* In the main bundle, like Search: loading a page's code the first time costs ~300 ms. */}
         <Route path="people" element={<PeoplePage />} />
         <Route path="people/:id" element={<PersonPage />} />
+        <Route path="style" element={<StylePage />} />
         <Route
           path="settings"
           element={

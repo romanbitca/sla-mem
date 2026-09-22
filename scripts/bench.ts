@@ -4,13 +4,23 @@
  *
  * Usage: npm run bench -- [--messages 300000] [--out ./.test-data/bench-300k] [--fresh]
  * Targets: conversation list < 10 ms, message page < 50 ms, typical search < 50 ms, worst < 300 ms,
- * the People list and a person's page < 50 ms.
+ * the People list and a person's page < 50 ms, My style (read once per visit) < 500 ms.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getMessages, getPerson, listConversations, listPeople, openDb, search, type DB } from '../src/main/db';
+import {
+  getMessages,
+  getPerson,
+  getStyle,
+  listConversations,
+  listPeople,
+  openDb,
+  search,
+  type DB,
+} from '../src/main/db';
+import { DEFAULT_WORK_HOURS } from '../src/main/preferences';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -105,6 +115,11 @@ function checks(db: DB): Check[] {
       name: `person page (${busiest.messageCount} messages by them)`,
       run: () => getPerson(db, busiest.userId),
       target: typical,
+    },
+    {
+      name: 'my style (a year of reply times, 5,000 messages read)',
+      run: () => getStyle(db, { workHours: DEFAULT_WORK_HOURS }),
+      target: 500,
     },
   ];
 }

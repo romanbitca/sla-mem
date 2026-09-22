@@ -5,7 +5,7 @@ import type { ConversationDTO, SyncStatusDTO } from '../../../shared/types';
 import { isAnswering, useAskChat } from '../../lib/askChat';
 import { useDirectory } from '../../lib/directory';
 import { formatCount } from '../../lib/format';
-import { conversationPath, PEOPLE_PATH } from '../../lib/links';
+import { conversationPath, PEOPLE_PATH, STYLE_PATH } from '../../lib/links';
 import { useConversations, useSettings, useWorkspace } from '../../lib/queries';
 import { useLastSearch } from '../../lib/searchNav';
 import { readJsonPref, writeJsonPref } from '../../lib/storage';
@@ -17,6 +17,7 @@ import {
   HashIcon,
   LockIcon,
   OverviewIcon,
+  PenNibIcon,
   SearchIcon,
   SettingsIcon,
   SparklesIcon,
@@ -160,6 +161,10 @@ export function Sidebar({ syncStatus, syncError, onClose, className, inert }: Si
         <NavLink to="/" end className={({ isActive }) => primaryNavClass(isActive)}>
           <OverviewIcon size={16} />
           Overview
+        </NavLink>
+        <NavLink to={STYLE_PATH} className={({ isActive }) => primaryNavClass(isActive)}>
+          <PenNibIcon size={16} />
+          My style
         </NavLink>
         <SearchNavLink />
         <AskNavLink />

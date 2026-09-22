@@ -9,7 +9,12 @@ import type { Handlers } from './register';
 
 export function createHandlers(s: AppServices, hooks: PlatformHooks): Handlers {
   return {
-    ...archiveHandlers({ db: s.db, paths: s.paths, isConnected: () => s.connection.hasCredentials() }),
+    ...archiveHandlers({
+      db: s.db,
+      paths: s.paths,
+      isConnected: () => s.connection.hasCredentials(),
+      workHours: () => s.prefs.get().workHours,
+    }),
     ...actionHandlers(s, hooks),
   };
 }

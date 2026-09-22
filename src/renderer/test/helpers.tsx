@@ -251,6 +251,7 @@ export function makePreferences(overrides: Partial<PreferencesDTO> = {}): Prefer
     showTrayIcon: true,
     excludedConversationIds: [],
     aiModel: 'claude-sonnet-5',
+    workHours: { days: [1, 2, 3, 4], start: 540, end: 1230, timeZone: null },
     ...overrides,
   };
 }

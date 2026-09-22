@@ -64,6 +64,32 @@ export function scriptedReply(messages: Message[]): FakeReply {
   };
 }
 
+/**
+ * My style's review: a pretend one built from the messages sent, so the whole path (numbers mapped
+ * back to messages, rewrites, saving) runs. Two messages get their first letter capitalized.
+ */
+export function scriptedReview(messages: Message[]): FakeReply {
+  const input = typeof messages[0]?.content === 'string' ? messages[0].content : '';
+  const lines = [...input.matchAll(/^\[(\d+)\] \[[a-z]+\] (.+)$/gm)].map((m) => ({ n: Number(m[1]), text: m[2] }));
+  const small = lines.filter((l) => /^\p{Ll}/u.test(l.text)).slice(0, 2);
+  const review = {
+    summary: 'You come across as helpful and quick. (This review comes from the development mock, not from Claude.)',
+    strengths: ['Quick to help', 'Clear next steps'],
+    tips: small.map((l, i) => ({
+      title: i === 0 ? 'Lead with the point' : 'Close the loop',
+      tip: 'Say what you need in the first sentence, then the details.',
+      message: l.n,
+      rewrite: l.text[0].toUpperCase() + l.text.slice(1),
+    })),
+    typos: [{ wrong: 'recieve', right: 'receive' }],
+  };
+  return {
+    content: [{ type: 'text', text: JSON.stringify(review) }],
+    stop_reason: 'end_turn',
+    usage: { input_tokens: 5200, output_tokens: 420 },
+  };
+}
+
 export async function startMockAnthropic(opts: { port?: number; delayMs?: number } = {}): Promise<MockAnthropic> {
   const delayMs = opts.delayMs ?? 25;
   let requests = 0;
@@ -91,8 +117,13 @@ export async function startMockAnthropic(opts: { port?: number; delayMs?: number
         res.end(JSON.stringify({ type: 'error', error: { type: 'not_found_error', message: 'Not found' } }));
         return;
       }
-      const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as { model: string; messages: Message[] };
-      const reply = { ...scriptedReply(body.messages), model: body.model };
+      const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
+        model: string;
+        system?: unknown;
+        messages: Message[];
+      };
+      const review = typeof body.system === 'string' && body.system.startsWith('You review how someone writes');
+      const reply = { ...(review ? scriptedReview(body.messages) : scriptedReply(body.messages)), model: body.model };
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
       const events = sseEvents(reply, 6);
       let i = 0;

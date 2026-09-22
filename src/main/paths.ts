@@ -9,6 +9,7 @@
  *   <dataDir>/credentials.bin            the Slack session, encrypted with the OS keychain
  *   <dataDir>/ai-key.bin                 the Anthropic API key for Ask AI, encrypted the same way
  *   <dataDir>/ai-usage.jsonl             what each Ask AI question cost (never what was asked)
+ *   <dataDir>/style-review.json          Claude's last review of your writing (My style)
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -88,6 +89,7 @@ export interface ArchivePaths {
   credentialsPath: string;
   aiKeyPath: string;
   aiUsagePath: string;
+  styleReviewPath: string;
 }
 
 export function archivePaths(dataDir: string): ArchivePaths {
@@ -102,6 +104,7 @@ export function archivePaths(dataDir: string): ArchivePaths {
     credentialsPath: path.join(root, 'credentials.bin'),
     aiKeyPath: path.join(root, 'ai-key.bin'),
     aiUsagePath: path.join(root, 'ai-usage.jsonl'),
+    styleReviewPath: path.join(root, 'style-review.json'),
   };
 }
 

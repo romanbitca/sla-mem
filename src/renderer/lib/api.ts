@@ -186,6 +186,7 @@ export const api = {
   getEmoji: (_signal?: AbortSignal) => call('getEmoji'),
   getPeople: (_signal?: AbortSignal) => call('getPeople'),
   getPerson: (id: string, _signal?: AbortSignal) => call('getPerson', { id }),
+  getStyle: (_signal?: AbortSignal) => call('getStyle'),
 
   // Sync
   getSyncStatus: (_signal?: AbortSignal) => call('getSyncStatus'),
@@ -232,6 +233,8 @@ export const api = {
   stopAi: (req: { chatId: string }) => call('stopAi', req),
   endAiChat: (req: { chatId: string }) => call('endAiChat', req),
   getAiSpending: (_signal?: AbortSignal) => call('getAiSpending'),
+  reviewStyle: () => call('reviewStyle'),
+  getStyleReview: (_signal?: AbortSignal) => call('getStyleReview'),
 
   // App
   getAppInfo: (_signal?: AbortSignal) => call('getAppInfo'),

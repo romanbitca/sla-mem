@@ -19,6 +19,7 @@ export function searchPath(q: string): string {
 }
 
 export const PEOPLE_PATH = '/people';
+export const STYLE_PATH = '/style';
 
 export function personPath(userId: string): string {
   return `${PEOPLE_PATH}/${encodeURIComponent(userId)}`;

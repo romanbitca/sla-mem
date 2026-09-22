@@ -338,6 +338,38 @@ describe('preferences', () => {
     expect(fs.readdirSync(dir).some((f) => f.startsWith('config.json.corrupt-'))).toBe(true);
   });
 
+  it('keeps My style’s working hours: Monday to Thursday, 09:00–20:30 in the team’s zone unless changed', () => {
+    const file = path.join(dir, 'config.json');
+    const prefs = new Preferences(file);
+    expect(prefs.get().workHours).toEqual({ days: [1, 2, 3, 4], start: 540, end: 1230, timeZone: null });
+    prefs.update({ workHours: { days: [5, 0, 1, 1], start: 480, end: 1020, timeZone: 'Africa/Cairo' } });
+    expect(new Preferences(file).get().workHours).toEqual({
+      days: [0, 1, 5],
+      start: 480,
+      end: 1020,
+      timeZone: 'Africa/Cairo',
+    });
+    for (const bad of [
+      { days: [], start: 540, end: 1230, timeZone: null },
+      { days: [7], start: 540, end: 1230, timeZone: null },
+      { days: [1], start: 1230, end: 540, timeZone: null },
+      { days: [1], start: 540, end: 1500, timeZone: null },
+      { days: [1], start: 540, end: 1230, timeZone: 'Mars/Olympus_Mons' },
+      { days: [1], start: '9:00', end: 1230, timeZone: null },
+      'weekdays',
+    ]) {
+      expect(() => prefs.update({ workHours: bad })).toThrow(/at least one day/);
+    }
+    // A hand-edited file with nonsense falls back to the defaults.
+    fs.writeFileSync(file, JSON.stringify({ preferences: { workHours: { days: 'all' } } }));
+    expect(new Preferences(file).get().workHours).toEqual({
+      days: [1, 2, 3, 4],
+      start: 540,
+      end: 1230,
+      timeZone: null,
+    });
+  });
+
   it('turns the schedules before 0.3.7 (every 15 minutes to daily) into weekly; manual stays manual', () => {
     const file = path.join(dir, 'config.json');
     for (const old of [15, 60, 360, 1440]) {

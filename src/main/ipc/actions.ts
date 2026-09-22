@@ -30,6 +30,7 @@ type ActionHandlers = Omit<
   | 'getEmoji'
   | 'getPeople'
   | 'getPerson'
+  | 'getStyle'
 >;
 
 export function settingsDTO(s: AppServices): SettingsDTO {
@@ -189,6 +190,8 @@ export function actionHandlers(s: AppServices, hooks: PlatformHooks): ActionHand
       return ok;
     },
     getAiSpending: () => s.ai.spending(),
+    reviewStyle: () => s.ai.reviewStyle(),
+    getStyleReview: () => s.ai.savedReview(),
 
     // ─── app and updates ───────────────────────────────────────────────────────────────────────
     getAppInfo: () => hooks.appInfo(),

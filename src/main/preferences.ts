@@ -12,10 +12,23 @@ import type {
   PreferencesPatch,
   SyncInterval,
   ThemePreference,
+  WorkHoursDTO,
 } from '../shared/types';
 import { AI_MODELS, SYNC_INTERVALS } from '../shared/types';
+import { isTimeZone } from './db/work-calendar';
 import { invalid } from './errors';
 import { writeFileAtomicSync } from './fsx';
+
+/**
+ * My style counts reply times Monday to Thursday, 09:00–20:30: the days every team works when
+ * some work Sunday to Thursday and others Monday to Friday. The zone is the team's (null).
+ */
+export const DEFAULT_WORK_HOURS: Readonly<WorkHoursDTO> = Object.freeze({
+  days: [1, 2, 3, 4],
+  start: 9 * 60,
+  end: 20 * 60 + 30,
+  timeZone: null,
+});
 
 export const DEFAULT_PREFERENCES: Readonly<PreferencesDTO> = Object.freeze({
   syncIntervalMinutes: 10_080,
@@ -27,6 +40,7 @@ export const DEFAULT_PREFERENCES: Readonly<PreferencesDTO> = Object.freeze({
   showTrayIcon: true,
   excludedConversationIds: [],
   aiModel: 'claude-sonnet-5',
+  workHours: DEFAULT_WORK_HOURS,
 });
 
 /** App state that isn't a user preference but must survive restarts. */
@@ -137,6 +151,25 @@ function sanitize(p: Partial<PreferencesDTO>): PreferencesDTO {
     showTrayIcon: typeof p.showTrayIcon === 'boolean' ? p.showTrayIcon : d.showTrayIcon,
     excludedConversationIds: conversationIds(p.excludedConversationIds) ?? [],
     aiModel: AI_MODELS.includes(p.aiModel as AiModel) ? (p.aiModel as AiModel) : d.aiModel,
+    workHours: workHours(p.workHours) ?? { ...d.workHours, days: [...d.workHours.days] },
+  };
+}
+
+/** Valid working hours, cleaned up (days sorted, each once), or null. */
+function workHours(v: unknown): WorkHoursDTO | null {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return null;
+  const h = v as Record<string, unknown>;
+  if (!Array.isArray(h.days) || h.days.length === 0 || h.days.length > 7) return null;
+  if (!h.days.every((d) => Number.isInteger(d) && (d as number) >= 0 && (d as number) <= 6)) return null;
+  const minute = (m: unknown) => Number.isInteger(m) && (m as number) >= 0 && (m as number) <= 24 * 60;
+  if (!minute(h.start) || !minute(h.end) || (h.start as number) >= (h.end as number)) return null;
+  const zone = h.timeZone;
+  if (zone !== null && (typeof zone !== 'string' || zone.length > 64 || !isTimeZone(zone))) return null;
+  return {
+    days: [...new Set(h.days as number[])].sort((a, b) => a - b),
+    start: h.start as number,
+    end: h.end as number,
+    timeZone: zone as string | null,
   };
 }
 
@@ -186,6 +219,12 @@ function validatePatch(patch: unknown): PreferencesPatch {
         if (!AI_MODELS.includes(value as AiModel)) throw invalid('Choose a model from the list');
         out.aiModel = value as AiModel;
         break;
+      case 'workHours': {
+        const hours = workHours(value);
+        if (!hours) throw invalid('Choose at least one day, a start before the end, and a time zone from the list');
+        out.workHours = hours;
+        break;
+      }
       default:
         throw invalid(`Unknown setting “${key.slice(0, 40)}”`);
     }

@@ -346,6 +346,150 @@ export interface PersonDTO {
   links: PersonLinkDTO[];
 }
 
+// ─── My style ─────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The hours reply times count (Settings → My style): `start` to `end` on `days`, in one time
+ * zone. Nights, the other days and days off don't count.
+ */
+export interface WorkHoursDTO {
+  /** Weekdays, 0 = Sunday … 6 = Saturday, ascending. */
+  days: number[];
+  /** Minutes after midnight, start < end. */
+  start: number;
+  end: number;
+  /** IANA zone; null means the one most people in the archive are in. */
+  timeZone: string | null;
+}
+
+/** How long answers took, on the working-hours clock. */
+export interface ReplyStatsDTO {
+  /** Answers timed. */
+  count: number;
+  averageSeconds: number;
+  /** Half the answers came sooner than this. */
+  medianSeconds: number;
+  /** Answers within 15 minutes, within an hour, within 4 hours, and later. */
+  buckets: [number, number, number, number];
+  /** The same for DMs and for messages that tag you (or that you tagged). */
+  dm: { count: number; averageSeconds: number } | null;
+  mentions: { count: number; averageSeconds: number } | null;
+}
+
+/** A week (Monday to Sunday) or a month of your answers, for the chart. */
+export interface ReplyPeriodDTO {
+  /** Its first day, "2026-09-14", in the working-hours time zone. */
+  start: string;
+  /** Answers timed. */
+  count: number;
+  /** Null for a period without any. */
+  averageSeconds: number | null;
+}
+
+/** How quickly you answer one person. */
+export interface ReplyPersonDTO {
+  userId: string;
+  count: number;
+  averageSeconds: number;
+}
+
+export type StyleCheckId = 'capitals' | 'oneMessage' | 'please' | 'casual' | 'greeting' | 'greetAndAsk';
+
+/** One of your messages as it is, and as it could read ("after"; null when there's no rewrite). */
+export interface StyleExampleDTO {
+  /** Several lines when the example is a run of messages. */
+  before: string;
+  after: string | null;
+  conversationId: string;
+  ts: string;
+  threadTs: string | null;
+  isReply: boolean;
+}
+
+export interface StyleCheckDTO {
+  id: StyleCheckId;
+  /** Already a habit; otherwise it's a tip. */
+  good: boolean;
+  /**
+   * What was counted, out of `total`: greeting (openers with a greeting / openers), greetAndAsk
+   * (hello-only openers / openers), capitals (messages starting with a small letter / English
+   * messages), please (requests with please / "can you" requests), oneMessage (runs of 3+ / your
+   * messages), casual (words / English messages).
+   */
+  count: number;
+  total: number;
+  /** capitals: the fixes by kind; casual: the words, most used first. */
+  words: { word: string; count: number }[];
+  example: StyleExampleDTO | null;
+}
+
+/** Where days off were found, for the note under the reply times. */
+export interface DaysOffSourceDTO {
+  conversationId: string;
+  /** 'list': posts naming who is away today; 'notices': a channel of "I'm away" posts. */
+  kind: 'list' | 'notices';
+  /** Person-days found there. */
+  days: number;
+}
+
+/** The "My style" page: how you write and how quickly you answer, from your own messages. */
+export interface StyleDTO {
+  /** Your messages read (notes to yourself aside). */
+  messageCount: number;
+  /** In English, where the writing checks apply. */
+  englishCount: number;
+  firstTs: string | null;
+  /** 'professional' (friendly and polished), 'friendly' (but casual), 'polished' (but brief), 'casual'. */
+  tone: 'professional' | 'friendly' | 'polished' | 'casual' | null;
+  /** Worst first: tips, then habits you have. */
+  checks: StyleCheckDTO[];
+  hours: WorkHoursDTO & { timeZone: string; timeZoneIsDefault: boolean };
+  /** How fast you answer questions and requests in DMs and tags; null with too few. */
+  you: ReplyStatsDTO | null;
+  /** How fast people answer yours. */
+  them: ReplyStatsDTO | null;
+  /** Your average per week and per month, the last 12 of each up to now, oldest first. */
+  weeks: ReplyPeriodDTO[];
+  months: ReplyPeriodDTO[];
+  /** The people you answer fastest, fastest first, and slowest, slowest first (never both). */
+  fastest: ReplyPersonDTO[];
+  slowest: ReplyPersonDTO[];
+  /** Answers each of them needs to be ranked. */
+  rankMinAnswers: number;
+  /** Since when the reply times count (a year before your latest message), when the archive goes back further. */
+  repliesSince: string | null;
+  /** Your days off found (they don't count), and where. */
+  yourDaysOff: number;
+  daysOffSources: DaysOffSourceDTO[];
+}
+
+/** One of Claude's tips, with one of your messages rewritten. */
+export interface StyleReviewTipDTO {
+  title: string;
+  tip: string;
+  /** Your message as you wrote it, and as Claude would write it; null when the tip has none. */
+  before: string | null;
+  after: string | null;
+  /** The message, to open it. */
+  message: { conversationId: string; ts: string; threadTs: string | null; isReply: boolean } | null;
+}
+
+/** Claude's review of your writing (My style), from your recent messages. */
+export interface StyleReviewDTO {
+  /** How you come across, in a sentence or two. */
+  summary: string;
+  /** What already works, a few words each. */
+  strengths: string[];
+  tips: StyleReviewTipDTO[];
+  /** Words you misspell, as written and as meant. */
+  typos: { wrong: string; right: string }[];
+  /** Your messages Claude read. */
+  messageCount: number;
+  usage: AiUsageDTO;
+  /** When it was written (epoch ms). */
+  at: number;
+}
+
 // ─── Archive overview ─────────────────────────────────────────────────────────────────────────
 
 export interface WorkspaceDTO {
@@ -555,6 +699,8 @@ export interface PreferencesDTO {
   /** Conversations never synced: no history, threads or attachments are fetched for them. */
   excludedConversationIds: string[];
   aiModel: AiModel;
+  /** The hours My style counts reply times in. */
+  workHours: WorkHoursDTO;
 }
 
 export type PreferencesPatch = Partial<
@@ -567,6 +713,7 @@ export type PreferencesPatch = Partial<
     | 'showTrayIcon'
     | 'excludedConversationIds'
     | 'aiModel'
+    | 'workHours'
   >
 >;
 

@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { AppInfoDTO, AttachmentPolicy, LoginStatusDTO, PreferencesDTO, ThemePreference } from '../shared/types';
-import { AiService, AiUsageLog, SafeStorageAiKeyStore } from './ai';
+import { AiService, AiUsageLog, SafeStorageAiKeyStore, StyleReviewStore } from './ai';
 import {
   ConnectionService,
   LoginManager,
@@ -154,6 +154,7 @@ export function createServices(opts: ServicesOptions): AppServices {
       logsDir: ctx.paths.logsDir,
       log: (line) => ctx.log.info(line),
     }),
+    reviews: new StyleReviewStore(ctx.paths.styleReviewPath, (line) => ctx.log.info(line)),
     log: (line) => ctx.log.info(line),
     baseURL: opts.aiBaseUrl,
     fetch: opts.fetch,

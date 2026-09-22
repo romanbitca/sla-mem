@@ -19,6 +19,8 @@
  *  10. Ask AI against a pretend Claude: the key saved in Settings (encrypted), a question asked in
  *      the chat, a cited message opened, what it cost kept (never what was asked) and shown in
  *      Settings; the key never reaches the logs.
+ *  11. My style: reply times and writing checks from the archive; Claude's review asked for once,
+ *      saved where only its owner can read it, and shown after a restart without asking again.
  *
  * Usage: npm run build && npm run e2e   (screenshots go to .e2e-data/shots)
  */
@@ -423,9 +425,40 @@ async function main(): Promise<void> {
     await page.locator('#ask-ai').getByRole('list', { name: 'Spending per day, last 30 days' }).waitFor();
     assert((await spending.innerText()).includes('this month'), 'Settings shows what Ask AI cost this month');
     await page.screenshot({ path: path.join(shots, 'ask-ai-spending.png') });
+    log('Ask AI: key saved encrypted, a question answered with sources, a citation opened, its cost in Settings');
+
+    // My style: worked out from the archive; Claude's review only when asked, then kept.
+    const places = () => page.getByRole('navigation', { name: 'Places' });
+    await places().getByRole('link', { name: 'My style' }).click();
+    await page.getByRole('region', { name: 'Reply time' }).waitFor();
+    await page.getByRole('region', { name: 'How you write' }).waitFor();
+    await page.screenshot({ path: path.join(shots, 'my-style.png') });
+    const asked = claude.requests;
+    const reviewCard = () => page.getByRole('region', { name: 'Claude’s review' });
+    await reviewCard().getByRole('button', { name: 'Review my writing' }).click();
+    await reviewCard()
+      .getByText(/development mock/)
+      .waitFor({ timeout: 30_000 });
+    assert(claude.requests === asked + 1, `one request for the review (${claude.requests - asked})`);
+    const reviewFile = path.join(dataDir, 'style-review.json');
+    assert(fs.readFileSync(reviewFile, 'utf8').includes('development mock'), 'the review is saved');
+    if (process.platform !== 'win32') {
+      assert((fs.statSync(reviewFile).mode & 0o777) === 0o600, 'only its owner can read the saved review');
+    }
+    await page.screenshot({ path: path.join(shots, 'my-style-review.png') });
     await quit(app);
     app = null;
-    log('Ask AI: key saved encrypted, a question answered with sources, a citation opened, its cost in Settings');
+    ({ app, page } = await launch(mock));
+    await places().getByRole('link', { name: 'My style' }).click();
+    await reviewCard()
+      .getByText(/development mock/)
+      .waitFor();
+    assert(claude.requests === asked + 1, 'after a restart the saved review shows without asking Claude again');
+    await quit(app);
+    app = null;
+    log(
+      'My style: reply times and writing checks shown; the review asked once, saved owner-only, kept after a restart',
+    );
 
     const logs = fs
       .readdirSync(path.join(dataDir, 'logs'))
@@ -435,6 +468,7 @@ async function main(): Promise<void> {
     assert(!logs.includes(mock.session.cookie) && !logs.includes(mock.session.token), 'no session values in the logs');
     assert(!logs.includes(AI_KEY) && !logs.includes(AI_KEY.slice(14)), 'no Anthropic key in the logs');
     assert(logs.includes('Ask AI: answered with'), 'the log says an answer was written (not what was asked)');
+    assert(logs.includes('My style: Claude reviewed'), 'the log says a review was written (not what it said)');
     log('Logs contain no tokens, cookies or API keys');
     console.log('\nE2E passed');
   } finally {

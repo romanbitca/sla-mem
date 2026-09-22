@@ -408,6 +408,14 @@ function addressees(line: string): string[] {
   return [...to];
 }
 
+/** Everyone a message speaks to (see addressees), each once; nobody for @channel or @here. */
+export function speaksTo(text: string): string[] {
+  if (BROADCAST.test(text)) return [];
+  const out = new Set<string>();
+  for (const line of text.split('\n')) for (const id of addressees(line)) out.add(id);
+  return [...out];
+}
+
 /**
  * The part of a message meant for `target`, and who else it was meant for. A DM is meant for the
  * other person whole. Elsewhere a line must speak to them: lines speaking to them, and lines

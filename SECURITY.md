@@ -66,6 +66,9 @@ The details, with the reasons, are in [PLAN.md](PLAN.md) §3.5–3.6 and §9.5.
   user's own folder (only the Slack session and the API key are encrypted), readable by anything
   running as that user. Turn on FileVault or BitLocker; keep backups (they hold every message)
   somewhere safe.
+- **My style's review sends your latest 150 messages to Anthropic** (only yours), with your own
+  key, only when you click Review; the review is kept on this computer, readable by you only.
+  Everything else on My style is worked out locally.
 - **Ask AI sends what it reads to Anthropic,** with the user's own key and only while it answers.
   Message text can try to steer Claude (prompt injection); the tools it has only read the local
   archive, and answers can't contain links or images, so there is nothing for such text to send

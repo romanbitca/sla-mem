@@ -1,7 +1,7 @@
 /**
- * Read-only archive calls: directory, messages, threads, revisions, search, stats, people.
+ * Read-only archive calls: directory, messages, threads, revisions, search, stats, people, style.
  */
-import type { WorkspaceDTO } from '../../shared/types';
+import type { WorkHoursDTO, WorkspaceDTO } from '../../shared/types';
 import {
   conversationBeyondFreeWindow,
   getConversation,
@@ -9,6 +9,7 @@ import {
   getMessages,
   getPerson,
   getStats,
+  getStyle,
   getThread,
   getWorkspaceMeta,
   listConversations,
@@ -28,6 +29,8 @@ export interface ArchiveDeps {
   paths: ArchivePaths;
   /** Credentials are saved (the session may still have expired). */
   isConnected(): boolean;
+  /** The hours My style counts reply times in (Settings). */
+  workHours(): WorkHoursDTO;
 }
 
 type ArchiveHandlers = Pick<
@@ -44,6 +47,7 @@ type ArchiveHandlers = Pick<
   | 'getEmoji'
   | 'getPeople'
   | 'getPerson'
+  | 'getStyle'
 >;
 
 export function archiveHandlers(deps: ArchiveDeps): ArchiveHandlers {
@@ -90,5 +94,10 @@ export function archiveHandlers(deps: ArchiveDeps): ArchiveHandlers {
       if (!person) throw notFound('That person isn’t in the archive.');
       return person;
     },
+    getStyle: () =>
+      getStyle(db, {
+        workHours: deps.workHours(),
+        fallbackTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      }),
   };
 }

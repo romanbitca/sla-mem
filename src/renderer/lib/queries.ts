@@ -55,6 +55,10 @@ export const qk = {
   peopleAll: ['people'] as const,
   people: ['people', 'list'] as const,
   person: (userId: string) => ['people', 'person', userId] as const,
+  /** My style, for the working hours it was counted with. */
+  styleAll: ['style'] as const,
+  style: (hours: string) => ['style', hours] as const,
+  styleReview: ['ai', 'style-review'] as const,
   syncStatus: ['sync', 'status'] as const,
   settings: ['settings'] as const,
   aiSpending: ['ai', 'spending'] as const,
@@ -128,6 +132,41 @@ export function usePerson(userId: string) {
     queryKey: qk.person(userId),
     queryFn: ({ signal }) => api.getPerson(userId, signal),
     staleTime: Infinity,
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
+// My style (kept until a sync or import brings something new, or the working hours change)
+
+export function useStyle() {
+  const hours = useSettings().data?.preferences.workHours;
+  return useQuery({
+    queryKey: qk.style(JSON.stringify(hours ?? null)),
+    queryFn: ({ signal }) => api.getStyle(signal),
+    staleTime: Infinity,
+    // The previous hours' numbers stay up while the new ones are counted.
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Claude's last review of your writing, as saved (nothing is sent to read it). */
+export function useStyleReview() {
+  return useQuery({
+    queryKey: qk.styleReview,
+    queryFn: ({ signal }) => api.getStyleReview(signal),
+    staleTime: Infinity,
+  });
+}
+
+/** Asks Claude for a new review; it replaces the saved one. */
+export function useReviewStyle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.reviewStyle(),
+    onSuccess: (review) => {
+      qc.setQueryData(qk.styleReview, review);
+      void qc.invalidateQueries({ queryKey: qk.aiSpending });
+    },
   });
 }
 
@@ -266,6 +305,7 @@ export function invalidateArchiveData(qc: QueryClient): Promise<void> {
       qk.threadsAll,
       qk.searchAll,
       qk.peopleAll,
+      qk.styleAll,
     ].map((queryKey) => qc.invalidateQueries({ queryKey })),
   ).then(() => undefined);
 }
