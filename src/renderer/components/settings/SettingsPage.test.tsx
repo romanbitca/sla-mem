@@ -171,7 +171,7 @@ describe('Settings — Slack connection', () => {
 });
 
 describe('Settings — sync and attachments', () => {
-  it('saves how often to sync and start-at-login as soon as they change', async () => {
+  it('saves how often to sync and start-at-login as soon as they change, each in its own card', async () => {
     const update = acceptPatches();
     setup();
     const sync = await card('Sync');
@@ -188,10 +188,14 @@ describe('Settings — sync and attachments', () => {
     await waitFor(() => expect(update).toHaveBeenCalledWith({ syncIntervalMinutes: 360 }));
     expect(await within(sync).findByText('Saved')).toBeTruthy();
 
-    const login = within(sync).getByRole('switch', { name: 'Start sla-mem when I log in' }) as HTMLInputElement;
+    // Starting at login is about the app, not syncing: it lives in the App card.
+    expect(within(sync).queryByRole('switch')).toBeNull();
+    const app = await card('App');
+    const login = within(app).getByRole('switch', { name: 'Start sla-mem when I log in' }) as HTMLInputElement;
     expect(login.checked).toBe(true);
     fireEvent.click(login);
     await waitFor(() => expect(update).toHaveBeenCalledWith({ launchAtLogin: false }));
+    expect(await within(app).findByText('Saved')).toBeTruthy();
     expect(within(sync).getByText('5 minutes ago')).toBeTruthy();
     expect(within(sync).getByText('in 55 minutes')).toBeTruthy();
   });
@@ -199,14 +203,14 @@ describe('Settings — sync and attachments', () => {
   it('can hide the menu bar icon, and then says how to open the app again', async () => {
     const update = acceptPatches();
     setup();
-    const sync = await card('Sync');
-    const icon = within(sync).getByRole('switch', {
+    const app = await card('App');
+    const icon = within(app).getByRole('switch', {
       name: /^Show sla-mem in the (menu bar|system tray)$/,
     }) as HTMLInputElement;
     expect(icon.checked).toBe(true);
     fireEvent.click(icon);
     await waitFor(() => expect(update).toHaveBeenCalledWith({ showTrayIcon: false }));
-    expect(await within(sync).findByText(/keeps syncing in the background\. Open it from/)).toBeTruthy();
+    expect(await within(app).findByText(/keeps syncing in the background\. Open it from/)).toBeTruthy();
   });
 
   it('rolls back a choice main refuses, and says why', async () => {

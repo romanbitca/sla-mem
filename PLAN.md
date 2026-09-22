@@ -136,8 +136,11 @@ Each item is also corrected where it belongs in this document.
   computer, row by row, losing and duplicating nothing, and carries each conversation's sync
   position over so syncing continues where it stopped. A backup of another Slack account is
   refused.
-- **Menu bar icon (added):** can be turned off in Settings → Sync; the app then keeps syncing in
+- **Menu bar icon (added):** can be turned off in Settings → App; the app then keeps syncing in
   the background and is reopened like any app. While syncing, its menu shows one progress line.
+- **Settings → App (added, §8.4):** "Start sla-mem when I log in" and the menu bar icon are about
+  the app, not syncing, so they have their own card after Sync. "Last successful sync" (Settings
+  and Home) also says how many new messages that sync brought in.
 - **Faster incremental syncs (added, §5.2):** a sync no longer reads every conversation. Slack's
   activity summary (`client.counts`, one call) says which conversations have new messages; those
   are read, plus conversations active in the last 2 days, and the rest on a schedule (about daily,
@@ -950,6 +953,7 @@ Familiar to anyone who has used Slack, but clearly a *reader*:
 - **Slack connection**: workspace + account, "Reconnect", "Disconnect" (with a confirm that says
   clearly: *your archive stays, only the Slack login is removed*).
 - **Sync**: how often (Manual / 15 min / Hourly / 6 hours / Daily); "Start at login".
+  *(As built: "Start at login" and the menu bar icon are in a separate **App** card.)*
 - **Attachments**: `None` / `Images & documents up to 25 MB` (**default**) / `Everything up to 200 MB`
   — see §10.4 for why.
 - **Storage**: disk used, broken down (messages vs attachments), "Show folder", "Delete downloaded

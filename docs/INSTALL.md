@@ -75,7 +75,7 @@ it.
   within Slack's 90-day window, so it needs to run regularly.
 - Closing the window doesn't stop it. It keeps running in the menu bar (Mac) or the system tray
   (Windows, bottom-right). Use that icon to open it again or to quit. Don't want the icon? Turn
-  it off in **Settings → Sync**; sla-mem keeps syncing, and you open it from Applications (Mac)
+  it off in **Settings → App**; sla-mem keeps syncing, and you open it from Applications (Mac)
   or the Start menu (Windows).
 
 ## Moving to a new computer

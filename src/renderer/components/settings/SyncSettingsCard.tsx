@@ -1,7 +1,6 @@
 import { useId } from 'react';
 import type { PreferencesDTO, SyncInterval, SyncStatusDTO } from '../../../shared/types';
 import { describeError, presentableMessage } from '../../lib/api';
-import { reopenHint, trayPlaceName } from '../../lib/bridge';
 import { useFlag, useNow } from '../../lib/hooks';
 import { useCancelSync, useStartSync, useUpdatePreferences } from '../../lib/queries';
 import { SCHEDULE_OPTIONS } from '../connect/connection';
@@ -10,7 +9,7 @@ import { RunProgress } from '../home/RunProgress';
 import { CheckIcon, CloseIcon, SyncIcon } from '../icons';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { FieldError, Select, SettingRow, Switch } from './fields';
+import { FieldError, Select, SettingRow } from './fields';
 
 export interface SyncSettingsCardProps {
   preferences: PreferencesDTO;
@@ -19,21 +18,11 @@ export interface SyncSettingsCardProps {
   statusError: unknown;
 }
 
-/**
- * How often to sync, whether to start at login and whether to keep an icon in the menu bar /
- * tray (saved on change), plus last/next sync.
- */
+/** How often to sync (saved on change), last and next sync, and Sync now. */
 export function SyncSettingsCard({ preferences, status, statusError }: SyncSettingsCardProps) {
   const update = useUpdatePreferences();
   const [saved, flashSaved] = useFlag(2000);
-  const ids = {
-    interval: useId(),
-    intervalHint: useId(),
-    login: useId(),
-    loginHint: useId(),
-    tray: useId(),
-    trayHint: useId(),
-  };
+  const ids = { interval: useId(), intervalHint: useId() };
 
   return (
     <Card
@@ -74,36 +63,6 @@ export function SyncSettingsCard({ preferences, status, statusError }: SyncSetti
               </option>
             ))}
           </Select>
-        </SettingRow>
-        <SettingRow
-          label="Start sla-mem when I log in"
-          labelId={ids.login}
-          description="Recommended. Slack only keeps the last 90 days, so regular syncing is what keeps your history."
-          descriptionId={ids.loginHint}
-        >
-          <Switch
-            checked={preferences.launchAtLogin}
-            aria-labelledby={ids.login}
-            aria-describedby={ids.loginHint}
-            onChange={(checked) => update.mutate({ launchAtLogin: checked }, { onSuccess: flashSaved })}
-          />
-        </SettingRow>
-        <SettingRow
-          label={`Show sla-mem in the ${trayPlaceName()}`}
-          labelId={ids.tray}
-          description={
-            preferences.showTrayIcon
-              ? 'Shows sync progress and opens sla-mem at any time.'
-              : `sla-mem keeps syncing in the background. Open it from ${reopenHint()} to see it again.`
-          }
-          descriptionId={ids.trayHint}
-        >
-          <Switch
-            checked={preferences.showTrayIcon}
-            aria-labelledby={ids.tray}
-            aria-describedby={ids.trayHint}
-            onChange={(checked) => update.mutate({ showTrayIcon: checked }, { onSuccess: flashSaved })}
-          />
         </SettingRow>
       </div>
       {update.isError && <FieldError>Couldn’t save: {describeError(update.error)}</FieldError>}

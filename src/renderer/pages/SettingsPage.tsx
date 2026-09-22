@@ -4,6 +4,7 @@ import { useSettings, useSyncStatus, useWorkspace } from '../lib/queries';
 import { SidebarToggle } from '../components/layout/shell';
 import { AboutCard } from '../components/settings/AboutCard';
 import { AdvancedCard } from '../components/settings/AdvancedCard';
+import { AppSettingsCard } from '../components/settings/AppSettingsCard';
 import { AttachmentsCard } from '../components/settings/AttachmentsCard';
 import { ConnectionCard } from '../components/settings/ConnectionCard';
 import { StorageCard } from '../components/settings/StorageCard';
@@ -39,6 +40,7 @@ export default function SettingsPage() {
       <>
         <ConnectionCard connection={data.connection} />
         <SyncSettingsCard preferences={data.preferences} status={sync.data} statusError={sync.error} />
+        <AppSettingsCard preferences={data.preferences} />
         <WhatToArchiveCard excludedIds={data.preferences.excludedConversationIds} />
         <AttachmentsCard policy={data.preferences.attachmentPolicy} />
       </>
