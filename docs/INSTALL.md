@@ -91,11 +91,16 @@ it.
 
 ## Updating
 
-When a new version is out, sla-mem shows a banner: **“Version X is available.”** Click
-**Download**, then:
+sla-mem looks for a new version when it starts and once a day (or right away with **Settings →
+About → Check for updates**). When one is out, it shows a banner: **“Version X is available.”**
+Click **Download**, then:
 
-- **Mac:** open the download and drag sla-mem into Applications, choosing **Replace**.
-- **Windows:** run the downloaded installer.
+- **Mac:** quit sla-mem first (**sla-mem → Quit sla-mem**, or ⌘Q; a Mac won't replace an app
+  that is open). Open the download and drag sla-mem into Applications, choosing **Replace**. When
+  you open the new version, your Mac may block it once more: follow the same **Open Anyway** steps
+  as in [step 3](#3-the-first-time-you-open-it-your-computer-will-warn-you).
+- **Windows:** run the downloaded installer (it closes sla-mem if it's open). If Windows warns
+  you, choose **More info → Run anyway**, as the first time.
 
 Your archive and settings are kept.
 

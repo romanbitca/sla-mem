@@ -47,6 +47,7 @@ export function noUpdate(
     downloadUrl: null,
     checkedAt,
     error,
+    noRelease: false,
   };
 }
 
@@ -62,7 +63,8 @@ export async function checkForUpdate(opts: UpdateCheckOptions): Promise<UpdateIn
   } catch {
     return noUpdate(opts.currentVersion, 'Couldn’t check for updates (offline?)', now());
   }
-  if (res.status === 404) return noUpdate(opts.currentVersion, 'No published releases found', now());
+  // A private repository and one without a published release look the same from outside.
+  if (res.status === 404) return { ...noUpdate(opts.currentVersion, null, now()), noRelease: true };
   if (!res.ok) return noUpdate(opts.currentVersion, `Couldn’t check for updates (HTTP ${res.status})`, now());
   let release: GithubRelease;
   try {
@@ -91,6 +93,7 @@ export function describeRelease(
     downloadUrl: available ? pickAsset(release.assets ?? [], opts.platform, opts.arch) : null,
     checkedAt,
     error: null,
+    noRelease: false,
   };
 }
 

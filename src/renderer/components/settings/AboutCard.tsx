@@ -14,6 +14,7 @@ import {
 } from '../../lib/queries';
 import { THEME_LABELS } from '../../lib/theme';
 import { GUIDE_URL } from '../connect/connection';
+import { updateInstruction } from '../layout/UpdateBanner';
 import { AlertIcon, CheckIcon, ExternalLinkIcon, InfoIcon, MonitorIcon, MoonIcon, SunIcon, SyncIcon } from '../icons';
 import { Button } from '../ui/Button';
 import { Callout } from '../ui/Callout';
@@ -31,7 +32,6 @@ export function AboutCard() {
   const openGuide = useOpenExternal();
   const showLogs = useShowLogs();
   const result = check.data;
-  const mac = currentPlatform() === 'darwin';
   const error = check.error ?? download.error ?? openGuide.error ?? showLogs.error;
 
   return (
@@ -49,9 +49,14 @@ export function AboutCard() {
           Check for updates
         </Button>
       </div>
-      {result && !result.available && !result.error && (
+      {result && !result.available && !result.error && !result.noRelease && (
         <p role="status" className="flex items-center gap-1.5 text-[13px] text-success">
           <CheckIcon size={14} /> You have the latest version.
+        </p>
+      )}
+      {result?.noRelease && (
+        <p role="status" className="text-[13px] text-ink-muted">
+          No version of sla-mem has been published yet, so there’s nothing newer to download.
         </p>
       )}
       {result?.error && (
@@ -62,11 +67,7 @@ export function AboutCard() {
       {result?.available && (
         <Callout tone="info" icon={<InfoIcon size={15} />} role="status">
           <p className="font-medium">Version {result.latestVersion} is available.</p>
-          <p className="text-ink-muted">
-            {mac
-              ? 'Open the download and drag sla-mem to Applications, replacing the old one.'
-              : 'Run the installer to update.'}
-          </p>
+          <p className="text-ink-muted">{updateInstruction(currentPlatform())}</p>
           <div className="mt-2">
             <Button size="sm" variant="primary" loading={download.isPending} onClick={() => download.mutate()}>
               Download

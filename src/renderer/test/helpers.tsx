@@ -313,6 +313,7 @@ export function makeUpdateInfo(overrides: Partial<UpdateInfoDTO> = {}): UpdateIn
     downloadUrl: null,
     checkedAt: Date.now(),
     error: null,
+    noRelease: false,
     ...overrides,
   };
 }

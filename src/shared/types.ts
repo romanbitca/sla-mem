@@ -485,8 +485,14 @@ export interface UpdateInfoDTO {
   /** The asset for this OS/arch, when the release has one. */
   downloadUrl: string | null;
   checkedAt: number | null;
-  /** Checking failed (offline, repository not reachable); the banner simply doesn't show. */
+  /** Checking failed (offline, GitHub unavailable); the banner simply doesn't show. */
   error: string | null;
+  /**
+   * GitHub answered, but there is no published release to compare with: none has been published
+   * yet, or the releases aren't public (GitHub hides a private repository's releases). Not a failure
+   * that retrying fixes.
+   */
+  noRelease: boolean;
 }
 
 /** Response of calls that only acknowledge. */

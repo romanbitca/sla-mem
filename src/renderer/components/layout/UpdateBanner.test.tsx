@@ -50,7 +50,9 @@ describe('UpdateBanner', () => {
     const banner = await screen.findByRole('region', { name: 'Update available' });
     expect(within(banner).getByText(/Version 1\.3\.0 is available/)).toBeTruthy();
     expect(
-      within(banner).getByText('Open the download and drag sla-mem to Applications, replacing the old one.'),
+      within(banner).getByText(
+        'Quit sla-mem, then open the download and drag sla-mem to Applications, replacing the old one.',
+      ),
     ).toBeTruthy();
     fireEvent.click(within(banner).getByRole('button', { name: 'Download' }));
     await waitFor(() => expect(download).toHaveBeenCalledTimes(1));

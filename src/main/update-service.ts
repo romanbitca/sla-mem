@@ -38,6 +38,8 @@ export class UpdateService extends EventEmitter {
         const changed = info.available !== this.latest.available || info.latestVersion !== this.latest.latestVersion;
         this.latest = info;
         if (info.error) this.opts.log?.(`Update check: ${info.error}`);
+        else if (info.noRelease)
+          this.opts.log?.(`Update check: no published release in ${this.opts.repo} (or it isn't public)`);
         else if (info.available) this.opts.log?.(`Update available: ${info.latestVersion}`);
         if (changed) this.emit('changed', info);
         return info;

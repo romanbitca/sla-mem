@@ -79,15 +79,26 @@ tests, or a second archive for a different account. Unpackaged builds default to
 
 ## Releasing
 
-1. Bump `version` in `package.json` and commit.
-2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
-3. The **Release** workflow builds the macOS dmg + zip (Apple Silicon and Intel) and the Windows
-   installer, and attaches them to a **draft** GitHub Release.
-4. Write the release notes for non-technical readers, link [docs/INSTALL.md](docs/INSTALL.md), and
-   publish.
+1. From a clean `main` with the changes pushed (CI green), bump the version and tag it in one go:
+
+   ```bash
+   npm version 0.2.0      # or: npm version patch / minor. Commits package.json and tags v0.2.0
+   git push --follow-tags
+   ```
+
+2. The **Release** workflow (about 10 minutes) checks that the tag matches `package.json`, runs the
+   tests, builds the macOS dmg + zip (Apple Silicon and Intel) and the Windows installer, and
+   attaches them to a **draft** GitHub Release.
+3. Open the draft, write the notes for non-technical readers ("Syncs are much faster"), link
+   [docs/INSTALL.md](docs/INSTALL.md), and **Publish**. Drafts are invisible to everyone else.
+4. From then on every installed sla-mem sees the new version within a day (it checks on start and
+   daily, or at once with Settings → About → Check for updates) and shows a banner with your notes
+   and a Download button. Nothing installs by itself: the unsigned macOS app can't replace itself
+   (PLAN §9.5), so people download and replace it (docs/INSTALL.md → Updating). The archive is
+   never touched by an update.
 
 The workflow can also be started by hand (Actions → Release → Run workflow). It then leaves the
-builds as workflow artifacts without touching Releases.
+builds as workflow artifacts without touching Releases: use it to try an installer before tagging.
 
 > **Before the first release:** this repository is private. Colleagues can't open its Releases
 > page and the in-app update check can't see its releases. Either make the repository public, or

@@ -209,7 +209,7 @@ describe('updates', () => {
     expect(pickAsset(evil, 'win32', 'x64')).toBeNull();
   });
 
-  it('treats a missing or private repository quietly', async () => {
+  it('tells “nothing published (or not public)” apart from a failed check', async () => {
     const notFound = (async () => new Response('{}', { status: 404 })) as typeof fetch;
     expect(
       await checkForUpdate({
@@ -221,22 +221,21 @@ describe('updates', () => {
       }),
     ).toMatchObject({
       available: false,
-      error: 'No published releases found',
+      error: null,
+      noRelease: true,
     });
     const offline = (async () => {
       throw new TypeError('fetch failed');
     }) as typeof fetch;
     expect(
-      (
-        await checkForUpdate({
-          repo: 'o/r',
-          currentVersion: '1.0.0',
-          platform: 'darwin',
-          arch: 'arm64',
-          fetch: offline,
-        })
-      ).available,
-    ).toBe(false);
+      await checkForUpdate({
+        repo: 'o/r',
+        currentVersion: '1.0.0',
+        platform: 'darwin',
+        arch: 'arm64',
+        fetch: offline,
+      }),
+    ).toMatchObject({ available: false, noRelease: false, error: 'Couldn’t check for updates (offline?)' });
   });
 });
 

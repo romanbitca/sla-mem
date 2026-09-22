@@ -37,6 +37,16 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Check the tag matches the version in package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        # A v0.3.0 release of an app that calls itself 0.2.0 would offer that "update" forever.
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match package.json ($version). Release with: npm version <x.y.z> && git push --follow-tags"
+            exit 1
+          fi
       - run: npm ci
       - run: npm test
       - run: npm run build

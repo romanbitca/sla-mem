@@ -109,7 +109,10 @@ Each item is also corrected where it belongs in this document.
 - **Packaging (§9):** no native rebuild (better-sqlite3 13 ships Node-API prebuilds); ad-hoc signing
   on macOS (Apple Silicon refuses unsigned code); Electron fuses; Windows icon generated from a PNG.
 - **Updates (§9.5):** the repository is private, so the update check finds no releases until the
-  releases are published from a public repository.
+  releases are published from a public repository. Until then "Check for updates" says that no
+  version has been published (GitHub answers a private repository's releases with 404, the same as
+  for no release), rather than a failure to retry. The release workflow refuses a tag that doesn't
+  match `package.json`: such a release would be offered as an update forever.
 - **Start at login (§5.3):** Electron 44 removed `openAsHidden`; a launch at login is detected
   with `wasOpenedAtLogin` and starts in the tray.
 - **UI (§7, §8):** the theme choice (system, light, dark) lives in Settings → About; there is no

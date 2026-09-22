@@ -369,6 +369,20 @@ describe('Settings — about', () => {
     await waitFor(() => expect(showLogs).toHaveBeenCalledTimes(1));
   });
 
+  it('says plainly when no version has been published, instead of “try again later”', async () => {
+    vi.spyOn(api, 'checkForUpdates').mockResolvedValue(makeUpdateInfo({ latestVersion: null, noRelease: true }));
+    setup();
+    const about = await card('About');
+    fireEvent.click(within(about).getByRole('button', { name: 'Check for updates' }));
+    expect(
+      await within(about).findByText(
+        'No version of sla-mem has been published yet, so there’s nothing newer to download.',
+      ),
+    ).toBeTruthy();
+    expect(within(about).queryByText('You have the latest version.')).toBeNull();
+    expect(within(about).queryByText(/tries again by itself later/)).toBeNull();
+  });
+
   it('offers the download when a newer version exists', async () => {
     vi.spyOn(api, 'checkForUpdates').mockResolvedValue(
       makeUpdateInfo({ available: true, latestVersion: '1.3.0', downloadUrl: 'https://example.com/a.dmg' }),
