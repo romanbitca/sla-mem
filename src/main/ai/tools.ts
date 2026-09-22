@@ -48,7 +48,8 @@ export const TOOLS: BetaTool[] = [
     name: 'search_messages',
     description:
       'Search the archive. Use it first for anything about what was said, and again with other words when the results miss. ' +
-      'Slack search syntax: words are prefix-matched and all must appear (test finds tests, testing); "exact phrase"; -word; ' +
+      'Slack search syntax: words are prefix-matched and all must appear (test finds tests, testing), so put ' +
+      'alternatives in any_words; "exact phrase"; -word; ' +
       'from:name or from:me; in:#channel; in:@name (DMs with that person); in:<conversation id>; ' +
       'after:/before:/on:YYYY-MM-DD; during:YYYY-MM; has:link|file|image|reaction|thread; is:thread. ' +
       'Returns numbered messages.',
@@ -56,6 +57,13 @@ export const TOOLS: BetaTool[] = [
       type: 'object',
       properties: {
         query: { type: 'string', description: 'e.g. "test from:ana after:2026-03-01"' },
+        any_words: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'At least one of these must appear too (prefix-matched): the ways the author may have put the key ' +
+            'word, synonyms and translations, as short stems, e.g. ["distribut", "assign", "gave", "hand", "transfer"]',
+        },
         sort: { type: 'string', enum: ['relevance', 'newest', 'oldest'], description: 'Default relevance' },
         limit: { type: 'integer', description: '1-50, default 20' },
       },
@@ -193,11 +201,23 @@ const SEARCH_TEXT_MAX = 400;
 
 function searchMessages(ctx: ToolContext, args: Record<string, unknown>): ToolOutcome {
   const query = text(args.query, 'query', 500).trim();
-  if (!query) throw new ToolInputError('query is empty.');
+  const anyWords = words(args.any_words, 'any_words');
+  if (!query && !anyWords.length) throw new ToolInputError('query is empty.');
   const sort = oneOf<SearchSort>(args.sort, ['relevance', 'newest', 'oldest'], 'sort') ?? 'relevance';
   const limit = integer(args.limit, 'limit', 1, 50) ?? 20;
-  const response = search(ctx.db, { q: query, sort, limit }, { now: ctx.now, within: activeScope(ctx) ?? undefined });
-  const step: AiStepDTO = { kind: 'search', label: `Searched “${clip(query, 80)}”`, detail: null };
+  const response = search(
+    ctx.db,
+    { q: query, sort, limit },
+    { now: ctx.now, within: activeScope(ctx) ?? undefined, anyOf: anyWords },
+  );
+  const alternatives = anyWords.length ? `one of ${clip(anyWords.join(', '), 60)}` : '';
+  const step: AiStepDTO = {
+    kind: 'search',
+    label: query
+      ? `Searched “${clip(query, 80)}”${alternatives ? ` + ${alternatives}` : ''}`
+      : `Searched for ${alternatives}`,
+    detail: null,
+  };
 
   if (response.parsed.unresolved.length) {
     step.detail = 'no match for a name or date';
@@ -747,6 +767,14 @@ function integer(v: unknown, name: string, min: number, max: number): number | n
   const n = typeof v === 'string' && /^\d+$/.test(v.trim()) ? Number(v) : v;
   if (typeof n !== 'number' || !Number.isInteger(n)) throw new ToolInputError(`${name} must be a whole number.`);
   return Math.min(max, Math.max(min, n));
+}
+
+/** A short list of short words (any_words). */
+function words(v: unknown, name: string): string[] {
+  if (v == null) return [];
+  if (!Array.isArray(v)) throw new ToolInputError(`${name} must be a list of words.`);
+  if (v.length > 30) throw new ToolInputError(`${name} takes at most 30 words.`);
+  return [...new Set(v.map((w) => text(w, name, 60).trim()).filter(Boolean))];
 }
 
 function oneOf<T extends string>(v: unknown, values: readonly T[], name: string): T | null {

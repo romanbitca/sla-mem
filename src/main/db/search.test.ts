@@ -424,6 +424,17 @@ describe('search', () => {
     expect(within('', { conversationIds: ['D1'] }).total).toBe(1);
   });
 
+  it('finds messages with at least one of some words (Ask AI’s synonyms), on top of the query', () => {
+    const anyOf = (q: string, words: string[]) => texts(search(db, { q }, { now: NOW, anyOf: words })).sort();
+    expect(anyOf('foo', ['bar'])).toEqual(['foo or bar']);
+    expect(anyOf('', ['foo', 'bar'])).toEqual(['bar only', 'foo only', 'foo or bar']);
+    expect(anyOf('quick', ['fox', 'zzz'])).toEqual(['the quick brown fox']);
+    // An exclusion-only query keeps its exclusion.
+    expect(anyOf('-foo', ['bar'])).toEqual(['bar only']);
+    // Prefix-matched like every word: "deploym" finds "deployment".
+    expect(anyOf('', ['deploym'])).toEqual(['deployment finished, see <https://ci.example.com|ci>']);
+  });
+
   it('returns nothing for unresolved modifiers, invalid date params or an empty query', () => {
     const res = run(db, 'deploy from:@nobody');
     expect(res).toMatchObject({ total: 0, hits: [], parsed: { unresolved: ['from:@nobody'] } });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { upsertMessages, type DB } from '../db';
+import { upsertMessages, upsertUsers, type DB } from '../db';
 import { msg, seededDb, tsAt } from '../db/test-helpers';
 import { describeScope, runTool, SourceRefs, TOOLS, type ToolContext } from './tools';
 
@@ -174,6 +174,47 @@ describe('Ask AI tools', () => {
     expect(unknown.content).toContain('No conversation matches “#nowhere”');
     const bad = runTool(ctx, 'read_conversation', { conversation: '#general', after: 'last week' });
     expect(bad.content).toBe('after must be a date like 2026-03-14.');
+  });
+
+  it('finds what was worded differently: the people, the topic, the reader’s name, and synonyms (the Geri case)', () => {
+    // Asked "where Geri said he put some of my projects on somebody"; he wrote "distributed".
+    const db = seededDb();
+    upsertUsers(db, [{ id: 'UGERI', name: 'geri', real_name: 'Geri', profile: { display_name: 'Geri' } }]);
+    upsertMessages(
+      db,
+      'C2',
+      [
+        msg(tsAt(10), 'Roman was given the responsibility to drive the chatbot project forward', { user: 'UGERI' }),
+        msg(tsAt(20), 'Please put the invoice project on hold until Monday', { user: 'UGERI' }),
+        msg(
+          tsAt(30),
+          '<@U1> I have distributed your projects among <@U2> and <@U3>. <@USELF> I did the same for you, Insignia I kept with you.',
+          { user: 'UGERI' },
+        ),
+      ],
+      'api',
+    );
+    const ctx = context(db);
+    const target = 'I have distributed your projects';
+    // The user's own wording misses it, and finds the look-alike instead.
+    for (const query of ['from:geri put', 'from:geri assigned project', 'from:geri put your project on']) {
+      expect(runTool(ctx, 'search_messages', { query }).content).not.toContain(target);
+    }
+    expect(runTool(ctx, 'search_messages', { query: 'from:geri put' }).content).toContain('put the invoice project');
+    // The author's side: the person, the topic and the reader's name (mentions read as @Name)…
+    expect(runTool(ctx, 'search_messages', { query: 'from:geri selfie project' }).content).toContain(target);
+    // …or the action as synonyms, in one search.
+    const out = runTool(ctx, 'search_messages', {
+      query: 'from:geri project',
+      any_words: ['distribut', 'assign', 'gave', 'hand', 'transfer'],
+    });
+    expect(out.content).toMatch(/^1 match/);
+    expect(out.content).toContain(target);
+    expect(out.step?.label).toBe('Searched “from:geri project” + one of distribut, assign, gave, hand, transfer');
+    expect(runTool(ctx, 'search_messages', { query: '', any_words: ['distribut'] }).step?.label).toBe(
+      'Searched for one of distribut',
+    );
+    expect(runTool(ctx, 'search_messages', { query: 'x', any_words: 'distribut' })).toMatchObject({ isError: true });
   });
 
   it('keeps every tool inside the limits the reader chose', () => {

@@ -190,7 +190,11 @@ Each item is also corrected where it belongs in this document.
   the Slack session, never shown again) and the model chosen there (Claude Sonnet 5 by default,
   Haiku 4.5 for speed and half the price, Opus 5 for hard questions: Settings warns that it costs
   about 2.5 times as much). Answers come in the language of the question, whatever language the
-  messages are in. Claude works through four local tools (search with
+  messages are in. A search can also list words of which one must appear (synonyms and
+  translations), and Claude is taught to search the author's wording rather than the reader's: on
+  a real miss ("where Geri put my projects on someone", written "distributed your projects
+  among"), searching the person, the topic and the reader's name, or the verb's synonyms, found
+  the message first or second, where the reader's own words never showed it. Claude works through four local tools (search with
   Slack syntax, open a message with its thread or surroundings, read a conversation over a period,
   list the busiest conversations); only their compact text, the question and the answer travel,
   and only while a question is answered: this is the one exception to "the only network traffic is

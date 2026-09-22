@@ -144,6 +144,10 @@ describe('AiService: answering', () => {
     expect((first.body?.tools as { name: string }[]).map((t) => t.name)).toContain('search_messages');
     expect(first.body?.system).toContain('Today is');
     expect(first.body?.system).toContain("in the language of the user's latest question");
+    expect(first.body?.system).toContain('any_words');
+    expect((first.body?.tools as { input_schema: { properties: object } }[])[0].input_schema.properties).toHaveProperty(
+      'any_words',
+    );
 
     // The tool ran locally; its compact result went back with the assistant's turn unchanged.
     const messages = second.body?.messages as { role: string; content: unknown }[];

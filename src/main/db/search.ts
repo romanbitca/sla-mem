@@ -481,7 +481,15 @@ export interface SearchWithin {
   before?: string | null;
 }
 
-export function search(db: DB, params: SearchParams, opts: { now?: Date; within?: SearchWithin } = {}): SearchResponse {
+/**
+ * `anyOf`: words of which at least one must appear too (prefix-matched, like the query's words).
+ * Ask AI tries synonyms and translations in one search this way; Slack's syntax has no OR.
+ */
+export function search(
+  db: DB,
+  params: SearchParams,
+  opts: { now?: Date; within?: SearchWithin; anyOf?: readonly string[] } = {},
+): SearchResponse {
   const started = performance.now();
   const now = opts.now ?? new Date();
   const resolvers = loadSearchResolvers(db, () => now);
@@ -504,7 +512,7 @@ export function search(db: DB, params: SearchParams, opts: { now?: Date; within?
   });
 
   if (parsed.unresolved.length || outside) return response(0, []);
-  const match = buildMatchExpression(parsed);
+  const match = withAnyOf(buildMatchExpression(parsed), opts.anyOf ?? []);
   const where = filterClauses(filters, match);
   if (!match.positive && !where.sql.length) return response(0, []); // nothing asked for
 
@@ -541,6 +549,18 @@ function mergeFilters(parsed: ParsedSearchQuery, params: SearchParams, r: Search
     else narrowDates(filters, key === 'after' ? day : null, key === 'before' ? day : null);
   }
   return filters;
+}
+
+/** Adds "one of these words" to a match expression (an exclusion-only query keeps its NOT). */
+function withAnyOf(
+  match: { positive: string | null; negative: string | null },
+  words: readonly string[],
+): { positive: string | null; negative: string | null } {
+  const any = words.filter(isSearchable).map((w) => `${ftsLiteral(segmentCjk(w))}*`);
+  if (!any.length) return match;
+  const group = `(${any.join(' OR ')})`;
+  if (match.positive) return { ...match, positive: `(${match.positive}) AND ${group}` };
+  return { ...match, positive: match.negative ? `${group} NOT (${match.negative})` : group };
 }
 
 /** Narrows the filters to `within`; false when nothing can match any more. */
