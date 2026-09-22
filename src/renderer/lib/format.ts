@@ -27,6 +27,11 @@ export function formatTime(date: Date): string {
   return formatDate(date, 'h:mm a');
 }
 
+/** The time without AM/PM, for the narrow column beside grouped messages (as Slack does). */
+export function formatShortTime(date: Date): string {
+  return formatDate(date, 'h:mm');
+}
+
 export function formatFullDateTime(date: Date): string {
   return formatDate(date, "EEEE, MMMM d, yyyy 'at' h:mm:ss a");
 }

@@ -46,7 +46,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={clsx(
-        'focus-ring inline-flex shrink-0 items-center justify-center font-medium whitespace-nowrap transition-colors duration-150',
+        'focus-ring inline-flex shrink-0 items-center justify-center font-medium whitespace-nowrap',
+        // Colors ease; a press gives way by a hair.
+        'transition duration-150 ease-soft enabled:active:scale-[0.97]',
         'disabled:cursor-not-allowed disabled:opacity-55',
         VARIANTS[variant],
         SIZES[size],

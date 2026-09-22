@@ -147,7 +147,7 @@ function ImageGrid({ images, onOpen }: { images: FileDTO[]; onOpen: (index: numb
             title={title}
             className={clsx(
               'focus-ring group/img relative overflow-hidden rounded-lg border border-line bg-inset',
-              'transition-[border-color,box-shadow] hover:border-line-strong hover:shadow-pop',
+              'transition-[border-color,box-shadow] duration-200 hover:border-line-strong hover:shadow-pop',
               single ? 'max-w-[min(100%,380px)]' : 'size-[150px]',
             )}
             // Reserving the box from the known size keeps scroll anchoring stable as images load.
@@ -162,7 +162,10 @@ function ImageGrid({ images, onOpen }: { images: FileDTO[]; onOpen: (index: numb
               alt={title}
               loading="lazy"
               decoding="async"
-              className={clsx('block size-full', single ? 'max-h-[340px] object-contain' : 'object-cover')}
+              className={clsx(
+                'block size-full transition-transform duration-300 ease-soft group-hover/img:scale-[1.02]',
+                single ? 'max-h-[340px] object-contain' : 'object-cover',
+              )}
             />
           </button>
         );

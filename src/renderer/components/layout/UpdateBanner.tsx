@@ -35,7 +35,7 @@ export function UpdateBanner() {
     <div
       role="region"
       aria-label="Update available"
-      className="flex shrink-0 items-start gap-3 border-b border-accent/25 bg-accent-soft px-4 py-2 text-[13px] sm:items-center"
+      className="flex shrink-0 animate-slide-down items-start gap-3 border-b border-accent/25 bg-accent-soft px-4 py-2 text-[13px] sm:items-center"
     >
       <InfoIcon size={15} className="mt-0.5 shrink-0 text-accent-text sm:mt-0" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2">

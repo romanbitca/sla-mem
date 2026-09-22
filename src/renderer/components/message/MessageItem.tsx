@@ -101,7 +101,8 @@ function StandardMessageRow({
         {continuation ? (
           <MessageTime
             message={message}
-            className="mt-[3px] block text-right text-[10.5px] opacity-0 group-hover/msg:opacity-100 group-focus-within/msg:opacity-100"
+            compact
+            className="mt-[3px] block text-right text-[10.5px] opacity-0 transition-opacity duration-150 group-hover/msg:opacity-100 group-focus-within/msg:opacity-100"
           />
         ) : (
           <Avatar seed={author.seed} label={author.label} src={author.avatarUrl} size={36} className="mt-0.5" />
@@ -163,8 +164,9 @@ function StandardMessageRow({
         <div
           className={clsx(
             'absolute -top-3.5 right-4 z-10 flex items-center gap-0.5 rounded-lg border border-line bg-raised p-0.5 shadow-pop',
-            'pointer-events-none opacity-0 transition-opacity duration-100',
-            'group-hover/msg:pointer-events-auto group-hover/msg:opacity-100 group-focus-within/msg:pointer-events-auto group-focus-within/msg:opacity-100',
+            'pointer-events-none translate-y-0.5 opacity-0 transition-[opacity,translate] duration-150 ease-soft',
+            'group-hover/msg:pointer-events-auto group-hover/msg:translate-y-0 group-hover/msg:opacity-100',
+            'group-focus-within/msg:pointer-events-auto group-focus-within/msg:translate-y-0 group-focus-within/msg:opacity-100',
           )}
         >
           {hasThread && onOpenThread && (

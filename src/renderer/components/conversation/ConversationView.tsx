@@ -228,7 +228,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
       {excluded && (
         <div
           role="note"
-          className="flex items-center gap-2 border-b border-line bg-inset px-5 py-2 text-[13px] text-ink-muted"
+          className="flex animate-slide-down items-center gap-2 border-b border-line bg-inset px-5 py-2 text-[13px] text-ink-muted"
         >
           <InfoIcon size={15} className="shrink-0" />
           <span className="flex-1">
@@ -242,7 +242,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
       {missingTs && (
         <div
           role="status"
-          className="flex items-center gap-2 border-b border-line bg-warn-soft px-5 py-2 text-[13px] text-warn"
+          className="flex animate-slide-down items-center gap-2 border-b border-line bg-warn-soft px-5 py-2 text-[13px] text-warn"
         >
           <AlertIcon size={15} className="shrink-0" />
           <span className="flex-1">That message isn’t in the archive. Showing the closest messages instead.</span>
@@ -255,7 +255,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
 }
 
 function Pane({ children }: { children: ReactNode }) {
-  return <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-canvas">{children}</section>;
+  return <section className="flex min-h-0 min-w-0 flex-1 animate-page-in flex-col bg-canvas">{children}</section>;
 }
 
 type Exporter = ReturnType<typeof useExportConversation>;
@@ -338,8 +338,8 @@ function ExportNotice({ conversationId, exporter }: { conversationId: string; ex
       role={failed ? 'alert' : 'status'}
       className={
         failed
-          ? 'flex items-center gap-2 border-b border-line bg-danger-soft px-5 py-2 text-[13px] text-danger'
-          : 'flex items-center gap-2 border-b border-line bg-inset px-5 py-2 text-[13px] text-ink-muted'
+          ? 'flex animate-slide-down items-center gap-2 border-b border-line bg-danger-soft px-5 py-2 text-[13px] text-danger'
+          : 'flex animate-slide-down items-center gap-2 border-b border-line bg-inset px-5 py-2 text-[13px] text-ink-muted'
       }
     >
       {failed ? <AlertIcon size={15} className="shrink-0" /> : <CheckIcon size={15} className="shrink-0" />}

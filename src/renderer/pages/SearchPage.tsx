@@ -184,7 +184,7 @@ export default function SearchPage() {
   }
 
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <section className="flex min-h-0 min-w-0 flex-1 animate-page-in flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
         <SidebarToggle />
         <h1 className="text-[15px] font-semibold text-ink">Search</h1>

@@ -35,7 +35,7 @@ export const Reactions = memo(function Reactions({ reactions }: { reactions: Rea
               <span
                 tabIndex={0}
                 aria-label={summary}
-                className="focus-ring inline-flex h-6 items-center gap-1 rounded-full border border-line bg-raised px-2 text-xs font-medium text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
+                className="focus-ring inline-flex h-6 items-center gap-1 rounded-full border border-line bg-raised px-2 text-xs font-medium text-ink-muted transition-colors duration-150 hover:border-line-strong hover:bg-hover hover:text-ink"
               >
                 <Emoji name={reaction.name} size={15} />
                 <span className="tabular-nums">{reaction.count}</span>

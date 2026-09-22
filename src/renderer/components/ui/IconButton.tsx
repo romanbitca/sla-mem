@@ -33,7 +33,8 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       title={title ?? label}
       aria-pressed={active || undefined}
       className={clsx(
-        'focus-ring inline-flex shrink-0 items-center justify-center transition-colors duration-150',
+        'focus-ring inline-flex shrink-0 items-center justify-center transition duration-150 ease-soft',
+        'enabled:active:scale-[0.94]',
         'disabled:cursor-not-allowed disabled:opacity-50',
         VARIANTS[variant](active),
         SIZES[size],

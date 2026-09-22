@@ -156,7 +156,7 @@ function PickerRow({
     <li>
       <label
         htmlFor={id}
-        className="flex cursor-pointer items-center gap-2.5 px-3 py-1.5 text-[13.5px] hover:bg-hover/60"
+        className="flex cursor-pointer items-center gap-2.5 px-3 py-1.5 text-[13.5px] transition-colors duration-100 hover:bg-hover/60"
       >
         <input
           id={id}
@@ -168,7 +168,12 @@ function PickerRow({
         <span className={clsx('shrink-0', archived ? 'text-ink-muted' : 'text-ink-faint')}>
           <ConversationIcon conversation={c} size={14} />
         </span>
-        <span className={clsx('min-w-0 flex-1 truncate', archived ? 'text-ink' : 'text-ink-faint line-through')}>
+        <span
+          className={clsx(
+            'min-w-0 flex-1 truncate transition-colors duration-150',
+            archived ? 'text-ink' : 'text-ink-faint line-through',
+          )}
+        >
           {c.label}
         </span>
         {c.messageCount > 0 && (

@@ -78,7 +78,11 @@ export default function Onboarding({ settings }: { settings: SettingsDTO }) {
       <main className="flex flex-1 items-start justify-center px-4 pt-4 pb-12 sm:items-center sm:pt-0">
         <div className="flex w-full max-w-xl flex-col gap-6">
           <StepIndicator current={step} />
-          <div className="rounded-2xl border border-line bg-raised px-6 py-7 shadow-pop sm:px-8">
+          {/* Keyed by step: each screen eases in when it replaces the last. */}
+          <div
+            key={step}
+            className="animate-page-in rounded-2xl border border-line bg-raised px-6 py-7 shadow-pop sm:px-8"
+          >
             {step === 'welcome' && <WelcomeStep headingRef={headingRef} onNext={() => setStep('connect')} />}
             {step === 'connect' && (
               <ConnectStep
@@ -413,7 +417,7 @@ function HistoryStep({
 
       <label
         htmlFor={checkboxId}
-        className="flex cursor-pointer items-start gap-3 rounded-xl border border-line px-4 py-3"
+        className="flex cursor-pointer items-start gap-3 rounded-xl border border-line px-4 py-3 transition-colors duration-150 hover:bg-hover/40"
       >
         <input
           id={checkboxId}

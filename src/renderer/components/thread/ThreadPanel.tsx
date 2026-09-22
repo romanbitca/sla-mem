@@ -97,7 +97,7 @@ export function ThreadPanel({ conversationId, threadTs, highlightTs = null, onCl
   return (
     <aside
       aria-label="Thread"
-      className="absolute inset-y-0 right-0 z-30 flex w-full max-w-[440px] animate-fade-in flex-col border-l border-line bg-canvas shadow-pop lg:static lg:z-auto lg:w-[400px] lg:shrink-0 lg:shadow-none xl:w-[440px]"
+      className="absolute inset-y-0 right-0 z-30 flex w-full max-w-[440px] animate-slide-in-right flex-col border-l border-line bg-canvas shadow-pop lg:static lg:z-auto lg:w-[400px] lg:shrink-0 lg:shadow-none xl:w-[440px]"
     >
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line pr-2 pl-5">
         <div className="min-w-0 flex-1">
@@ -182,7 +182,7 @@ function MoreReplies({ onClick, children }: { onClick: () => void; children: Rea
       <button
         type="button"
         onClick={onClick}
-        className="focus-ring w-full rounded-md border border-line px-3 py-1.5 text-[13px] font-medium text-accent-text hover:bg-hover"
+        className="focus-ring w-full rounded-md border border-line px-3 py-1.5 text-[13px] font-medium text-accent-text transition-colors duration-150 hover:border-line-strong hover:bg-hover"
       >
         {children}
       </button>
