@@ -612,18 +612,6 @@ export function getStoredThreadInfo(
 }
 
 /**
- * Newest archived message or thread reply per conversation (Slack ts): how recently a
- * conversation was active decides how often a sync re-reads it.
- */
-export function listLastActivity(db: DB): Map<string, string> {
-  const rows = stmt<{ conversation_id: string; latest_ts: string }>(
-    db,
-    'SELECT conversation_id, latest_ts FROM conversation_stats WHERE latest_ts IS NOT NULL',
-  ).all();
-  return new Map(rows.map((r) => [r.conversation_id, r.latest_ts]));
-}
-
-/**
  * Archived messages that `conversations.history` returns (top-level messages and thread
  * broadcasts) from `sinceTs` on: an estimate of how many history pages reading from there costs.
  * Slack ts have a fixed-width whole part, so the text comparison can use the (conversation, ts)

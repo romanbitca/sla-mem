@@ -61,7 +61,6 @@ const METHOD_TIER: Record<string, keyof typeof TIER_INTERVAL_MS> = {
   'users.conversations': 3,
   'conversations.info': 3,
   'team.info': 3,
-  'client.counts': 3,
   'conversations.members': 4,
   'users.info': 4,
 };

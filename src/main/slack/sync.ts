@@ -4,7 +4,6 @@ import {
   getMeta,
   getSyncState,
   listConversations,
-  listLastActivity,
   listUsers,
   reindexAll,
   setMeta,
@@ -13,19 +12,8 @@ import {
   upsertCustomEmoji,
   upsertUsers,
   type DB,
-  type SyncStateRow,
 } from '../db';
 import type { AttachmentPolicy, ConversationDTO, SyncProgress } from '../../shared/types';
-import {
-  SUMMARY_OFF_MS,
-  SUMMARY_OFF_UNTIL_KEY,
-  fetchActivitySummary,
-  planConversation,
-  summaryMissed,
-  type ActivitySummary,
-  type CheckPlan,
-  type CheckReason,
-} from './activity';
 import type { AuthTestResponse, EmojiListResponse, TeamInfoResponse } from './api-types';
 import { SlackClient, redactSlackSecrets, type SlackClientOptions } from './client';
 import { emptyConversationResult, syncConversation, type ConversationSyncResult } from './conversation-sync';
@@ -350,110 +338,34 @@ function refreshSearchTextIfRenamed(ctx: SyncContext, before: NameSnapshot): voi
   ctx.log(`Names changed in Slack; refreshed search text of ${changed} messages`);
 }
 
-interface PlannedConversation {
-  conv: SlackConversation;
-  state: SyncStateRow | null;
-  plan: CheckPlan;
-}
-
 /** Shared by every conversation read in one run. */
 interface HistoryRun {
   labels: Map<string, string>;
-  /** Slack's activity summary, until it is found to have missed something. */
-  summary: ActivitySummary | null;
   done: number;
   total: number;
   unreachableInARow: number;
 }
 
 /**
- * Reads the conversations that need it (see activity.ts): those Slack reports new messages in,
- * recently active ones, and ones due for their periodic re-read. When a scheduled read finds a
- * message the summary didn't report, the summary is set aside (for this run and a week) and the
- * conversations skipped as unchanged are read after all.
+ * Reads every conversation (PLAN §5.2): new messages and edits within the overlap window, and
+ * quiet threads from their parents (conversation-sync.ts), one paced history read each at least.
+ * Slack's documented Web API has no call that says which conversations changed; the Slack app's
+ * own summary (`client.counts`, which 0.2.x used to skip unchanged ones) is not part of it, and
+ * sla-mem only uses the published API.
  */
 async function syncHistories(ctx: SyncContext, listed: SlackConversation[]): Promise<void> {
-  const targets = selectTargets(ctx, listed);
-  const states = new Map(targets.map((c) => [c.id, getSyncState(ctx.db, c.id)]));
-  const summary = await activitySummary(ctx, [...states.values()]);
-  const lastActivity = listLastActivity(ctx.db);
-  const requested = new Set(ctx.opts.conversationIds ?? []);
-  const planned = targets.map((conv): PlannedConversation => {
-    const state = states.get(conv.id) ?? null;
-    const plan = planConversation(conv.id, {
-      state,
-      lastActivity: lastActivity.get(conv.id) ?? null,
-      summary,
-      requested: requested.has(conv.id),
-      now: ctx.now(),
-    });
-    return { conv, state, plan };
-  });
-  const toRead = orderTargets(planned.filter((p) => p.plan.read));
-  const unchanged = planned.filter((p) => !p.plan.read);
-  if (summary) logPlan(ctx, planned);
-
+  const targets = orderTargets(ctx, selectTargets(ctx, listed));
   const run: HistoryRun = {
     labels: new Map(listConversations(ctx.db).map((c) => [c.id, displayLabel(c)])),
-    summary,
     done: 0,
-    total: toRead.length,
+    total: targets.length,
     unreachableInARow: 0,
   };
-  for (const item of toRead) await readConversation(ctx, run, item);
-  if (summary && !run.summary && unchanged.length) {
-    ctx.log(`Reading the other ${plural(unchanged.length, 'conversation')} too`);
-    run.total += unchanged.length;
-    for (const item of unchanged) await readConversation(ctx, run, item);
-  } else {
-    ctx.stats.unchanged = unchanged.length;
-  }
+  for (const conv of targets) await readConversation(ctx, run, conv);
 }
 
-/**
- * Slack's activity summary, when it can help: not before any conversation has finished its first
- * sync, not for a run limited to named conversations, and not while it is set aside.
- */
-async function activitySummary(
-  ctx: SyncContext,
-  states: readonly (SyncStateRow | null)[],
-): Promise<ActivitySummary | null> {
-  if (ctx.opts.conversationIds || !states.some((s) => s?.backfill_complete)) return null;
-  const offUntil = Number(getMeta(ctx.db, SUMMARY_OFF_UNTIL_KEY) ?? 0);
-  if (offUntil > ctx.now()) {
-    ctx.log('Reading every conversation: Slack’s activity summary missed new messages recently');
-    return null;
-  }
-  ctx.progress('conversations', 'Asking Slack which conversations have new messages');
-  return fetchActivitySummary(ctx.client, ctx.now, ctx.log);
-}
-
-const REASON_WORDS: [CheckReason, string][] = [
-  ['new', 'with new messages'],
-  ['active', 'active in the last 2 days'],
-  ['due', 'due for a periodic re-read'],
-  ['first', 'not synced before'],
-  ['backfill', 'still going back in history'],
-  ['retry', 'retried after an error'],
-];
-
-function logPlan(ctx: SyncContext, planned: readonly PlannedConversation[]): void {
-  const read = planned.filter((p) => p.plan.read);
-  const parts = REASON_WORDS.flatMap(([reason, words]) => {
-    const n = read.filter((p) => p.plan.reason === reason).length;
-    return n ? [`${n} ${words}`] : [];
-  });
-  const unchanged = planned.length - read.length;
-  ctx.log(
-    `Reading ${read.length} of ${plural(planned.length, 'conversation')}` +
-      (parts.length ? ` (${parts.join(', ')})` : '') +
-      (unchanged ? `; ${unchanged} unchanged since their last read` : ''),
-  );
-}
-
-async function readConversation(ctx: SyncContext, run: HistoryRun, item: PlannedConversation): Promise<void> {
+async function readConversation(ctx: SyncContext, run: HistoryRun, conv: SlackConversation): Promise<void> {
   throwIfAborted(ctx.opts.signal);
-  const { conv } = item;
   const position = { current: ++run.done, total: run.total };
   if (isExcluded(ctx, conv.id)) return; // excluded while this sync was running
   const label = run.labels.get(conv.id) ?? conv.id;
@@ -488,7 +400,6 @@ async function readConversation(ctx: SyncContext, run: HistoryRun, item: Planned
     ctx.stats.conversations++;
     const summary = describeResult(result);
     if (summary) ctx.log(`${label}: ${summary}`);
-    checkSummary(ctx, run, item, label, result);
   } catch (err) {
     run.unreachableInARow = err instanceof SlackHttpError ? run.unreachableInARow + 1 : 0;
     if (run.unreachableInARow >= MAX_CONSECUTIVE_UNREACHABLE) throw err;
@@ -497,26 +408,6 @@ async function readConversation(ctx: SyncContext, run: HistoryRun, item: Planned
     // Pages committed before a failure count too (they're in the archive).
     addCounts(ctx.stats, result);
   }
-}
-
-/**
- * A conversation read on schedule (not because Slack reported new messages) that had new
- * messages anyway means the summary can't be relied on: stop using it.
- */
-function checkSummary(
-  ctx: SyncContext,
-  run: HistoryRun,
-  item: PlannedConversation,
-  label: string,
-  result: ConversationSyncResult,
-): void {
-  if (!run.summary || (item.plan.reason !== 'active' && item.plan.reason !== 'due')) return;
-  if (!summaryMissed(run.summary, item.conv.id, item.state?.latest_ts ?? null, result.newestPlainTs)) return;
-  run.summary = null;
-  setMeta(ctx.db, SUMMARY_OFF_UNTIL_KEY, String(ctx.now() + SUMMARY_OFF_MS));
-  ctx.log(
-    `${label}: Slack’s activity summary didn’t report its new messages; reading every conversation for the next 7 days`,
-  );
 }
 
 function isExcluded(ctx: SyncContext, conversationId: string): boolean {
@@ -543,11 +434,12 @@ function pickRequested(ctx: SyncContext, listed: SlackConversation[]): SlackConv
 }
 
 /** Conversations that failed last time go last, so one broken channel never holds up the rest. */
-function orderTargets(targets: PlannedConversation[]): PlannedConversation[] {
+function orderTargets(ctx: SyncContext, targets: SlackConversation[]): SlackConversation[] {
+  const failedBefore = (c: SlackConversation) => (getSyncState(ctx.db, c.id)?.last_error ? 1 : 0);
   return targets
-    .map((t, index) => ({ t, index, failed: t.state?.last_error ? 1 : 0 }))
+    .map((c, index) => ({ c, index, failed: failedBefore(c) }))
     .sort((a, b) => a.failed - b.failed || a.index - b.index)
-    .map((x) => x.t);
+    .map((x) => x.c);
 }
 
 /**
@@ -627,7 +519,7 @@ function describeResult(r: ConversationSyncResult): string {
 
 function summarize(s: ApiSyncStats): string {
   return [
-    plural(s.conversations, 'conversation') + (s.unchanged ? ` read (${s.unchanged} unchanged)` : ''),
+    plural(s.conversations, 'conversation'),
     `${s.messagesInserted} new`,
     `${s.messagesUpdated} updated`,
     `${s.revisions} edited`,

@@ -7,7 +7,6 @@ import {
   getFileRow,
   getMessageRevisions,
   getMessages,
-  getMeta,
   getSyncState,
   getThread,
   getWorkspaceMeta,
@@ -19,7 +18,6 @@ import {
   type DB,
 } from '../db';
 import type { SyncProgress } from '../../shared/types';
-import { SUMMARY_OFF_UNTIL_KEY } from './activity';
 import { SlackApiError, SlackHttpError } from './errors';
 import { FAKE_BASE_URL, FAKE_TOKEN, FakeSlack, fakeClock } from './fake-slack';
 import { runApiSync, statsFromError, teamDomainFromUrl, type ApiSyncOptions } from './sync';
@@ -251,100 +249,17 @@ describe('incremental sync', () => {
   });
 });
 
-describe('reading only conversations that need it', () => {
-  /** A clock `minutes` after NOW. */
-  const later = (minutes: number) => () => NOW + minutes * 60_000;
-
-  beforeEach(() => {
+describe('every sync, with documented calls only', () => {
+  it('reads every conversation, and never calls the Slack app’s own unread summary', async () => {
     fake.addMessage('C1', msg(ts(30), 'active today'));
     fake.addMessage('C2', msg(ts(10 * DAY), 'quiet for ten days'));
-    fake.addMessage('D1', msg(ts(40 * DAY), 'silent for a month'));
-    // G1 stays empty.
-  });
-
-  it('asks Slack which conversations have new messages and reads those and recently active ones', async () => {
     await sync();
-    expect(fake.callsOf('client.counts')).toHaveLength(0); // nothing to skip on a first sync
-
-    progress.length = 0;
-    let before = fake.calls.length;
-    let stats = await sync({ now: later(1) });
-    expect(fake.callsOf('client.counts')).toHaveLength(1);
-    expect(historyChannels(before)).toEqual(['C1']);
-    expect(stats).toMatchObject({ conversations: 1, unchanged: 3 });
-    expect(logs).toContain(
-      'Reading 1 of 4 conversations (1 active in the last 2 days); 3 unchanged since their last read',
-    );
-    expect(progress.filter((p) => p.phase === 'history').map((p) => [p.current, p.total])).toContainEqual([1, 1]);
-
     fake.addMessage('D1', msg(ts(-1), 'a new DM'));
-    before = fake.calls.length;
-    stats = await sync({ now: later(2) });
-    expect(historyChannels(before)).toEqual(['C1', 'D1']);
-    expect(stats).toMatchObject({ messagesInserted: 1, unchanged: 2 });
-    expect(getMessages(db, { conversationId: 'D1' }).messages.map((m) => m.text)).toContain('a new DM');
-  });
-
-  it('re-reads quiet conversations about daily, and silent or empty ones about weekly', async () => {
-    await sync();
-    const readAt = async (minutes: number) => {
-      const before = fake.calls.length;
-      await sync({ now: later(minutes) });
-      return historyChannels(before).sort();
-    };
-    expect(await readAt(1)).toEqual(['C1']);
-    expect(await readAt(DAY + 1)).toEqual(expect.arrayContaining(['C1', 'C2']));
-    expect(await readAt(8 * DAY)).toEqual(['C1', 'C2', 'D1', 'G1']);
-  });
-
-  it('doesn’t read an empty conversation again until Slack reports a message in it', async () => {
-    await sync();
-    let before = fake.calls.length;
-    await sync({ now: later(1) });
-    expect(historyChannels(before)).not.toContain('G1');
-
-    fake.addMessage('G1', msg(ts(-1), 'first group message', { user: 'U2' }));
-    before = fake.calls.length;
-    await sync({ now: later(2) });
-    expect(historyChannels(before)).toContain('G1');
-    expect(storedTs('G1')).toEqual([ts(-1)]);
-  });
-
-  it('reads every conversation when Slack’s summary is unavailable', async () => {
-    await sync();
-    fake.inject('client.counts', { error: 'unknown_method' });
     const before = fake.calls.length;
-    const stats = await sync({ now: later(1) });
+    const stats = await sync();
     expect(historyChannels(before)).toEqual(['C1', 'C2', 'D1', 'G1']);
-    expect(stats.unchanged).toBe(0);
-    expect(logs).toContain('Slack’s activity summary is unavailable (unknown_method); reading every conversation');
-  });
-
-  it('sets the summary aside for a week when it misses a message, and reads the rest after all', async () => {
-    await sync();
-    // The summary goes stale for C2, which then gets a message; a day later C2's periodic re-read finds it.
-    fake.summaryLatest.set('C2', ts(10 * DAY));
-    fake.addMessage('C2', msg(ts(-60), 'posted after the first sync'));
-    let before = fake.calls.length;
-    await sync({ now: later(25 * 60) });
-    expect(logs).toContain(
-      '#secret: Slack’s activity summary didn’t report its new messages; reading every conversation for the next 7 days',
-    );
-    expect(historyChannels(before).sort()).toEqual(['C1', 'C2', 'D1', 'G1']);
-    expect(getMeta(db, SUMMARY_OFF_UNTIL_KEY)).toBe(String(later(25 * 60 + 7 * DAY)()));
-
-    before = fake.calls.length;
-    await sync({ now: later(26 * 60) });
-    expect(fake.calls.slice(before).some((c) => c.method === 'client.counts')).toBe(false);
-    expect(historyChannels(before)).toEqual(['C1', 'C2', 'D1', 'G1']);
-  });
-
-  it('doesn’t ask for the summary when syncing named conversations', async () => {
-    await sync();
-    const before = fake.calls.length;
-    await sync({ now: later(1), conversationIds: ['C2'] });
-    expect(fake.callsOf('client.counts')).toHaveLength(0);
-    expect(historyChannels(before)).toEqual(['C2']);
+    expect(stats).toMatchObject({ conversations: 4, messagesInserted: 1 });
+    expect(fake.calls.map((c) => c.method)).not.toContain('client.counts');
   });
 });
 
@@ -392,7 +307,11 @@ describe('threads', () => {
     await sync({ overlapSeconds: 3600 });
     let calls = fake.calls.slice(before);
     expect(calls.filter((c) => c.method === 'conversations.replies')).toEqual([]);
-    expect(calls.filter((c) => c.method === 'conversations.history').map((c) => c.params.oldest)).toEqual([quiet]);
+    expect(
+      calls
+        .filter((c) => c.method === 'conversations.history' && c.params.channel === 'C1')
+        .map((c) => c.params.oldest),
+    ).toEqual([quiet]);
 
     // A new reply shows on the parent, so that thread (and only that one) is fetched.
     fake.addReply('C1', quiet, msg(ts(10), 'new reply'));

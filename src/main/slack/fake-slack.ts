@@ -64,10 +64,6 @@ export class FakeSlack {
   channelErrors = new Map<string, string>();
   /** URL (origin + path) → file response. */
   files = new Map<string, FakeFile | ((auth: string | null) => Response)>();
-  /** client.counts leaves these out (like conversations closed in the Slack sidebar). */
-  hiddenFromSummary = new Set<string>();
-  /** client.counts reports this newest-message ts instead of the real one (a stale summary). */
-  summaryLatest = new Map<string, string>();
 
   readonly calls: RecordedCall[] = [];
   readonly downloads: RecordedDownload[] = [];
@@ -195,31 +191,11 @@ export class FakeSlack {
       const members = this.members.get(p.channel);
       return members ? this.page(members, p, 'members') : { ok: false, error: 'channel_not_found' };
     },
-    'client.counts': () => this.activitySummary(),
     'conversations.history': (p) => this.historyPage(p),
     'conversations.replies': (p) => this.repliesPage(p),
     'emoji.list': () =>
       this.emoji ? { ok: true, emoji: this.emoji } : { ok: false, error: 'missing_scope', needed: 'emoji:read' },
   };
-
-  /** The Slack app's unread summary: every conversation's newest visible message. */
-  private activitySummary(): object {
-    const entry = (c: SlackConversation) => {
-      const newest = this.visible(this.history.get(c.id) ?? [])
-        .map((m) => m.ts)
-        .sort(byTs)
-        .at(-1);
-      const latest = this.summaryLatest.get(c.id) ?? newest ?? '0000000000.000000';
-      return { id: c.id, latest, last_read: latest, mention_count: 0, has_unreads: false };
-    };
-    const listed = this.conversations.filter((c) => !this.hiddenFromSummary.has(c.id));
-    return {
-      ok: true,
-      channels: listed.filter((c) => !c.is_im && !c.is_mpim).map(entry),
-      ims: listed.filter((c) => c.is_im).map(entry),
-      mpims: listed.filter((c) => c.is_mpim).map(entry),
-    };
-  }
 
   private historyPage(p: Record<string, string>): object {
     const error = this.channelErrors.get(p.channel);

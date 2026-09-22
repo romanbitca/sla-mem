@@ -7,7 +7,6 @@ import {
   upsertMessages,
   type DB,
 } from '../db';
-import { isPlainMessage } from './activity';
 import type { HistoryResponse, RepliesResponse, SlackParams } from './api-types';
 import type { SlackClient } from './client';
 import { SlackApiError } from './errors';
@@ -64,15 +63,13 @@ export interface ConversationSyncResult {
   pages: number;
   /** Messages received from Slack (history pages and thread replies), new or not. */
   fetched: number;
-  /** Newest plain top-level message in the history pages (see `isPlainMessage`). */
-  newestPlainTs: string | null;
 }
 
 /** Slack's recommended maximum page size for history and replies. */
 const PAGE_LIMIT = 200;
 
 export function emptyConversationResult(): ConversationSyncResult {
-  return { inserted: 0, updated: 0, revisions: 0, threadsFetched: 0, pages: 0, fetched: 0, newestPlainTs: null };
+  return { inserted: 0, updated: 0, revisions: 0, threadsFetched: 0, pages: 0, fetched: 0 };
 }
 
 /**
@@ -222,7 +219,6 @@ class ConversationRun {
       const messages = validMessages(page.messages);
       this.result.pages++;
       this.result.fetched += messages.length;
-      this.result.newestPlainTs = maxTs(this.result.newestPlainTs, messages.filter(isPlainMessage));
       this.ctx.onProgress?.({ phase: 'history', fetched: this.result.fetched });
       await this.processHistoryPage(messages);
       afterPage(messages);

@@ -44,16 +44,3 @@ export interface RepliesResponse {
 export interface EmojiListResponse {
   emoji?: Record<string, string>;
 }
-
-/** `client.counts` (the Slack app's unread summary; not in the documented Web API). */
-export interface ClientCountsResponse {
-  channels?: ClientCountsEntry[];
-  ims?: ClientCountsEntry[];
-  mpims?: ClientCountsEntry[];
-}
-
-export interface ClientCountsEntry {
-  id?: string;
-  /** ts of the conversation's newest message ("0000000000.000000" when there is none). */
-  latest?: string;
-}

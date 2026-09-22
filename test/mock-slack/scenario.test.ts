@@ -66,11 +66,10 @@ describe('mock Slack scenario (PLAN §13)', () => {
     const stats = await sync();
     expect(stats).toMatchObject({ messagesInserted: 0, revisions: 0, errors: 0 });
     expect(count('SELECT count(*) AS n FROM messages')).toBe(before);
-    // Slack's activity summary reports nothing new, so only recently active conversations are
-    // read: one history page each, no thread polls, plus the fixed calls (auth, users, list,
-    // summary, emoji).
-    expect(stats.unchanged).toBeGreaterThan(0);
-    expect(stats.conversations + stats.unchanged).toBe(count('SELECT count(*) AS n FROM conversations'));
+    // Every conversation is read (the documented API can't tell which changed): one history page
+    // each, polls only for threads with a reply in the overlap window, and the fixed calls (auth,
+    // users, list, emoji).
+    expect(stats.conversations).toBe(count('SELECT count(*) AS n FROM conversations'));
     expect(stats.apiCalls).toBeLessThan(stats.conversations + 10);
   });
 

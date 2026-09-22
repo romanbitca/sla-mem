@@ -17,7 +17,6 @@ export {
   setSyncState,
   listActiveThreads,
   getStoredThreadInfo,
-  listLastActivity,
   countHistoryMessagesSince,
   listDownloadCandidates,
   markFileDownloaded,
