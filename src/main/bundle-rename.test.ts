@@ -17,7 +17,8 @@ afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-const exec = (bundle: string) => path.join(bundle, 'Contents', 'MacOS', 'Slamem');
+// The app's paths are macOS ones wherever the tests run.
+const exec = (bundle: string) => path.posix.join(bundle, 'Contents', 'MacOS', 'Slamem');
 const nothingThere = () => false;
 
 describe('bundleRenameFor', () => {

@@ -10,7 +10,8 @@
  */
 import { spawn as nodeSpawn } from 'node:child_process';
 import fs from 'node:fs';
-import path from 'node:path';
+// macOS only, so POSIX paths on every platform (the tests run on Windows too).
+import { posix as path } from 'node:path';
 
 export const APP_BUNDLE_NAME = 'Slamem.app';
 const OLD_BUNDLE_NAMES = new Set(['sla-mem.app']);
