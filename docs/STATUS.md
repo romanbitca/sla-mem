@@ -37,9 +37,9 @@ sync · 17 no secrets in the logs.
    syncs still work, just slower).
 3. 👤 **Clean-machine installs** on macOS and Windows, by someone who didn't build the app,
    following only [INSTALL.md](INSTALL.md).
-4. 👤 **Releases must be public** for colleagues and for the update check (the repository is
-   private): see README → Releasing. Then publish a newer version and confirm the update banner
-   appears and the upgrade keeps the archive.
+4. 👤 **First release:** the repository is public since 2026-09-22, so releases can be seen by
+   colleagues and by the update check. Publish one (README → Releasing), then confirm an older
+   installed copy shows the update banner and that the upgrade keeps the archive.
 5. 👤 **Read your own archive** and compare a sample of tricky messages with Slack (Stage 4).
 
 ## Stage 1 — Skeleton, storage core, and search

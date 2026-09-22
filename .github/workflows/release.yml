@@ -7,7 +7,7 @@ name: Release
 #    artifacts only (nothing published), to try an installer before tagging.
 #
 # Releases must be downloadable without a GitHub account and readable by the update check, so they
-# must live in a public repository. If this repository is private, point `publish` in
+# live in this repository, which is public. Were it made private again, point `publish` in
 # electron-builder.yml and UPDATE_REPO in src/main/context.ts at a public releases repository and add
 # a RELEASES_TOKEN secret (a token with contents: write on it).
 

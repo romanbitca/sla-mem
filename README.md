@@ -100,11 +100,12 @@ tests, or a second archive for a different account. Unpackaged builds default to
 The workflow can also be started by hand (Actions → Release → Run workflow). It then leaves the
 builds as workflow artifacts without touching Releases: use it to try an installer before tagging.
 
-> **Before the first release:** this repository is private. Colleagues can't open its Releases
-> page and the in-app update check can't see its releases. Either make the repository public, or
-> publish releases from a public repository: point `UPDATE_REPO` in `src/main/context.ts` and
-> `publish` in `electron-builder.yml` at it, add a `RELEASES_TOKEN` secret that can write there, and
-> update the links in [docs/INSTALL.md](docs/INSTALL.md).
+> The repository is public so that colleagues can download releases without a GitHub account and
+> the in-app update check can read them (GitHub hides a private repository's releases). Public
+> doesn't mean open source: the licence below still applies. If it ever has to be private again,
+> publish releases from a separate public repository instead: point `UPDATE_REPO` in
+> `src/main/context.ts` and `publish` in `electron-builder.yml` at it, add a `RELEASES_TOKEN` secret
+> that can write there, and update the links in [docs/INSTALL.md](docs/INSTALL.md).
 
 ## Licence
 
