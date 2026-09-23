@@ -11,7 +11,7 @@ import { usePeople } from '../lib/queries';
 import { tsToMs } from '../lib/ts';
 import { timeAgo } from '../components/home/runs';
 import { CloseIcon, FilterIcon, UsersIcon } from '../components/icons';
-import { SidebarToggle } from '../components/layout/shell';
+import { PageNav } from '../components/layout/shell';
 import { Avatar } from '../components/message/Avatar';
 import { EmptyState, ErrorState } from '../components/ui/EmptyState';
 import { LoadingState } from '../components/ui/Spinner';
@@ -76,7 +76,7 @@ export default function PeoplePage() {
   return (
     <section className="flex min-h-0 min-w-0 flex-1 animate-page-in flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
-        <SidebarToggle />
+        <PageNav />
         <h1 className="text-[15px] font-semibold text-ink">People</h1>
         {people.data && people.data.length > 0 && (
           <span className="text-xs text-ink-faint tabular-nums">{people.data.length.toLocaleString()}</span>

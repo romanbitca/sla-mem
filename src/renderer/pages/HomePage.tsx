@@ -18,7 +18,7 @@ import { connectPrompt } from '../components/home/runs';
 import { SyncHistory } from '../components/home/SyncHistory';
 import { SyncPanel } from '../components/home/SyncPanel';
 import { AlertIcon, ClockIcon, SyncIcon } from '../components/icons';
-import { SidebarToggle } from '../components/layout/shell';
+import { PageNav } from '../components/layout/shell';
 import { Button } from '../components/ui/Button';
 import { Callout } from '../components/ui/Callout';
 
@@ -45,7 +45,7 @@ export default function HomePage() {
   return (
     <section className="flex min-h-0 min-w-0 flex-1 animate-page-in flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
-        <SidebarToggle />
+        <PageNav />
         <h1 className="text-[15px] font-semibold text-ink">Overview</h1>
       </header>
       <div className="scroll-thin relative min-h-0 flex-1 overflow-y-auto">

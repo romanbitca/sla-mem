@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import { useSettings, useSyncStatus, useWorkspace } from '../lib/queries';
-import { SidebarToggle } from '../components/layout/shell';
+import { PageNav } from '../components/layout/shell';
 import { AboutCard } from '../components/settings/AboutCard';
 import { AdvancedCard } from '../components/settings/AdvancedCard';
 import { AppSettingsCard } from '../components/settings/AppSettingsCard';
@@ -68,7 +68,7 @@ export default function SettingsPage() {
   return (
     <section className="flex min-h-0 min-w-0 flex-1 animate-page-in flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
-        <SidebarToggle />
+        <PageNav />
         <h1 className="text-[15px] font-semibold text-ink">Settings</h1>
       </header>
       <div className="scroll-thin relative min-h-0 flex-1 overflow-y-auto">

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } fr
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import clsx from 'clsx';
 import { isModalOpen, isTypingTarget, useKeydown, useMediaQuery } from '../../lib/hooks';
+import { useNavHistoryTracker } from '../../lib/navHistory';
 import { useSyncStatus } from '../../lib/queries';
 import { useLastSearch, type ReturnToSearchState } from '../../lib/searchNav';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
@@ -42,6 +43,7 @@ export function AppShell() {
   const sync = useSyncStatus();
   const onClick = useInternalLinkHandler();
   const lastSearch = useLastSearch();
+  const history = useNavHistoryTracker();
 
   // The drawer closes whenever the reader goes somewhere.
   useEffect(() => setSidebarOpen(false), [location.pathname, location.search]);
@@ -70,12 +72,31 @@ export function AppShell() {
     } else if (e.key === 'Escape' && sidebarOpen && !isDesktop) {
       e.preventDefault();
       setSidebarOpen(false);
+    } else if (isHistoryKey(e, 'back')) {
+      e.preventDefault();
+      history.back();
+    } else if (isHistoryKey(e, 'forward')) {
+      e.preventDefault();
+      history.forward();
     }
   });
 
+  // A mouse's side buttons go back and forward too.
+  useEffect(() => {
+    const onMouseUp = (e: globalThis.MouseEvent) => {
+      if (e.button !== 3 && e.button !== 4) return;
+      if (isModalOpen()) return;
+      e.preventDefault();
+      if (e.button === 3) history.back();
+      else history.forward();
+    };
+    window.addEventListener('mouseup', onMouseUp);
+    return () => window.removeEventListener('mouseup', onMouseUp);
+  }, [history]);
+
   const shell = useMemo<ShellContextValue>(
-    () => ({ sidebarOpen, setSidebarOpen, focusSearch, searchInputRef: searchRef }),
-    [sidebarOpen, focusSearch],
+    () => ({ sidebarOpen, setSidebarOpen, focusSearch, searchInputRef: searchRef, history }),
+    [sidebarOpen, focusSearch, history],
   );
   const drawerHidden = !isDesktop && !sidebarOpen;
 
@@ -121,4 +142,17 @@ export function AppShell() {
       </div>
     </ShellContext.Provider>
   );
+}
+
+/**
+ * Back: ⌘[ (and ⌘←) on macOS, Alt+← everywhere, as in Slack and browsers. Forward: ⌘], ⌘→, Alt+→.
+ * The arrows are left to text boxes, where they move the cursor.
+ */
+function isHistoryKey(e: KeyboardEvent, which: 'back' | 'forward'): boolean {
+  const bracket = which === 'back' ? '[' : ']';
+  const arrow = which === 'back' ? 'ArrowLeft' : 'ArrowRight';
+  if (e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+    return e.key === bracket || (e.key === arrow && !isTypingTarget(e.target));
+  }
+  return e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.key === arrow && !isTypingTarget(e.target);
 }

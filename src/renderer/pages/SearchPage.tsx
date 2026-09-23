@@ -20,7 +20,7 @@ import {
   type ReturnToSearchState,
 } from '../lib/searchNav';
 import { LayersIcon, ListIcon, SearchIcon } from '../components/icons';
-import { SidebarToggle, useShell } from '../components/layout/shell';
+import { PageNav, useShell } from '../components/layout/shell';
 import { Button } from '../components/ui/Button';
 import { EmptyState, ErrorState } from '../components/ui/EmptyState';
 import { LoadingState, Spinner } from '../components/ui/Spinner';
@@ -303,7 +303,7 @@ export default function SearchPage() {
   return (
     <section className="flex min-h-0 min-w-0 flex-1 animate-page-in flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
-        <SidebarToggle />
+        <PageNav />
         <h1 className="text-[15px] font-semibold text-ink">Search</h1>
       </header>
       {/* The box and filters stay put above the results (and the preview, when open). */}

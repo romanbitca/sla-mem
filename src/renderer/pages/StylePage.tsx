@@ -4,7 +4,7 @@ import { useStyle } from '../lib/queries';
 import { TONE_LABEL, toneSentence } from '../lib/style';
 import { tsToDate } from '../lib/ts';
 import { PenNibIcon } from '../components/icons';
-import { SidebarToggle } from '../components/layout/shell';
+import { PageNav } from '../components/layout/shell';
 import { ToneInfo } from '../components/style/Explain';
 import { PeopleRanking } from '../components/style/PeopleRanking';
 import { ReplyTimeCard } from '../components/style/ReplyTimes';
@@ -38,7 +38,7 @@ export default function StylePage() {
   return (
     <section className="flex min-h-0 min-w-0 flex-1 animate-page-in flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
-        <SidebarToggle />
+        <PageNav />
         <h1 className="text-[15px] font-semibold text-ink">My style</h1>
       </header>
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">{body}</div>

@@ -322,6 +322,7 @@ export const InfoIcon = makeIcon(
   </>,
 );
 export const ArrowRightIcon = makeIcon('ArrowRight', <path d="M5 12h14m0 0-6-6m6 6-6 6" />);
+export const ArrowLeftIcon = makeIcon('ArrowLeft', <path d="M19 12H5m0 0 6 6m-6-6 6-6" />);
 /** Ask AI: a four-point spark and a small one. */
 export const SparklesIcon = makeIcon(
   'Sparkles',

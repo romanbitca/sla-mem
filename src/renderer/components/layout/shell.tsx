@@ -1,5 +1,7 @@
 import { createContext, createRef, useContext, type RefObject } from 'react';
-import { MenuIcon } from '../icons';
+import { currentPlatform } from '../../lib/bridge';
+import type { NavHistory } from '../../lib/navHistory';
+import { ArrowLeftIcon, ArrowRightIcon, MenuIcon } from '../icons';
 import { IconButton } from '../ui/IconButton';
 
 export interface ShellContextValue {
@@ -10,6 +12,8 @@ export interface ShellContextValue {
   focusSearch: () => void;
   /** The search screen's text box, while it is shown. */
   searchInputRef: RefObject<HTMLInputElement | null>;
+  /** Back and Forward through the pages visited. */
+  history: NavHistory;
 }
 
 export const ShellContext = createContext<ShellContextValue>({
@@ -17,6 +21,7 @@ export const ShellContext = createContext<ShellContextValue>({
   setSidebarOpen: () => {},
   focusSearch: () => {},
   searchInputRef: createRef<HTMLInputElement>(),
+  history: { canGoBack: false, canGoForward: false, back: () => {}, forward: () => {} },
 });
 
 export function useShell(): ShellContextValue {
@@ -33,5 +38,46 @@ export function SidebarToggle({ className }: { className?: string }) {
       onClick={() => setSidebarOpen(true)}
       className={`lg:hidden ${className ?? ''}`}
     />
+  );
+}
+
+/** What the Back and Forward shortcuts are called here. */
+export function historyShortcuts(): { back: string; forward: string } {
+  return currentPlatform() === 'darwin' ? { back: '⌘[', forward: '⌘]' } : { back: 'Alt+←', forward: 'Alt+→' };
+}
+
+/** Back and Forward through the pages visited, as in Slack. */
+export function HistoryButtons({ className }: { className?: string }) {
+  const { history } = useShell();
+  const keys = historyShortcuts();
+  return (
+    <div className={`flex shrink-0 items-center ${className ?? ''}`}>
+      <IconButton
+        size="sm"
+        label="Back"
+        title={`Back (${keys.back})`}
+        icon={<ArrowLeftIcon size={16} />}
+        disabled={!history.canGoBack}
+        onClick={history.back}
+      />
+      <IconButton
+        size="sm"
+        label="Forward"
+        title={`Forward (${keys.forward})`}
+        icon={<ArrowRightIcon size={16} />}
+        disabled={!history.canGoForward}
+        onClick={history.forward}
+      />
+    </div>
+  );
+}
+
+/** The start of every page's header: the sidebar toggle (narrow windows) and Back / Forward. */
+export function PageNav() {
+  return (
+    <>
+      <SidebarToggle />
+      <HistoryButtons className="-ml-1 mr-1" />
+    </>
   );
 }

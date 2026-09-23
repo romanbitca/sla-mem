@@ -195,6 +195,45 @@ describe('AppShell', () => {
     expect(people.getAttribute('aria-current')).toBe('page');
   });
 
+  it('goes back and forward through the pages visited, with the buttons, the keyboard and the mouse', async () => {
+    vi.spyOn(api, 'getPeople').mockResolvedValue([]);
+    vi.spyOn(api, 'getConversation').mockResolvedValue(conversations[1]);
+    vi.spyOn(api, 'getMessages').mockResolvedValue({ messages: [], hasMoreBefore: false, hasMoreAfter: false });
+    renderApp();
+    const back = await screen.findByRole('button', { name: 'Back' });
+    const forward = screen.getByRole('button', { name: 'Forward' });
+    expect((back as HTMLButtonElement).disabled).toBe(true);
+    expect((forward as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole('link', { name: 'People' }));
+    await waitFor(() => expect(location?.pathname).toBe('/people'));
+    fireEvent.click(screen.getByRole('link', { name: /general/ }));
+    await waitFor(() => expect(location?.pathname).toBe('/c/C1'));
+
+    // Every page has the buttons in its header.
+    const backNow = () => screen.getByRole('button', { name: 'Back' }) as HTMLButtonElement;
+    const forwardNow = () => screen.getByRole('button', { name: 'Forward' }) as HTMLButtonElement;
+    expect(backNow().disabled).toBe(false);
+    fireEvent.click(backNow());
+    await waitFor(() => expect(location?.pathname).toBe('/people'));
+    expect(forwardNow().disabled).toBe(false);
+    fireEvent.click(backNow());
+    await waitFor(() => expect(location?.pathname).toBe('/'));
+    expect(backNow().disabled).toBe(true);
+
+    fireEvent.keyDown(window, { key: ']', metaKey: true });
+    await waitFor(() => expect(location?.pathname).toBe('/people'));
+    fireEvent.keyDown(window, { key: 'ArrowRight', altKey: true });
+    await waitFor(() => expect(location?.pathname).toBe('/c/C1'));
+    expect(forwardNow().disabled).toBe(true);
+    fireEvent.keyDown(window, { key: '[', metaKey: true });
+    await waitFor(() => expect(location?.pathname).toBe('/people'));
+    // A mouse's back button.
+    fireEvent.mouseUp(window, { button: 3 });
+    await waitFor(() => expect(location?.pathname).toBe('/'));
+    expect(backNow().title).toMatch(/^Back \(/);
+  });
+
   it('leaves the page shortcuts alone while a dialog is open', async () => {
     renderApp();
     await screen.findByRole('link', { name: /^Search/ });

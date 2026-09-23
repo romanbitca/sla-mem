@@ -26,7 +26,7 @@ import { Composer } from '../components/ask/Composer';
 import { ScopeBar } from '../components/ask/ScopeBar';
 import { conversationTitle } from '../components/conversation/ConversationIcon';
 import { KeyIcon, PlusIcon, SparklesIcon } from '../components/icons';
-import { SidebarToggle } from '../components/layout/shell';
+import { PageNav } from '../components/layout/shell';
 import { resolveAuthor } from '../components/message/author';
 import type { ResultLink } from '../components/search/SearchResults';
 import { SearchPreview } from '../components/search/SearchPreview';
@@ -227,7 +227,7 @@ export default function AskPage() {
   return (
     <section className="flex min-h-0 min-w-0 flex-1 animate-page-in flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
-        <SidebarToggle />
+        <PageNav />
         <h1 className="text-[15px] font-semibold text-ink">Ask AI</h1>
         {model && !noKey && (
           <Link

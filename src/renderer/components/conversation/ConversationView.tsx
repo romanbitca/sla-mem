@@ -24,7 +24,7 @@ import {
   HashIcon,
   InfoIcon,
 } from '../icons';
-import { SidebarToggle } from '../layout/shell';
+import { PageNav } from '../layout/shell';
 import { Button } from '../ui/Button';
 import { EmptyState, ErrorState } from '../ui/EmptyState';
 import { IconButton } from '../ui/IconButton';
@@ -306,7 +306,7 @@ function ConversationHeader({
   const title = conversation ? conversationTitle(conversation) : ' ';
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
-      <SidebarToggle />
+      <PageNav />
       <BackToSearch />
       {/* A size container: the facts line drops its details as the header narrows (thread open). */}
       <div className="@container flex min-w-0 flex-1 items-center gap-2.5">

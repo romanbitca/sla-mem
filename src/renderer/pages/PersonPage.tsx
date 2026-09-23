@@ -37,7 +37,7 @@ import {
   SparklesIcon,
   UsersIcon,
 } from '../components/icons';
-import { SidebarToggle } from '../components/layout/shell';
+import { PageNav } from '../components/layout/shell';
 import { Avatar } from '../components/message/Avatar';
 import { LocalTime } from '../components/people/LocalTime';
 import { WeekBars } from '../components/people/WeekBars';
@@ -85,7 +85,7 @@ export default function PersonPage() {
   return (
     <section className="flex min-h-0 min-w-0 flex-1 animate-page-in flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
-        <SidebarToggle />
+        <PageNav />
         <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-[15px]">
           <Link to={PEOPLE_PATH} className="focus-ring shrink-0 rounded-sm font-medium text-ink-muted hover:text-ink">
             People
