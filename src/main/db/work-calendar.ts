@@ -1,8 +1,8 @@
 /**
  * Working time, as My style counts it: the hours between `start` and `end` on the chosen weekdays,
  * in one time zone, less each person's days off. Reply times run on this clock, so a question
- * asked on Thursday at 20:00 and answered on Monday at 09:15 waited 45 minutes (with 09:00–20:30,
- * Monday to Thursday), not three and a half days.
+ * asked on Friday at 18:00 and answered on Monday at 09:15 waited 45 minutes (with 09:00–18:30,
+ * Monday to Friday), not two and a half days.
  *
  * Days are keyed "YYYY-MM-DD" in the calendar's time zone. Each day's opening and closing
  * instants are worked out from the zone's own offset that day, so a daylight-saving change moves

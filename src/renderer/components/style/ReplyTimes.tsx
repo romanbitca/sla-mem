@@ -126,8 +126,8 @@ function HoursNote({ style }: { style: StyleDTO }) {
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
- * The hours reply times count: the days (Monday to Thursday by default, the days every team works
- * when some work Sunday to Thursday), from and to, and the time zone (the team's by default).
+ * The hours reply times count: the days (Monday to Friday by default), from and to, and the time
+ * zone (the team's by default).
  */
 export function WorkHoursDialog({
   open,
@@ -211,8 +211,7 @@ export function WorkHoursDialog({
             ))}
           </div>
           <p className="text-xs text-ink-faint">
-            {days.length ? daysLabel(days) : 'No days'}. Monday to Thursday is what every team works when some work
-            Sunday to Thursday and others Monday to Friday.
+            {days.length ? daysLabel(days) : 'No days'}. Questions asked on the other days are left out.
           </p>
         </fieldset>
         <div className="flex gap-4">

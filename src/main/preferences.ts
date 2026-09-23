@@ -20,13 +20,13 @@ import { invalid } from './errors';
 import { writeFileAtomicSync } from './fsx';
 
 /**
- * My style counts reply times Monday to Thursday, 09:00–20:30: the days every team works when
- * some work Sunday to Thursday and others Monday to Friday. The zone is the team's (null).
+ * My style counts reply times Monday to Friday, 09:00–18:30, the owner's working week. The zone is
+ * the team's (null).
  */
 export const DEFAULT_WORK_HOURS: Readonly<WorkHoursDTO> = Object.freeze({
-  days: [1, 2, 3, 4],
+  days: [1, 2, 3, 4, 5],
   start: 9 * 60,
-  end: 20 * 60 + 30,
+  end: 18 * 60 + 30,
   timeZone: null,
 });
 

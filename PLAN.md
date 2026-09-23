@@ -314,18 +314,20 @@ Each item is also corrected where it belongs in this document.
     People's rule), until his next message there: in the DM or group DM, in the thread, or for a
     top-level question his next top-level message in the channel within a day. Several questions
     answered by one message count once. The clock runs only in working hours: by default Monday
-    to Thursday, 09:00–20:30, in the time zone most people in the archive have in Slack (9H:
-    Europe/Amsterdam), because part of the team works Sunday to Thursday and the rest Monday to
-    Friday; **Change hours** sets days, times and zone (`workHours` in config.json). So a question
-    at 20:00 on Thursday answered at 09:15 on Monday waited 45 minutes. Questions that arrive on a
+    to Friday, 09:00–18:30, in the time zone most people in the archive have in Slack (9H:
+    Europe/Amsterdam). First built as Monday to Thursday, 09:00–20:30, the days every team works
+    when part of it works Sunday to Thursday; after trying it the owner chose his own week;
+    **Change hours** sets days, times and zone (`workHours` in config.json). So a question at
+    18:00 on Friday answered at 09:15 on Monday waited 45 minutes. Questions that arrive on a
     day that doesn't count for the one asked, or on their day off, are left out, and so are answers
     after more than three working days (rarely an answer to that question by then). The page shows
     the average, the wait half the answers beat, the share within an hour, DMs and tags apart, how
     fast people answer him (the same rules the other way, on their days off), a bar chart per week
     or per month (the last 12 of each, from the first answers), and **who he answers fastest and
     slowest** (ten each at most, people with three answers or more, nobody on both lists). A year
-    before his latest message is read. On the owner's archive: 161 answers, 1 h 02 min on average,
-    half within 3 minutes, 82% within an hour; people answer him in 59 minutes.
+    before his latest message is read. On the owner's archive: 195 answers, 56 minutes on average,
+    half within 3 minutes, 83% within an hour; people answer him in 42 minutes (with Monday to
+    Thursday, 09:00–20:30: 161 answers, 1 h 02 min, and 59 minutes).
   - **Days off** come from the archive. Leave lists: 9H's bot posts every morning in #9h-general
     "The following people are on leave today: • *Name* (dd/mm/yy to dd/mm/yy)", so each person
     named (by full name or mention) is off for their whole range; "I'm not on leave today" takes a
@@ -334,7 +336,7 @@ Each item is also corrected where it belongs in this document.
     feeling well", "emergency", "offline"…) counts each top-level post as its author's day off,
     or the next day when posted after working hours. #9h-sick-emergency-leave: 98% of its posts
     read that way, no other channel over 34% (#9h-general, because of the bot). 12 days of the
-    owner's, 731 person-days in all.
+    owner's, 735 person-days in all.
   - **How you write**: six checks on his latest 5,000 messages (notes to self left out), each with
     one of his recent messages as written and as it could read: capital letters and apostrophes
     ("i" for "I", "im", "dont"; 67% of his English messages start with a small letter, a mention
