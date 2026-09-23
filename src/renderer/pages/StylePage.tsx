@@ -11,7 +11,7 @@ import { ReplyTimeCard } from '../components/style/ReplyTimes';
 import { ReviewCard } from '../components/style/Review';
 import { WritingCard } from '../components/style/Writing';
 import { EmptyState, ErrorState } from '../components/ui/EmptyState';
-import { InfoTip } from '../components/ui/InfoTip';
+import { InfoButton } from '../components/ui/InfoButton';
 import { LoadingState } from '../components/ui/Spinner';
 
 /**
@@ -56,9 +56,9 @@ function StyleView({ style }: { style: StyleDTO }) {
             {style.tone ? TONE_LABEL[style.tone] : 'How you write'}
           </h2>
           {style.tone && (
-            <InfoTip label="How the headline is decided" align="start">
+            <InfoButton title="How the headline is decided">
               <ToneInfo style={style} />
-            </InfoTip>
+            </InfoButton>
           )}
         </div>
         {style.checks.length > 0 && (

@@ -2,7 +2,15 @@
  * My style's words: how waits, working hours, periods and the writing checks read on the page.
  * Main sends numbers (StyleDTO); everything said about them is here.
  */
-import type { ReplyPeriodDTO, StyleCheckDTO, StyleCheckId, StyleDTO, WorkHoursDTO } from '../../shared/types';
+import type {
+  ConversationDTO,
+  DaysOffSourceDTO,
+  ReplyPeriodDTO,
+  StyleCheckDTO,
+  StyleCheckId,
+  StyleDTO,
+  WorkHoursDTO,
+} from '../../shared/types';
 
 // ─── waits ───────────────────────────────────────────────────────────────────────────────────
 
@@ -84,6 +92,23 @@ export function zoneCity(zone: string): string {
 /** "Mon–Thu, 09:00–20:30 Amsterdam time". */
 export function hoursLabel(hours: Pick<WorkHoursDTO, 'days' | 'start' | 'end'> & { timeZone: string }): string {
   return `${daysLabel(hours.days)}, ${clock(hours.start)}–${clock(hours.end)} ${zoneCity(hours.timeZone)} time`;
+}
+
+/**
+ * The channels most days off came from, as "#name": a single "I'm off today" somewhere else isn't
+ * worth naming (at least 3 days, and 5% of all of them).
+ */
+export function daysOffChannels(
+  sources: readonly DaysOffSourceDTO[],
+  conversation: (id: string) => ConversationDTO | undefined,
+): string[] {
+  const total = sources.reduce((n, s) => n + s.days, 0);
+  return sources
+    .filter((s) => s.days >= Math.max(3, total * 0.05))
+    .map((s) => conversation(s.conversationId))
+    .filter((c): c is ConversationDTO => c != null && (c.type === 'channel' || c.type === 'private_channel'))
+    .slice(0, 3)
+    .map((c) => `#${c.label}`);
 }
 
 // ─── periods ─────────────────────────────────────────────────────────────────────────────────

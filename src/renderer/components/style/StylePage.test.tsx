@@ -253,39 +253,62 @@ describe('My style', () => {
     expect(within(card).queryByRole('button', { name: /Review/ })).toBeNull();
   });
 
-  it('explains each part behind an “i”, with the numbers it was worked out with', async () => {
+  it('explains each part in a pop-up behind its “i”, with your numbers and the rules’ own', async () => {
     renderStyle();
-    const replies = await screen.findByRole('region', { name: 'Reply time' });
-    const info = within(replies).getByRole('button', { name: 'How reply time is worked out' });
-    expect(info.getAttribute('aria-expanded')).toBe('false');
-    fireEvent.mouseEnter(info);
-    expect(info.getAttribute('aria-expanded')).toBe('true');
-    const panel = document.getElementById(info.getAttribute('aria-controls')!)!;
-    expect(panel.textContent).toContain('The clock runs only Mon–Thu, 09:00–20:30 Amsterdam time.');
-    expect(panel.textContent).toContain('answers more than 3 working days later');
-    expect(panel.textContent).toContain('your next top-level message within 24 hours');
+    const open = async (name: string) => {
+      fireEvent.click(await screen.findByRole('button', { name }));
+      return screen.getByRole('dialog', { name });
+    };
+    const close = (dialog: HTMLElement) => {
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+      expect(screen.queryByRole('dialog')).toBeNull();
+    };
 
-    fireEvent.click(within(replies).getByRole('button', { name: 'How the chart is worked out' }));
-    expect(replies.textContent).toContain('(Monday to Sunday) or month, in Amsterdam time');
+    let dialog = await open('How reply time is worked out');
+    expect(dialog.textContent).toContain('Only Mon–Thu, 09:00–20:30 Amsterdam time.');
+    expect(dialog.textContent).toContain(
+      'A question on Thursday at 20:00, answered on Monday at 09:15, waited 45 minutes',
+    );
+    expect(dialog.textContent).toContain('Answers more than 3 working days later');
+    expect(dialog.textContent).toContain('your next top-level message there within 24 hours');
+    expect(dialog.textContent).toContain('12 days of yours found, from #9h-general and #9h-sick-emergency-leave.');
+    expect(within(dialog).getByText('On average').textContent).toContain('1 h 02 min');
+    close(dialog);
 
-    const ranking = screen.getByRole('region', { name: 'Who you answer fastest and slowest' });
-    fireEvent.click(within(ranking).getByRole('button', { name: 'How the lists are made' }));
-    expect(ranking.textContent).toContain('Only people you answered at least 3 times');
-    expect(ranking.textContent).toContain('At most 10 in each list. With fewer than 20 people');
+    dialog = await open('How the chart is worked out');
+    expect(dialog.textContent).toContain('(Monday to Sunday) or month, in Amsterdam time');
+    close(dialog);
 
-    const writing = screen.getByRole('region', { name: 'How you write' });
-    fireEvent.click(within(writing).getByRole('button', { name: 'How the writing checks work' }));
-    expect(writing.textContent).toContain('over your latest 5,000 messages');
-    expect(writing.textContent).toContain('at most 20% of your messages start with a small letter');
-    expect(writing.textContent).toContain('3 or more messages in a row, each within 60 seconds of the last');
+    dialog = await open('How the lists are made');
+    expect(dialog.textContent).toContain('Only people you answered at least 3 times');
+    expect(dialog.textContent).toContain('At most 10 in each list. With fewer than 20 such people');
+    close(dialog);
 
-    const review = screen.getByRole('region', { name: 'Claude’s review' });
-    fireEvent.click(within(review).getByRole('button', { name: 'What the review sends, and what it costs' }));
-    expect(review.textContent).toContain('your latest 150 messages that have words in them');
-    expect(review.textContent).toContain('using Claude Sonnet 5');
+    dialog = await open('How the writing checks work');
+    const rows = within(dialog).getAllByRole('row');
+    expect(rows[1].textContent).toContain('Capital letters and apostrophes');
+    expect(rows[1].textContent).toContain('At most 20% of messages start with a small letter');
+    expect(rows[1].textContent).toContain('75% start small');
+    expect(rows.find((r) => r.textContent?.includes('“Please” when you ask'))?.textContent).toContain('76% say please');
+    // A check without enough messages says so.
+    expect(rows.find((r) => r.textContent?.includes('Casual words'))?.textContent).toContain('Too few yet');
+    expect(dialog.textContent).toContain('Your latest 5,000 messages');
+    close(dialog);
 
-    fireEvent.click(screen.getByRole('button', { name: 'How the headline is decided' }));
-    expect(document.body.textContent).toContain('at least 60% of the chats you start open with a hello');
+    dialog = await open('What Claude’s review sends, and what it costs');
+    expect(dialog.textContent).toContain('Your latest 150 messages that have words in them');
+    expect(dialog.textContent).toContain('using Claude Sonnet 5');
+    // Escape closes it too, and the “i” gets the focus back.
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'What Claude’s review sends, and what it costs' }),
+    );
+
+    dialog = await open('How the headline is decided');
+    expect(within(dialog).getByRole('cell', { name: /Friendly, but casual/ }).textContent).toContain('You');
+    expect(dialog.textContent).toContain('You: 76% say please, so yes.');
+    close(dialog);
   });
 
   it('says so when the archive holds nothing of yours', async () => {

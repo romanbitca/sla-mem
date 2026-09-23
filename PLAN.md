@@ -357,10 +357,14 @@ Each item is also corrected where it belongs in this document.
     cost adds to Ask AI's spending. Claude is told to leave the rules above alone and look at tone,
     clarity and how requests, pushback and bad news are put.
   An "i" beside the headline and each part (reply time, the chart, the lists, the writing checks,
-  Claude's review) explains how it is worked out: pointing at it shows the explanation, a click
-  keeps it open until Escape or a click elsewhere. The numbers in those texts come from the main
-  process with the results (`StyleDTO.rules`: the thresholds, windows and limits the code used),
-  so the explanations can't drift from the rules.
+  Claude's review) opens how it is worked out in a dialog over the greyed page, closed with its ×,
+  Escape or a click outside (he found a hover tooltip too small for that much text). Each is laid
+  out in short sections with his own numbers: the headline as a two-by-two table (friendly or not,
+  polished or not) with his cell marked; reply time as what counts, the answer, the clock with a
+  worked example from his hours, what's left out, days off and the numbers; the writing checks as a
+  table of check, when it's a habit, and where he is. The thresholds, windows and limits in those
+  texts come from the main process with the results (`StyleDTO.rules`), so they can't drift from
+  the rules.
   The page reads in about 180 ms on the owner's archive and 275 ms at 488k messages (`npm run
   bench`, target 500 ms): joined to conversations, the query for the latest 5,000 messages sorted
   all 155k of that author's (250 ms warm, 1.2 s cold), and first-answer lookups written as min()

@@ -7,7 +7,7 @@ import { useReviewStyle, useSettings, useStyleReview } from '../../lib/queries';
 import { SparklesIcon } from '../icons';
 import { Button, buttonClass } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { InfoTip } from '../ui/InfoTip';
+import { InfoButton } from '../ui/InfoButton';
 import { Spinner } from '../ui/Spinner';
 import { ReviewInfo } from './Explain';
 import { Example } from './Writing';
@@ -51,9 +51,9 @@ export function ReviewCard() {
       icon={<SparklesIcon size={15} />}
       aside={action}
       info={
-        <InfoTip label="What the review sends, and what it costs" align="start">
+        <InfoButton title="What Claude’s review sends, and what it costs">
           <ReviewInfo model={model} messages={REVIEW_MESSAGES} />
-        </InfoTip>
+        </InfoButton>
       }
     >
       {review.isPending ? (

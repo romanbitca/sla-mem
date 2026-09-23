@@ -8,7 +8,7 @@ import { formatWait } from '../../lib/style';
 import { UsersIcon } from '../icons';
 import { Avatar } from '../message/Avatar';
 import { Card } from '../ui/Card';
-import { InfoTip } from '../ui/InfoTip';
+import { InfoButton } from '../ui/InfoButton';
 import { RankingInfo } from './Explain';
 
 /**
@@ -22,9 +22,9 @@ export function PeopleRanking({ style }: { style: StyleDTO }) {
       title="Who you answer fastest and slowest"
       icon={<UsersIcon size={15} />}
       info={
-        <InfoTip label="How the lists are made" align="start">
+        <InfoButton title="How the lists are made">
           <RankingInfo style={style} />
-        </InfoTip>
+        </InfoButton>
       }
       aside={
         <span className="text-xs text-ink-faint">

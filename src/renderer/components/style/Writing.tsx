@@ -6,7 +6,7 @@ import { messagePath } from '../../lib/links';
 import { checkCopy } from '../../lib/style';
 import { CheckIcon, ChevronDownIcon, PenNibIcon } from '../icons';
 import { Card } from '../ui/Card';
-import { InfoTip } from '../ui/InfoTip';
+import { InfoButton } from '../ui/InfoButton';
 import { WritingInfo } from './Explain';
 
 /**
@@ -20,9 +20,9 @@ export function WritingCard({ style }: { style: StyleDTO }) {
       title="How you write"
       icon={<PenNibIcon size={15} />}
       info={
-        <InfoTip label="How the writing checks work" align="start">
+        <InfoButton title="How the writing checks work">
           <WritingInfo style={style} />
-        </InfoTip>
+        </InfoButton>
       }
       aside={<span className="text-xs text-ink-faint">Rules, worked out on this computer</span>}
     >

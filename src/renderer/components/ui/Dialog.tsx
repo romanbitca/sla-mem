@@ -2,7 +2,9 @@ import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import { FOCUSABLE, trapTab, useKeydown } from '../../lib/hooks';
+import { CloseIcon } from '../icons';
 import { Button } from './Button';
+import { IconButton } from './IconButton';
 
 export interface DialogProps {
   open: boolean;
@@ -22,6 +24,10 @@ export interface DialogProps {
    * doesn't focus buttons on click, so pass the opener).
    */
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /** An × in the corner that closes it (for dialogs that only show something). */
+  closeButton?: boolean;
+  /** 'lg': wider, and the body scrolls when it's taller than the window (long explanations). */
+  size?: 'md' | 'lg';
   className?: string;
 }
 
@@ -39,6 +45,8 @@ export function Dialog({
   role = 'dialog',
   initialFocusRef,
   returnFocusRef,
+  closeButton = false,
+  size = 'md',
   className,
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -92,21 +100,33 @@ export function Dialog({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className={clsx(
-          'flex w-full max-w-md animate-pop-in flex-col gap-4 rounded-2xl border border-line bg-raised p-5 shadow-pop outline-none',
+          'flex w-full animate-pop-in flex-col gap-4 rounded-2xl border border-line bg-raised p-5 shadow-pop outline-none',
+          size === 'lg' ? 'max-h-[min(88vh,52rem)] max-w-2xl' : 'max-w-md',
           className,
         )}
       >
-        <div className="flex flex-col gap-1.5">
-          <h2 id={titleId} className="text-[15px] font-semibold text-ink">
-            {title}
-          </h2>
-          {description && (
-            <div id={descriptionId} className="text-[13.5px] leading-relaxed text-ink-muted">
-              {description}
-            </div>
+        <div className="flex items-start gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <h2 id={titleId} className="text-[15px] font-semibold text-ink">
+              {title}
+            </h2>
+            {description && (
+              <div id={descriptionId} className="text-[13.5px] leading-relaxed text-ink-muted">
+                {description}
+              </div>
+            )}
+          </div>
+          {closeButton && (
+            <IconButton
+              size="sm"
+              label="Close"
+              icon={<CloseIcon size={16} />}
+              onClick={onClose}
+              className="-mt-1 -mr-1.5"
+            />
           )}
         </div>
-        {children}
+        {size === 'lg' ? <div className="scroll-thin -mx-5 min-h-0 overflow-y-auto px-5">{children}</div> : children}
         {footer && <div className="flex flex-wrap justify-end gap-2">{footer}</div>}
       </div>
     </div>,

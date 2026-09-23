@@ -5,13 +5,23 @@ import { describeError } from '../../lib/api';
 import { useDirectory } from '../../lib/directory';
 import { formatDate, joinNames, pluralize } from '../../lib/format';
 import { useUpdatePreferences } from '../../lib/queries';
-import { clock, daysLabel, formatWait, hoursLabel, parseClock, percent, WEEK_ORDER, zoneCity } from '../../lib/style';
+import {
+  clock,
+  daysLabel,
+  daysOffChannels,
+  formatWait,
+  hoursLabel,
+  parseClock,
+  percent,
+  WEEK_ORDER,
+  zoneCity,
+} from '../../lib/style';
 import { tsToDate } from '../../lib/ts';
 import { ClockIcon } from '../icons';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Dialog } from '../ui/Dialog';
-import { InfoTip } from '../ui/InfoTip';
+import { InfoButton } from '../ui/InfoButton';
 import { ChartInfo, ReplyInfo } from './Explain';
 import { ReplyChart } from './ReplyChart';
 
@@ -26,9 +36,9 @@ export function ReplyTimeCard({ style }: { style: StyleDTO }) {
       title="Reply time"
       icon={<ClockIcon size={15} />}
       info={
-        <InfoTip label="How reply time is worked out" align="start">
+        <InfoButton title="How reply time is worked out">
           <ReplyInfo style={style} />
-        </InfoTip>
+        </InfoButton>
       }
     >
       {you ? (
@@ -55,9 +65,9 @@ export function ReplyTimeCard({ style }: { style: StyleDTO }) {
             weeks={style.weeks}
             months={style.months}
             info={
-              <InfoTip label="How the chart is worked out" align="start">
+              <InfoButton title="How the chart is worked out">
                 <ChartInfo style={style} />
-              </InfoTip>
+              </InfoButton>
             }
           />
         </>
@@ -87,14 +97,7 @@ function HoursNote({ style }: { style: StyleDTO }) {
   const [editing, setEditing] = useState(false);
   const changeRef = useRef<HTMLButtonElement>(null);
   const { conversations } = useDirectory();
-  // The channels most days off came from: a single "I'm off today" elsewhere isn't worth naming.
-  const total = style.daysOffSources.reduce((n, s) => n + s.days, 0);
-  const sources = style.daysOffSources
-    .filter((s) => s.days >= Math.max(3, total * 0.05))
-    .map((s) => conversations.get(s.conversationId))
-    .filter((c) => c && (c.type === 'channel' || c.type === 'private_channel'))
-    .slice(0, 3)
-    .map((c) => `#${c!.label}`);
+  const sources = daysOffChannels(style.daysOffSources, (id) => conversations.get(id));
   const since = style.repliesSince ? formatDate(tsToDate(style.repliesSince), 'MMM d, yyyy') : null;
   return (
     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-line pt-3 text-xs leading-relaxed text-ink-faint">

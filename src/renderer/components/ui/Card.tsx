@@ -6,7 +6,7 @@ export interface CardProps {
   icon: ReactNode;
   /** Right side of the header (a status pill, "Saved"). */
   aside?: ReactNode;
-  /** Beside the title, outside the heading: an InfoTip saying how the card's numbers are worked out. */
+  /** Beside the title, outside the heading: an InfoButton that explains how the card's numbers are worked out. */
   info?: ReactNode;
   id?: string;
   className?: string;
