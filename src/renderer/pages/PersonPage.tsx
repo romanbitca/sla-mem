@@ -404,7 +404,7 @@ function Places({ person, user, first }: { person: PersonDTO; user: UserDTO | un
   );
 }
 
-/** A group DM on someone's page: "With Olga and James", the others in it (not you, not them). */
+/** A group DM on someone's page: "With Dana and Felix", the others in it (not you, not them). */
 function groupTitle(conv: ConversationDTO | undefined, personId: string, dir: Directory): string {
   const others = (conv?.memberIds ?? [])
     .filter((id) => id !== personId && id !== dir.selfUserId)
