@@ -5,11 +5,11 @@ problems matter. Thank you for looking.
 
 ## Reporting a problem
 
-Please report it privately, not in a public issue: on GitHub, open the repository's **Security**
-tab and choose **Report a vulnerability**
-(<https://github.com/romanbitca/sla-mem/security/advisories/new>). Say what an attacker needs
-(a crafted Slack message, export, backup, release, local access…) and what they get. You'll get
-an answer within a few days, and credit in the release notes if you'd like it.
+Please don't put the details in a public issue. Open a GitHub issue that only asks for a private
+way to report — no specifics — and you'll get a private channel to send them to within a few days.
+(Private reporting through GitHub's **Security** tab isn't turned on yet.) When you report, say
+what an attacker needs (a crafted Slack message, export, backup, release, local access…) and what
+they get. Credit in the release notes if you'd like it.
 
 Only the latest release is supported: fixes ship as a new version, which Slamem offers to install
 itself (Update and restart).
