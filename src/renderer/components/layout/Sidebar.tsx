@@ -28,6 +28,7 @@ import { Avatar } from '../message/Avatar';
 import { IconButton } from '../ui/IconButton';
 import { Kbd, modKeyLabel } from '../ui/Kbd';
 import { Spinner } from '../ui/Spinner';
+import { HistoryButtons, useShell } from './shell';
 import { SyncIndicator } from './SyncIndicator';
 import { WorkspaceIcon } from './WorkspaceIcon';
 
@@ -70,6 +71,7 @@ export interface SidebarProps {
 
 export function Sidebar({ syncStatus, syncError, onClose, className, inert }: SidebarProps) {
   const workspace = useWorkspace().data;
+  const { sidebarDocked } = useShell();
   const conversations = useConversations();
   const navigate = useNavigate();
   const [filter, setFilter] = useState('');
@@ -146,6 +148,8 @@ export function Sidebar({ syncStatus, syncError, onClose, className, inert }: Si
           <p className="truncate text-sm leading-tight font-semibold text-ink">{teamName}</p>
           <p className="truncate text-[11px] leading-tight text-ink-faint">{host || 'Local archive'}</p>
         </div>
+        {/* In the drawer they stay in the page header, beside the button that opens it. */}
+        {sidebarDocked && <HistoryButtons />}
         {onClose && (
           <IconButton
             size="sm"

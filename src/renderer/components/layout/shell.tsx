@@ -7,6 +7,8 @@ import { IconButton } from '../ui/IconButton';
 export interface ShellContextValue {
   /** Narrow layouts show the sidebar as a drawer. */
   sidebarOpen: boolean;
+  /** Wide windows keep the sidebar beside the page; narrow ones fold it into the drawer. */
+  sidebarDocked: boolean;
   setSidebarOpen: (open: boolean) => void;
   /** Opens the search screen (the last search) and puts the cursor in its box, as ⌘K does. */
   focusSearch: () => void;
@@ -18,6 +20,7 @@ export interface ShellContextValue {
 
 export const ShellContext = createContext<ShellContextValue>({
   sidebarOpen: false,
+  sidebarDocked: false,
   setSidebarOpen: () => {},
   focusSearch: () => {},
   searchInputRef: createRef<HTMLInputElement>(),
@@ -46,7 +49,10 @@ export function historyShortcuts(): { back: string; forward: string } {
   return currentPlatform() === 'darwin' ? { back: '⌘[', forward: '⌘]' } : { back: 'Alt+←', forward: 'Alt+→' };
 }
 
-/** Back and Forward through the pages visited, as in Slack. */
+/**
+ * Back and Forward through the pages visited, as in Slack: at the top of the sidebar, right of the
+ * workspace name, or in the page header while the sidebar is folded away.
+ */
 export function HistoryButtons({ className }: { className?: string }) {
   const { history } = useShell();
   const keys = historyShortcuts();
@@ -72,12 +78,16 @@ export function HistoryButtons({ className }: { className?: string }) {
   );
 }
 
-/** The start of every page's header: the sidebar toggle (narrow windows) and Back / Forward. */
+/**
+ * The start of every page's header in a narrow window: the sidebar toggle, and Back / Forward
+ * (which otherwise sit at the top of the sidebar).
+ */
 export function PageNav() {
+  const { sidebarDocked } = useShell();
   return (
     <>
       <SidebarToggle />
-      <HistoryButtons className="-ml-1 mr-1" />
+      {!sidebarDocked && <HistoryButtons className="-ml-1 mr-1" />}
     </>
   );
 }

@@ -369,10 +369,12 @@ Each item is also corrected where it belongs in this document.
   bench`, target 500 ms): joined to conversations, the query for the latest 5,000 messages sorted
   all 155k of that author's (250 ms warm, 1.2 s cold), and first-answer lookups written as min()
   walked whole conversations; both now read in index order and stop.
-- **Back and Forward (0.3.8, §8.2):** asked for "like Slack", keeping 10–20 steps. Two arrows
-  start every page's header (after the sidebar button in a narrow window), greyed when there is
-  nowhere to go; ⌘[ and ⌘] on macOS (⌘← and ⌘→ too, outside text boxes), Alt+← and Alt+→
-  everywhere, and a mouse's back and forward buttons. They move through the window's own history,
+- **Back and Forward (0.3.8, §8.2):** asked for "like Slack", keeping 10–20 steps. Two arrows at
+  the top of the sidebar, right of the workspace name (first built at the start of each page's
+  header; he moved them there). In a narrow window, where the sidebar folds into a drawer, they sit
+  in the page header beside the button that opens it. Greyed when there is nowhere to go; ⌘[ and
+  ⌘] on macOS (⌘← and ⌘→ too, outside text boxes), Alt+← and Alt+→ everywhere, and a mouse's back
+  and forward buttons. They move through the window's own history,
   so each step is one the app already made: a conversation, a thread, a person, a search, a result
   opened beside the list. What a page rewrites in place (another result in the preview, grouped or
   flat, Jump to latest) replaces its step instead of adding one. Back goes twenty steps at most:
@@ -1207,8 +1209,9 @@ Familiar to anyone who has used Slack, but clearly a *reader*:
 - *(As built: a **My style** place under Overview: how fast you answer on working hours, whom you
   answer fastest and slowest, writing checks with your own messages rewritten, and Claude's review
   on request; see §0.3.)*
-- *(As built: **Back and Forward** arrows at the start of every page's header, as in Slack, with
-  ⌘[ / ⌘] or Alt+← / Alt+→ and a mouse's side buttons, twenty steps back; see §0.3.)*
+- *(As built: **Back and Forward** arrows at the top of the sidebar, right of the workspace name,
+  as in Slack, with ⌘[ / ⌘] or Alt+← / Alt+→ and a mouse's side buttons, twenty steps back; see
+  §0.3.)*
 - **Archive home**: how many messages/conversations/files, the date range covered, how much disk is
   used, when the last sync ran, a **Sync now** button, and prominently: **"N messages older than 90
   days — no longer visible in Slack"**, which is the payoff. *(As built: called **Overview**; when a

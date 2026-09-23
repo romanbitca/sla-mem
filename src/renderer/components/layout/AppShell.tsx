@@ -95,8 +95,8 @@ export function AppShell() {
   }, [history]);
 
   const shell = useMemo<ShellContextValue>(
-    () => ({ sidebarOpen, setSidebarOpen, focusSearch, searchInputRef: searchRef, history }),
-    [sidebarOpen, focusSearch, history],
+    () => ({ sidebarOpen, sidebarDocked: isDesktop, setSidebarOpen, focusSearch, searchInputRef: searchRef, history }),
+    [sidebarOpen, isDesktop, focusSearch, history],
   );
   const drawerHidden = !isDesktop && !sidebarOpen;
 

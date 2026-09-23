@@ -200,8 +200,14 @@ describe('AppShell', () => {
     vi.spyOn(api, 'getConversation').mockResolvedValue(conversations[1]);
     vi.spyOn(api, 'getMessages').mockResolvedValue({ messages: [], hasMoreBefore: false, hasMoreAfter: false });
     renderApp();
-    const back = await screen.findByRole('button', { name: 'Back' });
-    const forward = screen.getByRole('button', { name: 'Forward' });
+    // At the top of the sidebar, right of the workspace name; not in the page header.
+    const sidebar = screen.getByRole('complementary', { name: 'Sidebar' });
+    const back = await within(sidebar).findByRole('button', { name: 'Back' });
+    const forward = within(sidebar).getByRole('button', { name: 'Forward' });
+    await waitFor(() =>
+      expect(back.parentElement?.previousElementSibling?.textContent).toBe('9hdigital9hdigital.slack.com'),
+    );
+    expect(screen.getAllByRole('button', { name: 'Back' })).toHaveLength(1);
     expect((back as HTMLButtonElement).disabled).toBe(true);
     expect((forward as HTMLButtonElement).disabled).toBe(true);
 
@@ -210,7 +216,6 @@ describe('AppShell', () => {
     fireEvent.click(screen.getByRole('link', { name: /general/ }));
     await waitFor(() => expect(location?.pathname).toBe('/c/C1'));
 
-    // Every page has the buttons in its header.
     const backNow = () => screen.getByRole('button', { name: 'Back' }) as HTMLButtonElement;
     const forwardNow = () => screen.getByRole('button', { name: 'Forward' }) as HTMLButtonElement;
     expect(backNow().disabled).toBe(false);
@@ -232,6 +237,27 @@ describe('AppShell', () => {
     fireEvent.mouseUp(window, { button: 3 });
     await waitFor(() => expect(location?.pathname).toBe('/'));
     expect(backNow().title).toMatch(/^Back \(/);
+  });
+
+  it('keeps Back and Forward in the page header while the sidebar is folded into a drawer', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: false, // a narrow window
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    vi.spyOn(api, 'getPeople').mockResolvedValue([]);
+    renderApp();
+    const home = (await screen.findByRole('heading', { level: 1, name: 'Overview' })).closest('header')!;
+    expect(within(home).getByRole('button', { name: 'Back' })).toHaveProperty('disabled', true);
+    const sidebar = screen.getByRole('complementary', { name: 'Sidebar', hidden: true });
+    expect(within(sidebar).queryByRole('button', { name: 'Back', hidden: true })).toBeNull();
+
+    fireEvent.click(within(home).getByRole('button', { name: 'Show sidebar' }));
+    fireEvent.click(screen.getByRole('link', { name: 'People' }));
+    const people = (await screen.findByRole('heading', { level: 1, name: 'People' })).closest('header')!;
+    fireEvent.click(within(people).getByRole('button', { name: 'Back' }));
+    await waitFor(() => expect(location?.pathname).toBe('/'));
   });
 
   it('leaves the page shortcuts alone while a dialog is open', async () => {
