@@ -24,7 +24,7 @@ import { WorkCalendar } from './work-calendar';
 
 export const MAX_WAIT_DAYS = 3;
 /** A top-level question in a channel is answered by a top-level message this soon. */
-const CHANNEL_ANSWER_SECONDS = 24 * 3600;
+export const CHANNEL_ANSWER_SECONDS = 24 * 3600;
 /** Fewer answers than this say little: no numbers are shown. */
 export const MIN_ANSWERS = 5;
 /** Bars in the chart: the last 12 weeks, or the last 12 months. */

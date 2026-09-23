@@ -76,7 +76,31 @@ function makeStyle(extra: Partial<StyleDTO> = {}): StyleDTO {
       { userId: 'U2', count: 14, averageSeconds: 660 },
     ],
     slowest: [{ userId: 'U3', count: 5, averageSeconds: 13_680 }],
-    rankMinAnswers: 3,
+    rules: {
+      maxWaitDays: 3,
+      channelAnswerHours: 24,
+      windowDays: 365,
+      minAnswers: 5,
+      rankMinAnswers: 3,
+      ranked: 10,
+      writingMessages: 5000,
+      openerQuietHours: 3,
+      burstMin: 3,
+      burstSeconds: 60,
+      exampleDays: 120,
+      habits: {
+        smallStarts: 20,
+        smallIPer100: 2,
+        apostrophesPer100: 2,
+        greeting: 80,
+        helloOnly: 5,
+        please: 50,
+        runsPer100: 1.5,
+        casualPer100: 1,
+        friendlyGreeting: 60,
+        friendlyPlease: 50,
+      },
+    },
     repliesSince: null,
     yourDaysOff: 12,
     daysOffSources: [
@@ -227,6 +251,41 @@ describe('My style', () => {
     const card = await screen.findByRole('region', { name: 'Claude’s review' });
     expect(within(card).getByRole('link', { name: 'Add an API key' }).getAttribute('href')).toBe('/settings');
     expect(within(card).queryByRole('button', { name: /Review/ })).toBeNull();
+  });
+
+  it('explains each part behind an “i”, with the numbers it was worked out with', async () => {
+    renderStyle();
+    const replies = await screen.findByRole('region', { name: 'Reply time' });
+    const info = within(replies).getByRole('button', { name: 'How reply time is worked out' });
+    expect(info.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.mouseEnter(info);
+    expect(info.getAttribute('aria-expanded')).toBe('true');
+    const panel = document.getElementById(info.getAttribute('aria-controls')!)!;
+    expect(panel.textContent).toContain('The clock runs only Mon–Thu, 09:00–20:30 Amsterdam time.');
+    expect(panel.textContent).toContain('answers more than 3 working days later');
+    expect(panel.textContent).toContain('your next top-level message within 24 hours');
+
+    fireEvent.click(within(replies).getByRole('button', { name: 'How the chart is worked out' }));
+    expect(replies.textContent).toContain('(Monday to Sunday) or month, in Amsterdam time');
+
+    const ranking = screen.getByRole('region', { name: 'Who you answer fastest and slowest' });
+    fireEvent.click(within(ranking).getByRole('button', { name: 'How the lists are made' }));
+    expect(ranking.textContent).toContain('Only people you answered at least 3 times');
+    expect(ranking.textContent).toContain('At most 10 in each list. With fewer than 20 people');
+
+    const writing = screen.getByRole('region', { name: 'How you write' });
+    fireEvent.click(within(writing).getByRole('button', { name: 'How the writing checks work' }));
+    expect(writing.textContent).toContain('over your latest 5,000 messages');
+    expect(writing.textContent).toContain('at most 20% of your messages start with a small letter');
+    expect(writing.textContent).toContain('3 or more messages in a row, each within 60 seconds of the last');
+
+    const review = screen.getByRole('region', { name: 'Claude’s review' });
+    fireEvent.click(within(review).getByRole('button', { name: 'What the review sends, and what it costs' }));
+    expect(review.textContent).toContain('your latest 150 messages that have words in them');
+    expect(review.textContent).toContain('using Claude Sonnet 5');
+
+    fireEvent.click(screen.getByRole('button', { name: 'How the headline is decided' }));
+    expect(document.body.textContent).toContain('at least 60% of the chats you start open with a hello');
   });
 
   it('says so when the archive holds nothing of yours', async () => {

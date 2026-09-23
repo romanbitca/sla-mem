@@ -6,13 +6,15 @@ export interface CardProps {
   icon: ReactNode;
   /** Right side of the header (a status pill, "Saved"). */
   aside?: ReactNode;
+  /** Beside the title, outside the heading: an InfoTip saying how the card's numbers are worked out. */
+  info?: ReactNode;
   id?: string;
   className?: string;
   children: ReactNode;
 }
 
 /** A titled panel; its heading names the region for screen readers. */
-export function Card({ title, icon, aside, id, className, children }: CardProps) {
+export function Card({ title, icon, aside, info, id, className, children }: CardProps) {
   const headingId = useId();
   return (
     <section
@@ -27,6 +29,7 @@ export function Card({ title, icon, aside, id, className, children }: CardProps)
         <h2 id={headingId} className="text-[14px] font-semibold text-ink">
           {title}
         </h2>
+        {info && <span className="-ml-1 flex">{info}</span>}
         {aside && <div className="ml-auto flex items-center gap-2">{aside}</div>}
       </header>
       <div className="flex flex-1 flex-col gap-4 px-5 py-4">{children}</div>

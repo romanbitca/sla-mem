@@ -11,6 +11,8 @@ import { ClockIcon } from '../icons';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Dialog } from '../ui/Dialog';
+import { InfoTip } from '../ui/InfoTip';
+import { ChartInfo, ReplyInfo } from './Explain';
 import { ReplyChart } from './ReplyChart';
 
 /**
@@ -20,7 +22,15 @@ import { ReplyChart } from './ReplyChart';
 export function ReplyTimeCard({ style }: { style: StyleDTO }) {
   const you = style.you;
   return (
-    <Card title="Reply time" icon={<ClockIcon size={15} />}>
+    <Card
+      title="Reply time"
+      icon={<ClockIcon size={15} />}
+      info={
+        <InfoTip label="How reply time is worked out" align="start">
+          <ReplyInfo style={style} />
+        </InfoTip>
+      }
+    >
       {you ? (
         <>
           <dl className="grid grid-cols-3 gap-3">
@@ -41,7 +51,15 @@ export function ReplyTimeCard({ style }: { style: StyleDTO }) {
               </>
             )}
           </p>
-          <ReplyChart weeks={style.weeks} months={style.months} />
+          <ReplyChart
+            weeks={style.weeks}
+            months={style.months}
+            info={
+              <InfoTip label="How the chart is worked out" align="start">
+                <ChartInfo style={style} />
+              </InfoTip>
+            }
+          />
         </>
       ) : (
         <p className="text-[13px] leading-relaxed text-ink-muted">

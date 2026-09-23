@@ -356,6 +356,11 @@ Each item is also corrected where it belongs in this document.
     outputs). It is kept in `style-review.json`, owner-only, and shown until he asks again; its
     cost adds to Ask AI's spending. Claude is told to leave the rules above alone and look at tone,
     clarity and how requests, pushback and bad news are put.
+  An "i" beside the headline and each part (reply time, the chart, the lists, the writing checks,
+  Claude's review) explains how it is worked out: pointing at it shows the explanation, a click
+  keeps it open until Escape or a click elsewhere. The numbers in those texts come from the main
+  process with the results (`StyleDTO.rules`: the thresholds, windows and limits the code used),
+  so the explanations can't drift from the rules.
   The page reads in about 180 ms on the owner's archive and 275 ms at 488k messages (`npm run
   bench`, target 500 ms): joined to conversations, the query for the latest 5,000 messages sorted
   all 155k of that author's (250 ms warm, 1.2 s cold), and first-answer lookups written as min()

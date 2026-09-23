@@ -5,11 +5,13 @@ import { TONE_LABEL, toneSentence } from '../lib/style';
 import { tsToDate } from '../lib/ts';
 import { PenNibIcon } from '../components/icons';
 import { SidebarToggle } from '../components/layout/shell';
+import { ToneInfo } from '../components/style/Explain';
 import { PeopleRanking } from '../components/style/PeopleRanking';
 import { ReplyTimeCard } from '../components/style/ReplyTimes';
 import { ReviewCard } from '../components/style/Review';
 import { WritingCard } from '../components/style/Writing';
 import { EmptyState, ErrorState } from '../components/ui/EmptyState';
+import { InfoTip } from '../components/ui/InfoTip';
 import { LoadingState } from '../components/ui/Spinner';
 
 /**
@@ -49,9 +51,16 @@ function StyleView({ style }: { style: StyleDTO }) {
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 lg:py-8">
       <div>
-        <h2 className="text-xl font-semibold tracking-tight text-ink">
-          {style.tone ? TONE_LABEL[style.tone] : 'How you write'}
-        </h2>
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-xl font-semibold tracking-tight text-ink">
+            {style.tone ? TONE_LABEL[style.tone] : 'How you write'}
+          </h2>
+          {style.tone && (
+            <InfoTip label="How the headline is decided" align="start">
+              <ToneInfo style={style} />
+            </InfoTip>
+          )}
+        </div>
         {style.checks.length > 0 && (
           <p className="mt-1 text-sm leading-relaxed text-ink-muted">{toneSentence(style.checks)}</p>
         )}
@@ -62,7 +71,7 @@ function StyleView({ style }: { style: StyleDTO }) {
       </div>
       <ReplyTimeCard style={style} />
       <PeopleRanking style={style} />
-      <WritingCard checks={style.checks} englishCount={style.englishCount} />
+      <WritingCard style={style} />
       <ReviewCard />
     </div>
   );

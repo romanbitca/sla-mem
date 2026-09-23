@@ -8,6 +8,8 @@ import { formatWait } from '../../lib/style';
 import { UsersIcon } from '../icons';
 import { Avatar } from '../message/Avatar';
 import { Card } from '../ui/Card';
+import { InfoTip } from '../ui/InfoTip';
+import { RankingInfo } from './Explain';
 
 /**
  * Whom you answer fastest and slowest, by your average on working time: at most ten each, never the
@@ -19,9 +21,14 @@ export function PeopleRanking({ style }: { style: StyleDTO }) {
     <Card
       title="Who you answer fastest and slowest"
       icon={<UsersIcon size={15} />}
+      info={
+        <InfoTip label="How the lists are made" align="start">
+          <RankingInfo style={style} />
+        </InfoTip>
+      }
       aside={
         <span className="text-xs text-ink-faint">
-          People you answered at least {pluralize(style.rankMinAnswers, 'time')}
+          People you answered at least {pluralize(style.rules.rankMinAnswers, 'time')}
         </span>
       }
     >

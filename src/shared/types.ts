@@ -423,6 +423,51 @@ export interface StyleCheckDTO {
   example: StyleExampleDTO | null;
 }
 
+/** The numbers My style's rules use, so the page's explanations say exactly what was done. */
+export interface StyleRulesDTO {
+  /** Answers more than this many working days later are left out. */
+  maxWaitDays: number;
+  /** A top-level question in a channel is answered by your next top-level message within this long. */
+  channelAnswerHours: number;
+  /** Reply times cover this many days before your latest message. */
+  windowDays: number;
+  /** Fewer answers than this, and no reply numbers are shown. */
+  minAnswers: number;
+  /** Answers someone needs to be ranked, and how many people each list holds at most. */
+  rankMinAnswers: number;
+  ranked: number;
+  /** Your latest messages the writing checks read. */
+  writingMessages: number;
+  /** Hours of quiet in a DM or group DM before your message: you are starting a chat. */
+  openerQuietHours: number;
+  /** A run: this many messages or more in a row, each within so many seconds of the one before. */
+  burstMin: number;
+  burstSeconds: number;
+  /** Examples come from this many recent days. */
+  exampleDays: number;
+  /** When a check counts as a habit: percentages, or counts per 100 of the messages it reads. */
+  habits: {
+    /** Messages starting with a small letter, at most (percent). */
+    smallStarts: number;
+    /** "i" for "I", and contractions without their apostrophe, per 100 English messages, at most. */
+    smallIPer100: number;
+    apostrophesPer100: number;
+    /** Chats you start that open with a greeting, at least (percent). */
+    greeting: number;
+    /** Chats you start with nothing but hello, at most (percent). */
+    helloOnly: number;
+    /** "can you …" requests that say please, at least (percent). */
+    please: number;
+    /** Runs of messages per 100 messages, at most. */
+    runsPer100: number;
+    /** Casual words per 100 English messages, at most. */
+    casualPer100: number;
+    /** The headline calls you friendly from this share of greetings, or of please (percent). */
+    friendlyGreeting: number;
+    friendlyPlease: number;
+  };
+}
+
 /** Where days off were found, for the note under the reply times. */
 export interface DaysOffSourceDTO {
   conversationId: string;
@@ -454,8 +499,8 @@ export interface StyleDTO {
   /** The people you answer fastest, fastest first, and slowest, slowest first (never both). */
   fastest: ReplyPersonDTO[];
   slowest: ReplyPersonDTO[];
-  /** Answers each of them needs to be ranked. */
-  rankMinAnswers: number;
+  /** The numbers behind all of this, for the explanations. */
+  rules: StyleRulesDTO;
   /** Since when the reply times count (a year before your latest message), when the archive goes back further. */
   repliesSince: string | null;
   /** Your days off found (they don't count), and where. */

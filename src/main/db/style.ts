@@ -2,15 +2,33 @@
  * My style: how you write and how quickly you answer, read from your own messages in the archive.
  * Everything here runs on this computer; nothing is sent anywhere.
  */
-import type { StyleDTO, WorkHoursDTO } from '../../shared/types';
+import type { StyleDTO, StyleRulesDTO, WorkHoursDTO } from '../../shared/types';
 import { findDaysOff } from './days-off';
 import { getMeta } from './meta';
-import { measureReplies, rankPeople, RANK_MIN_ANSWERS, replyPeriods, replyStats } from './reply-times';
+import {
+  CHANNEL_ANSWER_SECONDS,
+  MAX_WAIT_DAYS,
+  measureReplies,
+  MIN_ANSWERS,
+  RANK_MIN_ANSWERS,
+  RANKED,
+  rankPeople,
+  replyPeriods,
+  replyStats,
+} from './reply-times';
 import { tsAtSecond } from './read';
 import { stmt } from './stmt';
 import type { DB } from './types';
 import { isTimeZone, WorkCalendar } from './work-calendar';
-import { writingChecks } from './writing';
+import {
+  BURST_GAP_SECONDS,
+  BURST_MIN,
+  EXAMPLE_DAYS,
+  HABITS,
+  OPENER_QUIET_SECONDS,
+  WRITING_MESSAGES,
+  writingChecks,
+} from './writing';
 
 export interface StyleOptions {
   workHours: WorkHoursDTO;
@@ -55,12 +73,28 @@ export function getStyle(db: DB, opts: StyleOptions): StyleDTO {
     months: replyPeriods(replies.you, cal, 'month', now),
     fastest: ranked.fastest,
     slowest: ranked.slowest,
-    rankMinAnswers: RANK_MIN_ANSWERS,
+    rules: STYLE_RULES,
     repliesSince: cut && since != null ? tsAtSecond(since) : null,
     yourDaysOff: self ? (daysOff.byUser.get(self)?.size ?? 0) : 0,
     daysOffSources: daysOff.sources,
   };
 }
+
+/** The numbers the rules above use, for the page to explain them. */
+export const STYLE_RULES: StyleRulesDTO = {
+  maxWaitDays: MAX_WAIT_DAYS,
+  channelAnswerHours: CHANNEL_ANSWER_SECONDS / 3600,
+  windowDays: REPLY_WINDOW_DAYS,
+  minAnswers: MIN_ANSWERS,
+  rankMinAnswers: RANK_MIN_ANSWERS,
+  ranked: RANKED,
+  writingMessages: WRITING_MESSAGES,
+  openerQuietHours: OPENER_QUIET_SECONDS / 3600,
+  burstMin: BURST_MIN,
+  burstSeconds: BURST_GAP_SECONDS,
+  exampleDays: EXAMPLE_DAYS,
+  habits: { ...HABITS },
+};
 
 /** The time zone most people in the archive are in (their Slack profiles), or null. */
 export function teamTimeZone(db: DB): string | null {

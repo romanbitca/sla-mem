@@ -43,10 +43,28 @@ export const OPENER_QUIET_SECONDS = 3 * 3600;
 /** Your latest messages read: plenty to judge habits by, and quick in any archive. */
 export const WRITING_MESSAGES = 5_000;
 /** Messages this close together (and in the same place) are one burst. */
-const BURST_GAP_SECONDS = 60;
-const BURST_MIN = 3;
+export const BURST_GAP_SECONDS = 60;
+export const BURST_MIN = 3;
 /** Examples are recent messages of a readable length. */
-const EXAMPLE_DAYS = 120;
+export const EXAMPLE_DAYS = 120;
+
+/**
+ * When a check counts as a habit: percentages, or counts per 100 of the messages it reads. The
+ * page's explanations show these same numbers (StyleDTO.rules).
+ */
+export const HABITS = {
+  smallStarts: 20,
+  smallIPer100: 2,
+  apostrophesPer100: 2,
+  greeting: 80,
+  helloOnly: 5,
+  please: 50,
+  runsPer100: 1.5,
+  casualPer100: 1,
+  friendlyGreeting: 60,
+  friendlyPlease: 50,
+} as const;
+const H = HABITS;
 const EXAMPLE_MAX_CHARS = 220;
 /** A hello-only opener's question: your next message there within this long. */
 const FOLLOW_UP_SECONDS = 2 * 3600;
@@ -179,14 +197,19 @@ function capitals(ctx: Ctx, english: Mine[]): ScoredCheck | null {
   }
   const missingTotal = [...apostrophes.values()].reduce((a, b) => a + b, 0);
   const n = english.length;
-  const good = small <= 0.2 * n && is <= 0.02 * n && missingTotal <= 0.02 * n;
+  const good =
+    small <= (H.smallStarts / 100) * n &&
+    is <= (H.smallIPer100 / 100) * n &&
+    missingTotal <= (H.apostrophesPer100 / 100) * n;
   const words = [{ word: 'i', count: is }, ...sortedWords(apostrophes)].filter((w) => w.count > 0);
   return scored(
     'capitals',
     small,
     n,
     good,
-    small / n / 0.2 + is / n / 0.02 / 4 + missingTotal / n / 0.02 / 4,
+    (small * 100) / n / H.smallStarts +
+      (is * 100) / n / H.smallIPer100 / 4 +
+      (missingTotal * 100) / n / H.apostrophesPer100 / 4,
     best ? example(ctx, [best.m], polish(best.m.text)) : null,
     words,
   );
@@ -224,8 +247,8 @@ function greeting(ctx: Ctx, openers: Mine[]): ScoredCheck | null {
     'greeting',
     greeted,
     openers.length,
-    share >= 0.8,
-    (0.8 - share) / 0.8,
+    atLeast(greeted, openers.length, H.greeting),
+    (H.greeting - share * 100) / H.greeting,
     missing ? example(ctx, [missing], withGreeting(missing.text, name)) : null,
     [{ word: 'how are you', count: openers.filter((m) => asksAfterThem(m.prose)).length }],
   );
@@ -234,7 +257,8 @@ function greeting(ctx: Ctx, openers: Mine[]): ScoredCheck | null {
 function greetAndAsk(ctx: Ctx, mine: Mine[], openers: Mine[]): ScoredCheck | null {
   if (openers.length < MIN_OPENERS) return null;
   const helloOnly = openers.filter((m) => m.prose.length <= 120 && isGreetingOnly(m.prose));
-  const good = helloOnly.length <= Math.max(1, 0.05 * openers.length);
+  const allowed = Math.max(1, (H.helloOnly / 100) * openers.length);
+  const good = helloOnly.length <= allowed;
   const position = new Map(mine.map((m, i) => [m.id, i]));
   let shown: StyleExampleDTO | null = null;
   for (const m of [...helloOnly].reverse()) {
@@ -264,14 +288,7 @@ function greetAndAsk(ctx: Ctx, mine: Mine[], openers: Mine[]): ScoredCheck | nul
     const last = helloOnly[helloOnly.length - 1];
     shown = example(ctx, [last], null);
   }
-  return scored(
-    'greetAndAsk',
-    helloOnly.length,
-    openers.length,
-    good,
-    helloOnly.length / Math.max(1, 0.05 * openers.length) / 4,
-    shown,
-  );
+  return scored('greetAndAsk', helloOnly.length, openers.length, good, helloOnly.length / allowed / 4, shown);
 }
 
 // ─── requests ────────────────────────────────────────────────────────────────────────────────
@@ -286,8 +303,8 @@ function please(ctx: Ctx, english: Mine[]): ScoredCheck | null {
     'please',
     polite,
     requests.length,
-    share >= 0.5,
-    (0.5 - share) / 0.5,
+    atLeast(polite, requests.length, H.please),
+    (H.please - share * 100) / H.please,
     blunt ? example(ctx, [blunt], askPolitely(blunt.text)) : null,
   );
 }
@@ -309,7 +326,7 @@ function oneMessage(ctx: Ctx, mine: Mine[]): ScoredCheck | null {
   }
   if (run.length >= BURST_MIN) runs.push(run);
   const perHundred = (runs.length / mine.length) * 100;
-  const good = perHundred <= 1.5;
+  const good = perHundred <= H.runsPer100;
   const shown = [...runs]
     .reverse()
     .find(
@@ -324,7 +341,7 @@ function oneMessage(ctx: Ctx, mine: Mine[]): ScoredCheck | null {
     runs.length,
     mine.length,
     good,
-    perHundred / 1.5 / 3,
+    perHundred / H.runsPer100 / 3,
     shown ? example(ctx, shown, joinMessages(shown.map((m) => m.text))) : null,
   );
 }
@@ -348,13 +365,13 @@ function casual(ctx: Ctx, english: Mine[]): ScoredCheck | null {
     }
   }
   const total = [...counts.values()].reduce((a, b) => a + b, 0);
-  const good = total <= 0.01 * english.length;
+  const good = total <= (H.casualPer100 / 100) * english.length;
   return scored(
     'casual',
     total,
     english.length,
     good,
-    total / english.length / 0.01 / 4,
+    (total * 100) / english.length / H.casualPer100 / 4,
     shown ? example(ctx, [shown], withoutCasual(shown.text)) : null,
     sortedWords(counts),
   );
@@ -365,18 +382,21 @@ function casual(ctx: Ctx, english: Mine[]): ScoredCheck | null {
 /** Friendly: you greet and say please. Polished: capitals, one message at a time, no slang. */
 function tone(checks: ScoredCheck[]): WritingResult['tone'] {
   const by = new Map(checks.map((c) => [c.check.id, c.check]));
-  const greetingShare = share(by.get('greeting'));
-  const pleaseShare = share(by.get('please'));
+  const greeting = by.get('greeting');
+  const please = by.get('please');
   const polish = ['capitals', 'oneMessage', 'casual'].map((id) => by.get(id as StyleCheckId)).filter((c) => c != null);
-  if (greetingShare == null && pleaseShare == null && polish.length === 0) return null;
-  const friendly = (greetingShare ?? 0) >= 0.6 || (pleaseShare ?? 0) >= 0.5;
+  if (!greeting && !please && polish.length === 0) return null;
+  const friendly =
+    (greeting != null && atLeast(greeting.count, greeting.total, H.friendlyGreeting)) ||
+    (please != null && atLeast(please.count, please.total, H.friendlyPlease));
   const polished = polish.length > 0 && polish.every((c) => c.good);
   if (friendly) return polished ? 'professional' : 'friendly';
   return polished ? 'polished' : 'casual';
 }
 
-function share(c: StyleCheckDTO | undefined): number | null {
-  return c && c.total > 0 ? c.count / c.total : null;
+/** `count` of `total` is at least `percent`, in whole numbers (no rounding at the line). */
+function atLeast(count: number, total: number, percent: number): boolean {
+  return total > 0 && count * 100 >= percent * total;
 }
 
 // ─── examples ────────────────────────────────────────────────────────────────────────────────

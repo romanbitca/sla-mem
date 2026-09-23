@@ -16,14 +16,26 @@ const UNITS: { unit: ReplyUnit; label: string; chart: string }[] = [
  * at a bar, or moving along them with the arrow keys, shows its numbers; weeks without answers keep
  * a low grey slot, so the chart still reads as a timeline.
  */
-export function ReplyChart({ weeks, months }: { weeks: ReplyPeriodDTO[]; months: ReplyPeriodDTO[] }) {
+export function ReplyChart({
+  weeks,
+  months,
+  info,
+}: {
+  weeks: ReplyPeriodDTO[];
+  months: ReplyPeriodDTO[];
+  /** Beside the heading: how the chart is worked out. */
+  info?: ReactNode;
+}) {
   const [unit, setUnit] = useState<ReplyUnit>('week');
   const periods = trimLeadingEmpty(unit === 'week' ? weeks : months);
   const chart = UNITS.find((u) => u.unit === unit)!;
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-xs font-semibold text-ink-faint">Over time</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="text-xs font-semibold text-ink-faint">Over time</h3>
+          {info}
+        </div>
         <div
           role="group"
           aria-label="Show reply time by"

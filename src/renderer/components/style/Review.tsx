@@ -7,7 +7,9 @@ import { useReviewStyle, useSettings, useStyleReview } from '../../lib/queries';
 import { SparklesIcon } from '../icons';
 import { Button, buttonClass } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { InfoTip } from '../ui/InfoTip';
 import { Spinner } from '../ui/Spinner';
+import { ReviewInfo } from './Explain';
 import { Example } from './Writing';
 
 /** Your latest messages Claude reads (main's REVIEW_MESSAGES). */
@@ -44,7 +46,16 @@ export function ReviewCard() {
   );
 
   return (
-    <Card title="Claude’s review" icon={<SparklesIcon size={15} />} aside={action}>
+    <Card
+      title="Claude’s review"
+      icon={<SparklesIcon size={15} />}
+      aside={action}
+      info={
+        <InfoTip label="What the review sends, and what it costs" align="start">
+          <ReviewInfo model={model} messages={REVIEW_MESSAGES} />
+        </InfoTip>
+      }
+    >
       {review.isPending ? (
         <p className="flex items-center gap-2 text-[13px] text-ink-muted">
           <Spinner size={13} /> {model} is reading your latest {REVIEW_MESSAGES} messages…
